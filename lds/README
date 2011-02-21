@@ -1,0 +1,6 @@
+linz_bde_loader
+==================
+
+linz_bde_loader is a programme for loading LINZ BDE files into a PostgreSQL database. linz_bde_loader has the ability to load full and incremental table Landonline BDE loads, as well as manage versioning information.
+
+
