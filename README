@@ -1,5 +1,7 @@
 linz_bde_loader
 ==================
+Copyright 2011 Crown copyright (c) Land Information New Zealand and the New
+Zealand Government.
 
 linz_bde_loader is a programme for loading LINZ BDE files into a PostgreSQL database. linz_bde_loader has the ability to load full and incremental table Landonline BDE loads, as well as manage versioning information.
 
