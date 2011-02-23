@@ -3059,6 +3059,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+ALTER FUNCTION _bde_GetTableColumns(REGCLASS) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION _bde_GetTableColumns(REGCLASS)  FROM PUBLIC;
+
 -- Return a list of columns subject to a unique constraint
 -- for a table as an array of ATTRIBUTE entries.  The specified
 -- key_column is excluded.

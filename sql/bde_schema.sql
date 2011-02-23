@@ -1693,7 +1693,7 @@ REVOKE ALL ON TABLE crs_mesh_blk_place FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_mesh_blk_place TO bde_admin;
 GRANT SELECT ON TABLE crs_mesh_blk_place TO bde_user;
 
-/*
+
 --------------------------------------------------------------------------------
 -- BDE table crs_network_plan
 --------------------------------------------------------------------------------
@@ -1719,7 +1719,6 @@ REVOKE ALL ON TABLE crs_network_plan FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_network_plan TO bde_admin;
 GRANT SELECT ON TABLE crs_network_plan TO bde_user;
 
-*/
 --------------------------------------------------------------------------------
 -- BDE table crs_node
 --------------------------------------------------------------------------------
@@ -2368,7 +2367,6 @@ GRANT SELECT ON TABLE crs_process TO bde_user;
 
 */
 
-/*
 --------------------------------------------------------------------------------
 -- BDE table crs_programme
 --------------------------------------------------------------------------------
@@ -2401,7 +2399,6 @@ REVOKE ALL ON TABLE crs_programme FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_programme TO bde_admin;
 GRANT SELECT ON TABLE crs_programme TO bde_user;
 
-*/
 --------------------------------------------------------------------------------
 -- BDE table crs_proprietor
 --------------------------------------------------------------------------------
