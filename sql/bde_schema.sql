@@ -1449,7 +1449,7 @@ ALTER TABLE crs_mark_name ALTER COLUMN name SET STATISTICS 500;
 CREATE INDEX fk_mkn_mrk ON crs_mark_name USING btree (mrk_id);
 CREATE UNIQUE INDEX mkn_aud_id ON crs_mark_name USING btree (audit_id);
 CREATE INDEX mkn_name ON crs_mark_name USING btree (name);
-CREATE INDEX mkn_name_lower ON crs_mark_name USING btree (lower(name));
+CREATE INDEX mkn_type_code ON crs_mark_name USING btree (type) WHERE UPPER(name) = 'CODE';
 CREATE INDEX mkn_type ON crs_mark_name USING btree ("type");
 
 ALTER TABLE crs_mark_name OWNER TO bde_dba;
