@@ -154,6 +154,21 @@ BEGIN
             'INSERT INTO ' || v_revision_table ||
             ' SELECT ' || v_revision || ', NULL, * FROM ' || CAST(v_table_oid AS TEXT);
         EXECUTE v_sql;
+        
+        INSERT INTO table_version.tables_changed(
+            revision,
+            table_id
+        )
+        SELECT
+            v_revision,
+            v_table_id
+        WHERE
+            NOT EXISTS (
+                SELECT *
+                FROM   table_version.tables_changed
+                WHERE  table_id = v_table_id
+                AND    revision = v_revision
+        );
     END IF;
 
     v_sql := 'ALTER TABLE  ' || v_revision_table || ' ADD CONSTRAINT ' ||
@@ -847,24 +862,8 @@ BEGIN
     v_select_columns_rev := '';
     
     OPEN v_col_cur FOR
-    SELECT
-        ATT.attname AS column_name,
-        format_type(ATT.atttypid, ATT.atttypmod) AS column_type
-    FROM
-        pg_attribute ATT
-    WHERE
-        ATT.attnum > 0 AND
-        NOT ATT.attisdropped AND
-        ATT.attrelid = (
-            SELECT
-                CLS.oid
-            FROM
-                pg_class CLS
-                JOIN pg_namespace NSP ON NSP.oid = CLS.relnamespace
-            WHERE
-                NSP.nspname = p_schema AND
-                CLS.relname = p_table
-        );
+    SELECT column_name, column_type
+    FROM _ver_get_table_cols(p_schema, p_table);
 
     FETCH FIRST IN v_col_cur INTO v_column_name, v_column_type;
     LOOP
@@ -1036,12 +1035,29 @@ DECLARE
     v_revision_table TEXT;
     v_sql            TEXT;
     v_trigger_name   VARCHAR;
+    v_column_name    NAME;
+    v_column_update  TEXT;
 BEGIN
     IF NOT table_version.ver_is_table_versioned(p_schema, p_table) THEN
         RAISE EXCEPTION 'Table %.% is not versioned', quote_ident(p_schema), quote_ident(p_table);
     END IF;
     
     v_revision_table := table_version._ver_get_version_table_full(p_schema, p_table);
+    
+    v_column_update := '';
+    FOR v_column_name IN
+        SELECT column_name
+        FROM _ver_get_table_cols(p_schema, p_table)
+    LOOP
+        IF v_column_name = p_key_col THEN
+            CONTINUE;
+        END IF;
+        IF v_column_update != '' THEN
+            v_column_update := v_column_update || E',\n';
+        END IF;
+        v_column_update := v_column_update || '                    ' ||
+        quote_ident(v_column_name) || ' = NEW.' || quote_ident(v_column_name);
+    END LOOP;
     
     v_sql := $template$
 
@@ -1080,8 +1096,6 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             RAISE EXCEPTION 'Table versioning system information is missing for %full_table_name%';
         END IF;
 
-
-
         IF NOT EXISTS (
             SELECT TRUE
             FROM   table_version.tables_changed
@@ -1089,28 +1103,71 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             AND    revision = v_revision
         )
         THEN
-            INSERT INTO table_version.tables_changed(revision, table_id) VALUES (v_revision, v_table_id);
+            INSERT INTO table_version.tables_changed(revision, table_id)
+            VALUES (v_revision, v_table_id);
         END IF;
         
         IF (TG_OP = 'DELETE') THEN
-            UPDATE %revision_table%
-            SET
-                _revision_expired = v_revision
-            WHERE
-                id = OLD.%key_col% AND
-                _revision_expired IS NULL;
+            IF EXISTS (
+                SELECT *
+                FROM
+                    %revision_table%
+                WHERE
+                    %key_col% = OLD.%key_col% AND
+                    _revision_created = v_revision AND
+                    _revision_expired IS NULL
+            )
+            THEN
+                DELETE FROM %revision_table%
+                WHERE
+                    %key_col% = OLD.%key_col% AND
+                    _revision_created = v_revision AND
+                    _revision_expired IS NULL;
+            ELSE
+                UPDATE
+                    %revision_table%
+                SET
+                    _revision_expired = v_revision
+                WHERE
+                    %key_col% = OLD.%key_col% AND
+                    _revision_expired IS NULL;
+            END IF;
             
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
-            UPDATE %revision_table%
-            SET
-                _revision_expired = v_revision
-            WHERE
-               id = OLD.%key_col% AND
-               _revision_expired IS NULL;
+            IF OLD.%key_col% <> NEW.%key_col% THEN
+                RAISE EXCEPTION 'Table versioning system does not allow changing of %full_table_name% primary key (%key_col%) value (% -> %)',
+                    OLD.%key_col%, NEW.%key_col%;
+            END IF;
             
-            INSERT INTO %revision_table%
-            SELECT v_revision, NULL, NEW.*;
+            IF EXISTS (
+                SELECT *
+                FROM
+                    %revision_table%
+                WHERE
+                    %key_col% = NEW.%key_col% AND
+                    _revision_created = v_revision AND
+                    _revision_expired IS NULL
+            )
+            THEN
+                UPDATE %revision_table%
+                SET
+%revision_update_cols%
+                WHERE
+                    %key_col% = NEW.%key_col% AND
+                    _revision_created = v_revision AND
+                    _revision_expired IS NULL;
+            ELSE
+                UPDATE %revision_table%
+                SET
+                    _revision_expired = v_revision
+                WHERE
+                   %key_col% = OLD.%key_col% AND
+                   _revision_expired IS NULL;
+                
+                INSERT INTO %revision_table%
+                SELECT v_revision, NULL, NEW.*;
+            END IF;
             
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
@@ -1130,6 +1187,7 @@ $TRIGGER$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%full_table_name%', quote_ident(p_schema) || '.' || quote_ident(p_table));
     v_sql := REPLACE(v_sql, '%key_col%',        quote_ident(p_key_col));
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
+    v_sql := REPLACE(v_sql, '%revision_update_cols%', v_column_update);
     EXECUTE v_sql;
 
     SELECT table_version._ver_get_version_trigger(p_schema, p_table)
@@ -1148,6 +1206,47 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ALTER FUNCTION ver_create_version_trigger(NAME, NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_create_version_trigger(NAME, NAME, NAME) FROM PUBLIC;
+
+DROP FUNCTION IF EXISTS _ver_get_table_cols(NAME, NAME);
+/**
+* Gets columns for a given table
+*
+* @param p_schema         The table schema
+* @param p_table          The table name
+* @return                 The revision data table name
+*/
+CREATE OR REPLACE FUNCTION _ver_get_table_cols(
+    p_schema NAME,
+    p_table NAME
+) 
+RETURNS TABLE(
+    column_name NAME,
+    column_type TEXT
+) AS $$
+    SELECT
+        ATT.attname,
+        format_type(ATT.atttypid, ATT.atttypmod)
+    FROM
+        pg_attribute ATT
+    WHERE
+        ATT.attnum > 0 AND
+        NOT ATT.attisdropped AND
+        ATT.attrelid = (
+            SELECT
+                CLS.oid
+            FROM
+                pg_class CLS
+                JOIN pg_namespace NSP ON NSP.oid = CLS.relnamespace
+            WHERE
+                NSP.nspname = $1 AND
+                CLS.relname = $2
+        );
+$$ LANGUAGE sql;
+
+ALTER FUNCTION _ver_get_table_cols(NAME, NAME) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION _ver_get_table_cols(NAME, NAME) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION _ver_get_table_cols(NAME, NAME) TO bde_admin;
+
 
 DROP FUNCTION IF EXISTS _ver_get_version_table(NAME, NAME);
 /**
