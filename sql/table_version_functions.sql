@@ -1108,16 +1108,16 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             VALUES (v_revision, v_table_id);
         END IF;
 
-        SELECT 
-            _revision_created INTO v_last_revision
-        FROM 
-            %revision_table%
-        WHERE 
-            %key_col% = OLD.%key_col% AND
-            _revision_expired IS NULL;
-
         
-        IF (TG_OP <> 'INSERT') AND v_last_revision IS NOT NULL THEN
+        IF (TG_OP <> 'INSERT') THEN
+            SELECT 
+                _revision_created INTO v_last_revision
+            FROM 
+                %revision_table%
+            WHERE 
+                %key_col% = OLD.%key_col% AND
+                _revision_expired IS NULL;
+
             IF v_last_revision = v_revision THEN
                 DELETE FROM 
                     %revision_table%
