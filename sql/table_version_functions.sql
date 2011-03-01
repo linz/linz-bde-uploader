@@ -1119,11 +1119,23 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
                 _revision_expired IS NULL;
 
             IF v_last_revision = v_revision THEN
-                DELETE FROM 
-                    %revision_table%
-                WHERE
-                    %key_col% = OLD.%key_col% AND
-                    _revision_created = v_last_revision;
+                IF TG_OP = 'UPDATE' AND OLD.%key_col% = NEW.%key_col% THEN
+                    
+                    UPDATE %revision_table%
+                    SET
+                        %revision_update_cols%
+                    WHERE
+                        %key_col% = NEW.%key_col% AND
+                        _revision_created = v_revision AND
+                        _revision_expired IS NULL;
+                    RETURN NEW;
+                ELSE
+                    DELETE FROM 
+                        %revision_table%
+                    WHERE
+                        %key_col% = OLD.%key_col% AND
+                        _revision_created = v_last_revision;
+                END IF;
             ELSE
                 UPDATE
                     %revision_table%
@@ -1135,7 +1147,7 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             END IF;
         END IF;
 
-        IF( TG_OP <> 'DELETE' ) THEN
+        IF( TG_OP <> 'DELETE') THEN
             INSERT INTO %revision_table%
             SELECT v_revision, NULL, NEW.*;
             RETURN NEW;
