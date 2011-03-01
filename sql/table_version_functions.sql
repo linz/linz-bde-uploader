@@ -1064,6 +1064,7 @@ BEGIN
 CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
     DECLARE
        v_revision  table_version.revision.id%TYPE;
+       v_last_revision table_version.revision.id%TYPE;
        v_table_id  table_version.versioned_tables.id%TYPE;
     BEGIN
         BEGIN
@@ -1106,23 +1107,23 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             INSERT INTO table_version.tables_changed(revision, table_id)
             VALUES (v_revision, v_table_id);
         END IF;
+
+        SELECT 
+            _revision_created INTO v_last_revision
+        FROM 
+            %revision_table%
+        WHERE 
+            %key_col% = OLD.%key_col% AND
+            _revision_expired IS NULL;
+
         
-        IF (TG_OP = 'DELETE') THEN
-            IF EXISTS (
-                SELECT *
-                FROM
+        IF (TG_OP <> 'INSERT') AND v_last_revision IS NOT NULL THEN
+            IF v_last_revision = v_revision THEN
+                DELETE FROM 
                     %revision_table%
                 WHERE
                     %key_col% = OLD.%key_col% AND
-                    _revision_created = v_revision AND
-                    _revision_expired IS NULL
-            )
-            THEN
-                DELETE FROM %revision_table%
-                WHERE
-                    %key_col% = OLD.%key_col% AND
-                    _revision_created = v_revision AND
-                    _revision_expired IS NULL;
+                    _revision_created = v_last_revision;
             ELSE
                 UPDATE
                     %revision_table%
@@ -1130,47 +1131,11 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
                     _revision_expired = v_revision
                 WHERE
                     %key_col% = OLD.%key_col% AND
-                    _revision_expired IS NULL;
+                    _revision_created = v_last_revision;
             END IF;
-            
-            RETURN OLD;
-        ELSIF (TG_OP = 'UPDATE') THEN
-            IF OLD.%key_col% <> NEW.%key_col% THEN
-                RAISE EXCEPTION 'Table versioning system does not allow changing of %full_table_name% primary key (%key_col%) value (% -> %)',
-                    OLD.%key_col%, NEW.%key_col%;
-            END IF;
-            
-            IF EXISTS (
-                SELECT *
-                FROM
-                    %revision_table%
-                WHERE
-                    %key_col% = NEW.%key_col% AND
-                    _revision_created = v_revision AND
-                    _revision_expired IS NULL
-            )
-            THEN
-                UPDATE %revision_table%
-                SET
-%revision_update_cols%
-                WHERE
-                    %key_col% = NEW.%key_col% AND
-                    _revision_created = v_revision AND
-                    _revision_expired IS NULL;
-            ELSE
-                UPDATE %revision_table%
-                SET
-                    _revision_expired = v_revision
-                WHERE
-                   %key_col% = OLD.%key_col% AND
-                   _revision_expired IS NULL;
-                
-                INSERT INTO %revision_table%
-                SELECT v_revision, NULL, NEW.*;
-            END IF;
-            
-            RETURN NEW;
-        ELSIF (TG_OP = 'INSERT') THEN
+        END IF;
+
+        IF( TG_OP <> 'DELETE' ) THEN
             INSERT INTO %revision_table%
             SELECT v_revision, NULL, NEW.*;
             RETURN NEW;
