@@ -155,6 +155,11 @@ The C<lastUploadStats> returns a hash reference with the fields
        'last_upload_time' => '2010-04-19 12:50:50.025',
        'last_upload_type' => '5'
 
+=item $success = $db->setApplication($app_name)
+
+Sets the application name for the SQL session. Returns true if this was
+successful
+
 =item $success = $db->beginTable($table_name)
 
 Starts a load for a table. If the table transaction option is set the cfg then a
@@ -210,7 +215,7 @@ of E (error), W (warning), I (information), 1, 2, 3 (more verbose messages)
 
 package BdeDatabase;
 
-use fields qw{_connection _user _pwd _dbh _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _last_log_id _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
+use fields qw{_connection _user _pwd _dbh _pg_server_version _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _last_log_id _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
 
 our @sqlFuncs = qw{
     addTable
@@ -285,6 +290,27 @@ sub new
         $self->{_user}, $self->{_pwd}, 
         {AutoCommit=>1,PrintError=>0, PrintWarn=>0,pg_errorlevel=>2} )
        || die "Cannot connect to database\n",DBI->errstr,"\n";
+       
+    my $pg_server_version = $dbh->{'pg_server_version'};
+    if ( $pg_server_version =~ /\d/ )
+    {
+        $self->{_pg_server_version} = $pg_server_version;
+    }
+    else
+    {
+        warn "WARNING: no pg_server_version!  Assuming >= 8.4\n";
+        $self->{_pg_server_version} = 80400;
+    }
+    
+    if ( $self->{_pg_server_version} >= 90000 )
+    {
+        my $row = $dbh->selectcol_arrayref("SELECT pg_is_in_recovery()");
+        if ($$row[0])
+        {
+            die "PostgreSQL is still in recovery after a database crash or ".
+                "you are connected to a read-only slave";
+        }
+    }
 
     $dbh->do("set search_path to ".$self->{_dbschema}.", public");
     my $schema2 = $dbh->selectrow_array("SELECT bde_CheckSchemaName(?)",{},
@@ -340,6 +366,18 @@ sub finishJob
     $self->_runFinishSql;
     $self->finishUpload;
     $self->{uploadId} = undef;
+}
+
+sub setApplication
+{
+    my($self,$app_name) = @_;
+    my $result = 0;
+    if ( $self->{_pg_server_version} >= 90000 )
+    {
+        my $rv = $self->_dbh->do("SET application_name='$app_name'");
+        $result = 1 if (defined $rv);
+    }
+    return $result;
 }
 
 sub beginTable
