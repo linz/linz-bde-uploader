@@ -1053,19 +1053,20 @@ BEGIN
             CONTINUE;
         END IF;
         IF v_column_update != '' THEN
-            v_column_update := v_column_update || E',\n';
+            v_column_update := v_column_update || E',\n                        ';
         END IF;
-        v_column_update := v_column_update || '                    ' ||
-        quote_ident(v_column_name) || ' = NEW.' || quote_ident(v_column_name);
+        
+        v_column_update := v_column_update || quote_ident(v_column_name) || ' = NEW.' 
+            || quote_ident(v_column_name);
     END LOOP;
     
     v_sql := $template$
 
 CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
     DECLARE
-       v_revision  table_version.revision.id%TYPE;
+       v_revision      table_version.revision.id%TYPE;
        v_last_revision table_version.revision.id%TYPE;
-       v_table_id  table_version.versioned_tables.id%TYPE;
+       v_table_id      table_version.versioned_tables.id%TYPE;
     BEGIN
         BEGIN
             SELECT
@@ -1121,7 +1122,8 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
             IF v_last_revision = v_revision THEN
                 IF TG_OP = 'UPDATE' AND OLD.%key_col% = NEW.%key_col% THEN
                     
-                    UPDATE %revision_table%
+                    UPDATE
+                        %revision_table%
                     SET
                         %revision_update_cols%
                     WHERE
