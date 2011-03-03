@@ -1121,7 +1121,6 @@ CREATE OR REPLACE FUNCTION %revision_table%() RETURNS trigger AS $TRIGGER$
 
             IF v_last_revision = v_revision THEN
                 IF TG_OP = 'UPDATE' AND OLD.%key_col% = NEW.%key_col% THEN
-                    
                     UPDATE
                         %revision_table%
                     SET
