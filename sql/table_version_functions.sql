@@ -51,6 +51,7 @@ DECLARE
     v_key_col         NAME;
     v_revision_table  TEXT;
     v_sql             TEXT;
+    v_table_id        table_version.versioned_tables.id%TYPE;
     v_revision        table_version.revision.id%TYPE;
     v_revision_exists BOOLEAN;
     v_table_has_data  BOOLEAN;
@@ -142,7 +143,7 @@ BEGIN
             FROM
                 _changeset_revision VER;
             
-            v_revision_exists := TRUE;  
+            v_revision_exists := TRUE;
         ELSE
             SELECT table_version.ver_create_revision(
                 'Initial revisioning of ' || CAST(v_table_oid AS TEXT)
@@ -154,21 +155,6 @@ BEGIN
             'INSERT INTO ' || v_revision_table ||
             ' SELECT ' || v_revision || ', NULL, * FROM ' || CAST(v_table_oid AS TEXT);
         EXECUTE v_sql;
-        
-        INSERT INTO table_version.tables_changed(
-            revision,
-            table_id
-        )
-        SELECT
-            v_revision,
-            v_table_id
-        WHERE
-            NOT EXISTS (
-                SELECT *
-                FROM   table_version.tables_changed
-                WHERE  table_id = v_table_id
-                AND    revision = v_revision
-        );
     END IF;
 
     v_sql := 'ALTER TABLE  ' || v_revision_table || ' ADD CONSTRAINT ' ||
@@ -234,7 +220,17 @@ BEGIN
         tnsp.oid = tobj.relnamespace AND
         tobj.relname   = p_table;
 
-    IF EXISTS (SELECT * FROM table_version.versioned_tables WHERE schema_name = p_schema AND table_name = p_table) THEN
+    SELECT
+        id
+    INTO
+        v_table_id
+    FROM
+        table_version.versioned_tables
+    WHERE
+        schema_name = p_schema AND
+        table_name = p_table;
+    
+    IF v_table_id IS NOT NULL THEN
         UPDATE table_version.versioned_tables
         SET    versioned = TRUE
         WHERE  schema_name = p_schema
@@ -242,6 +238,23 @@ BEGIN
     ELSE
         INSERT INTO table_version.versioned_tables(schema_name, table_name, key_column, versioned)
         VALUES (p_schema, p_table, v_key_col, TRUE);
+    END IF;
+    
+    IF v_table_id IS NOT NULL AND v_table_has_data THEN
+        INSERT INTO table_version.tables_changed(
+            revision,
+            table_id
+        )
+        SELECT
+            v_revision,
+            v_table_id
+        WHERE
+            NOT EXISTS (
+                SELECT *
+                FROM   table_version.tables_changed
+                WHERE  table_id = v_table_id
+                AND    revision = v_revision
+        );
     END IF;
 
     PERFORM table_version.ver_create_table_functions(p_schema, p_table, v_key_col);
