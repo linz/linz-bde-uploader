@@ -1392,8 +1392,8 @@ BEGIN
     END IF;
     
     v_sql := v_sql || v_incremental_table || $$ (
-        table_name VARCHAR(128) NOT NULL,
-        table_key_value INTEGER NOT NULL,
+        tablename VARCHAR(128) NOT NULL,
+        tablekeyvalue INTEGER NOT NULL,
         action CHAR(1) NOT NULL
         ) with (autovacuum_enabled=false)$$;
     
@@ -1423,9 +1423,9 @@ BEGIN
         RETURN 0;
     END IF;
 
-    EXECUTE 'UPDATE ' || p_change_table || ' SET table_name=lower(table_name) 
-             WHERE table_name != lower(table_name)';
-    EXECUTE 'CREATE INDEX _inc_tbl_id ON ' || p_change_table || ' (table_name, id )';
+    EXECUTE 'UPDATE ' || p_change_table || ' SET tablename = lower(tablename) 
+             WHERE tablename != lower(tablename)';
+    EXECUTE 'CREATE INDEX _inc_tbl_id ON ' || p_change_table || ' (tablename, tablekeyvalue)';
     EXECUTE 'ANALYZE ' || p_change_table;
     PERFORM bde_SetOption(p_upload,'_inc_change_indexed','Y');
     RETURN 1;
@@ -1515,48 +1515,48 @@ ALTER FUNCTION _bde_GetValidIncrementKey(INTEGER, NAME) OWNER TO bde_dba;
 -- and the upload temp table have been populated.
 
 CREATE OR REPLACE FUNCTION bde_ApplyLevel5Update (
-    p_upload INTEGER,
-    p_table_name name,
-    p_bdetime timestamp,
-    p_details text
+    p_upload     INTEGER,
+    p_table_name NAME,
+    p_bdetime    TIMESTAMP,
+    p_details    TEXT
     )
 RETURNS INTEGER
 AS
 $body$
 DECLARE
     v_fail_if_inconsistent BOOLEAN;
-    v_check_null_updates BOOLEAN;
-    v_inconsistent BOOLEAN;
-    v_dataset VARCHAR(14);
-    v_tmptable regclass;
-    v_changetable regclass;
-    v_bdetable regclass;
-    v_nins BIGINT;
-    v_ndel BIGINT;
-    v_nupd BIGINT;
-    v_nnullupd BIGINT;
-    v_nuniqf BIGINT;
-    v_rcount BIGINT;
-    v_task TEXT;
-    v_sql TEXT;
-    v_distinct TEXT;
-    v_errmsg TEXT;
-    v_key_column NAME;
+    v_check_null_updates   BOOLEAN;
+    v_inconsistent         BOOLEAN;
+    v_dataset              VARCHAR(14);
+    v_tmptable             REGCLASS;
+    v_changetable          REGCLASS;
+    v_bdetable             REGCLASS;
+    v_nins                 BIGINT;
+    v_ndel                 BIGINT;
+    v_nupd                 BIGINT;
+    v_nnullupd             BIGINT;
+    v_nuniqf               BIGINT;
+    v_rcount               BIGINT;
+    v_task                 TEXT;
+    v_sql                  TEXT;
+    v_distinct             TEXT;
+    v_errmsg               TEXT;
+    v_key_column           NAME;
 BEGIN
     -- Configuration stuff..
-
+    
     v_fail_if_inconsistent = TRUE;
     v_check_null_updates = TRUE;
-
+    
     -- task is used in error reporting, updated throughout process to indicate what stage
     -- the update has got to.
-
+    
     v_task := 'Setting up L5 update';
-
+    
     -- A good time to ensure that the lock doesn't get revoked
-
+    
     PERFORM _bde_RefreshLock(p_upload);
-
+    
     -- If we don't have a key column, then cannot perform a Level 5 update
     v_key_column := _bde_GetValidIncrementKey( p_upload, p_table_name );
     IF v_key_column IS NULL THEN
@@ -1564,29 +1564,33 @@ BEGIN
     END IF;
     
     v_dataset := bde_GetOption(p_upload,'_dataset');
-    PERFORM bde_WriteUploadLog(p_upload,'2','Applying level 5 update ' || v_dataset || ' into table ' || p_table_name );
-
+    PERFORM bde_WriteUploadLog(
+        p_upload,
+        '2',
+        'Applying level 5 update ' || v_dataset || ' into table ' || p_table_name
+    );
+    
     -- Get the tables we need
-
+    
     v_tmptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
     v_bdetable := bde_TableOid(bde_BdeSchema(p_upload),p_table_name);
     v_changetable := _bde_WorkingCopyTableOid(p_upload,_bde_ChangeTableName());
-
+    
     IF v_tmptable IS NULL OR v_bdetable IS NULL OR v_changetable IS NULL THEN
         RAISE EXCEPTION 'BDE:E:Cannot apply level 5 update % into table % as one of the scratch, bde, or L5 change table doesn''t exist', v_dataset, p_table_name;
     END IF;
-
+    
     -- Check that we have a table lock
-
+    
     IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
         RAISE EXCEPTION 'BDE:E:Cannot apply level 5 update % into table % as have not acquired a lock for this table', v_dataset, p_table_name;
     END IF;
-
+    
     -- Add the primary key to the working table and analyze it
     -- If this works then don't need to use distinct with insert.
-
+    
     v_task := 'Indexing working table';
-
+    
     v_distinct := 'DISTINCT';
     BEGIN
         FOR v_sql IN 
@@ -1601,130 +1605,163 @@ BEGIN
         END LOOP;
     EXCEPTION
         WHEN others THEN
-            PERFORM bde_WriteUploadLog(p_upload,'I','Failed to add primary key to working table for ' || p_table_name );
+            PERFORM bde_WriteUploadLog(
+                p_upload,
+                'I',
+                'Failed to add primary key to working table for ' || p_table_name
+            );
     END;
-
+    
     EXECUTE 'ANALYZE ' || v_tmptable;
-
-    v_ndel := 0;
-    v_nupd := 0;
+    
+    v_ndel     := 0;
+    v_nupd     := 0;
     v_nnullupd := 0;
-    v_nins := 0;
-    v_nuniqf := 0;
+    v_nins     := 0;
+    v_nuniqf   := 0;
 
     PERFORM _bde_GetExclusiveLock( p_upload, v_bdetable );
-
+    
     v_task := 'Preparing incremental change table';
-
+    
     PERFORM _bde_PrepareChangeTable(p_upload,v_changetable);
-
+    
     EXECUTE 'SET LOCAL search_path TO ' || bde_TmpSchema(p_upload) || 
             ',' || current_setting('search_path');
-
-
+    
     -- Build a list of incremental updates for this table into _tmp_inc_change
     -- This should make subsequent processing faster.
     
     v_task := 'Selecting incremental records';
     DROP TABLE IF EXISTS _tmp_inc_change;
-
+    
     CREATE TEMP TABLE _tmp_inc_change (
         id INTEGER, 
         action CHAR(1)
-        );
-
-    v_rcount := bde_ExecuteTemplate( $sql$
-         INSERT INTO _tmp_inc_change (id, action
-         SELECT table_key_value, action
-         FROM %1%
-         WHERE table_name='%2%'
-         $sql$,
-         array[v_changetable::text,quote_literal(lower(p_table_name))]
-
-         );
-
+    );
+    
+    v_rcount := bde_ExecuteTemplate(
+        $sql$
+            INSERT INTO _tmp_inc_change(
+                id,
+                action
+            )
+            SELECT
+                tablekeyvalue,
+                action
+            FROM
+                %1%
+            WHERE
+                tablename=%2%
+        $sql$,
+        array[v_changetable::text,quote_literal(lower(p_table_name))]
+    );
+    
     -- If no changed records for this table, then don't waste time
     -- processing them.
-
+    
     IF v_rcount <= 0 THEN
         RAISE EXCEPTION 'BDE:I:There are no changes to apply for %', p_table_name;
     END IF;
-
+    
     -- Optimize use of _tmp_inc_change
-
+    
     ALTER TABLE _tmp_inc_change ADD PRIMARY KEY (id);
     ANALYZE _tmp_inc_change;
-
-    -- Add index to incremental data table if it is not already defined 
-
+    
+    -- Add index to incremental data table if it is not already defined
+    
     IF NOT bde_TableKeyIsValid(v_tmptable, v_key_column) THEN
-        v_sql := 'CREATE UNIQUE INDEX tmp_inc_key ON ' || v_tmptable || '(' || quote_ident(v_key_column) || ')';
+        v_sql := 'CREATE UNIQUE INDEX tmp_inc_key ON ' || v_tmptable ||
+            '(' || quote_ident(v_key_column) || ')';
         EXECUTE v_sql;
         v_sql := 'ANALYZE ' || v_tmptable;
         EXECUTE v_sql;
         v_sql := '';
     END IF;
-
+    
     -- Fix any inconsistency of update table with current data
-
+    
     v_task := 'Checking consistency of incremental update with source table';
-
+    
     v_inconsistent := FALSE;
-
+    
     v_rcount := _bde_FixMissingDeleteRecords( v_bdetable,v_key_column);
-    IF v_rcount >= 0 THEN
-       PERFORM bde_WriteUploadLog(p_upload,'I','' || v_rcount || ' records to be deleted in ' || v_bdetable || ' don''t exist');
-       v_inconsistent := TRUE;
+    IF v_rcount > 0 THEN
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            'I',
+            '' || v_rcount || ' records to be deleted in ' || v_bdetable ||
+            ' do not exist'
+        );
+        v_inconsistent := TRUE;
     END IF;
-
+    
     v_rcount := _bde_FixMissingUpdateRecords( v_bdetable,v_key_column);
-    IF v_rcount >= 0 THEN
-       PERFORM bde_WriteUploadLog(p_upload,'I','' || v_rcount || ' records to be updated in ' || v_bdetable || ' don''t exist');
-       v_inconsistent := TRUE;
+    IF v_rcount > 0 THEN
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            'I',
+            '' || v_rcount || ' records to be updated in ' || v_bdetable ||
+            ' don''t exist
+        ');
+        v_inconsistent := TRUE;
     END IF;
-
+    
     v_rcount := _bde_FixExistingInsertRecords( v_bdetable,v_key_column);
-    IF v_rcount >= 0 THEN
-       PERFORM bde_WriteUploadLog(p_upload,'I','' || v_rcount || ' records to be inserted in ' || v_bdetable || ' already exist');
-       v_inconsistent := TRUE;
+    IF v_rcount > 0 THEN
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            'I',
+            '' || v_rcount || ' records to be inserted in ' || v_bdetable ||
+            ' already exist'
+        );
+        v_inconsistent := TRUE;
     END IF;
-
+    
     -- Ensure required records are actually in the incremental update table
-
+    
     v_rcount := _bde_DropUpdatesWithMissingData( v_tmptable,v_key_column);
-    IF v_rcount >= 0 THEN
-       PERFORM bde_WriteUploadLog(p_upload,'I','' || v_rcount || ' records to be updated/inserted in ' || v_bdetable || ' are not in incremental data');
-       v_inconsistent := TRUE;
+    IF v_rcount > 0 THEN
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            'I',
+            '' || v_rcount || ' records to be updated/inserted in ' ||
+            v_bdetable || ' are not in incremental data'
+        );
+        v_inconsistent := TRUE;
     END IF;
-
+    
     -- If we are failing on inconsistent data, then then abort now
-
+    
     IF v_inconsistent AND v_fail_if_inconsistent THEN
         RAISE EXCEPTION 'BDE:E:Incremental update of table % in dataset % abandoned due to data inconsistencies', p_table_name, v_dataset;
     END IF;
-
+    
     -- If check for null updates, then remove them from the dataset
-
+    
     IF v_check_null_updates THEN
         v_nnullupd := _bde_RemoveNullUpdates( v_bdetable, v_tmptable, v_key_column );
     END IF;
-
+    
     -- Fix potential uniqueness errors generated by updates.
-
+    
     v_nuniqf := _bde_FixUniqueKeyUpdates( v_bdetable, v_tmptable, v_key_column );
     IF v_nuniqf > 0 THEN
-       PERFORM bde_WriteUploadLog(p_upload,'I','' || v_nuniqf || ' updates changed to delete/insert in ' || p_table_name || ' to avoid potential uniqueness constraint errors');
-
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            'I',
+            '' || v_nuniqf ||
+            ' updates changed to delete/insert in ' || p_table_name ||
+            ' to avoid potential uniqueness constraint errors'
+        );
     END IF;
-
+    
     -- Process the updates
-
     v_ndel := _bde_ApplyIncDelete( v_bdetable, '_tmp_inc_change', v_key_column );
-
     v_nupd := _bde_ApplyIncUpdate( v_bdetable, '_tmp_inc_change', v_tmptable, v_key_column );
-
     v_nins := _bde_ApplyIncInsert( v_bdetable, '_tmp_inc_change', v_tmptable, v_key_column );
-
+    
     v_ndel := v_ndel - v_nuniqf;
     v_nins := v_nins - v_nuniqf;
     v_nupd := v_nupd + v_nuniqf;
@@ -1732,31 +1769,42 @@ BEGIN
     DROP TABLE _tmp_inc_change;
     
     -- Record the update that has been applied
-
+    
     v_task := 'Recording update statistics';
-
-    PERFORM _bde_RecordDatasetLoaded( p_upload, p_table_name, v_dataset, '5', TRUE, p_bdetime, p_details, v_nins, v_nupd, v_nnullupd, v_ndel );
+    
+    PERFORM _bde_RecordDatasetLoaded(
+        p_upload,
+        p_table_name,
+        v_dataset,
+        '5',
+        TRUE,
+        p_bdetime,
+        p_details,
+        v_nins,
+        v_nupd,
+        v_nnullupd,
+        v_ndel
+    );
     
     -- Remove the scratch table
-
+    
     v_task := 'Dropping temp table';
-
+    
     EXECUTE 'DROP TABLE ' || v_tmptable;
-
+    
     RETURN 1;
-
+    
 EXCEPTION
-   
-   WHEN others THEN
+    WHEN others THEN
     v_errmsg = SQLERRM;
-
+    
     -- Exception raised deliberately to abort process but ensure clean up
     -- Messages starts BDE:x: where x is level
-
+    
     IF substring(v_errmsg for 4) = 'BDE:' THEN
-        PERFORM bde_WriteUploadLog( p_upload, substring(v_errmsg from 5 for 1), 
+        PERFORM bde_WriteUploadLog( p_upload, substring(v_errmsg from 5 for 1),
             substring(v_errmsg from 7));
-
+    
     -- "Unexpected" exception
     ELSE
         PERFORM bde_WriteUploadLog(p_upload,'E',
@@ -1784,68 +1832,67 @@ ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT) OWNER TO bd
 -- have been populated.
 
 CREATE OR REPLACE FUNCTION bde_ApplyLevel0Update (
-    p_upload INTEGER,
-    p_table_name name,
-    p_bdetime timestamp,
-    p_details text,
+    p_upload      INTEGER,
+    p_table_name  NAME,
+    p_bdetime     TIMESTAMP,
+    p_details     TEXT,
     p_incremental BOOLEAN
     )
 RETURNS INTEGER
 AS
 $body$
 DECLARE
-    v_bde_schema name;
-    v_tmp_schema name;
-    v_key_column name;
-    v_dataset VARCHAR(14);
-    v_tmptable regclass;
-    v_bdetable regclass;
-    v_sql text;
-    v_nins BIGINT DEFAULT 0;
-    v_ndel BIGINT DEFAULT 0;
-    v_nupd BIGINT DEFAULT 0;
-    v_task text;
-    v_depsql text[];
+    v_bde_schema  NAME;
+    v_tmp_schema  NAME;
+    v_key_column  NAME;
+    v_dataset     VARCHAR(14);
+    v_tmptable    REGCLASS;
+    v_bdetable    REGCLASS;
+    v_sql         TEXT;
+    v_nins        BIGINT DEFAULT 0;
+    v_ndel        BIGINT DEFAULT 0;
+    v_nupd        BIGINT DEFAULT 0;
+    v_task        TEXT;
+    v_depsql      TEXT[];
 BEGIN
-
+    
     v_task := 'Setting up L0 update';
-
+    
     -- A good time to ensure that the lock doesn't get revoked
     PERFORM _bde_RefreshLock(p_upload);
-
+    
     v_dataset := bde_GetOption(p_upload,'_dataset');
     PERFORM bde_WriteUploadLog(p_upload,'2','Applying level 0 update ' || v_dataset || ' into table ' || p_table_name );
-
+    
     -- Get the tables we need
-
+    
     v_bde_schema := bde_BdeSchema(p_upload);
     v_bdetable := bde_TableOid(v_bde_schema,p_table_name);
     
     v_tmp_schema := bde_TmpSchema(p_upload);
     v_tmptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
-
+    
     IF v_tmptable IS NULL OR v_bdetable IS NULL THEN
         PERFORM bde_WriteUploadLog(p_upload,'E','Cannot apply level 0 update' ||
         v_dataset || ' into table ' || p_table_name ||
         ' as either the scratch or the bde table doesn''t exist');
         RETURN 0;
     END IF;
-
+    
     -- Check that we have a lock for this table
-
+    
     IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
         PERFORM bde_WriteUploadLog(p_upload,'E','Cannot apply level 0 update' ||
         v_dataset || ' into table ' || p_table_name ||
         ' as have not acquired a lock for this table');
         RETURN 0;
     END IF;
-
-
+    
     -- Copy additional schema information (constraints, indexes, ownership,
     -- etc) from the bde table to the temp table
     
     v_task := 'Copying schema information to temp table';
-
+    
     IF p_incremental THEN
         PERFORM _bde_CopyStatisticsInformation(p_upload,v_bdetable,v_tmptable);
         
@@ -1865,11 +1912,11 @@ BEGIN
     ELSE
         PERFORM _bde_CopySchemaInformation(p_upload,v_bdetable,v_tmptable);
     END IF;
-
+    
     -- Analyze the table
-
+    
     v_task := 'Analyzing temp table';
-
+    
     PERFORM bde_WriteUploadLog(p_upload,'2','Analyzing ' || v_tmptable );
     EXECUTE 'ANALYZE ' || v_tmptable;
     
@@ -1885,63 +1932,67 @@ BEGIN
             v_ndel
         FROM
             bde_ApplyTableDifferences(p_upload, v_bdetable, v_tmptable, v_key_column);
-            
+        
         IF v_nins <> 0 OR v_nupd <> 0 OR v_ndel <> 0 THEN
             PERFORM bde_CheckTableCount(p_upload, p_table_name);
         END IF;
     ELSE
         -- Get dependent object SQL
-    
+        
         v_task := 'Retrieving dependent object information';
-    
+        
         v_depsql := _bde_GetDependentObjectSql(p_upload,v_bdetable);
-    
+        
         -- Is this too expensive on pg?
-    
+        
         v_task := 'Counting current and new version of table';
-
+        
         EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
         EXECUTE 'SELECT COUNT(*) FROM ' || v_tmptable INTO v_nins;
         v_nupd := 0;
         
         -- Replace the BDE table with the new version
-    
+        
         v_task := 'Dropping the current version of the table';
-    
+        
         PERFORM bde_WriteUploadLog(p_upload,'2','Dropping ' || v_bdetable );
         PERFORM _bde_GetExclusiveLock(p_upload,v_bdetable);
         v_sql := 'DROP TABLE ' || v_bdetable || ' CASCADE';
         -- RAISE INFO 'SQL: %',v_sql;
         EXECUTE v_sql;
-    
+        
         v_task := 'Renaming the new version to replace the current version';
         PERFORM bde_WriteUploadLog(p_upload,'2','Moving ' || v_tmptable || ' into ' || v_bde_schema || ' schema');
         v_sql := 'ALTER TABLE ' || v_tmptable || ' SET SCHEMA ' || v_bde_schema;
         -- RAISE INFO 'SQL: %',v_sql;
         EXECUTE v_sql;
-    
+        
         -- Restore the dependent objects
-    
+        
         PERFORM bde_ExecuteSqlArray(p_upload,'Restoring dependent objects',v_depsql);
     END IF;
     
     -- Record the update that has been applied
-
+    
     v_task := 'Recording the upload';
     PERFORM _bde_RecordDatasetLoaded( p_upload, p_table_name, v_dataset, '0', p_incremental, p_bdetime, p_details, v_nins, v_nupd, 0, v_ndel );
     
     EXECUTE 'DROP TABLE ' || v_tmptable;
-            
+    
     RETURN 1;
 
 EXCEPTION
     WHEN others THEN
-    PERFORM bde_WriteUploadLog(p_upload,'E','Level 0 update of table ' || p_table_name || ' from dataset ' || v_dataset || ' failed in ' || v_task  || E'\nError: ' || SQLERRM );
+    PERFORM bde_WriteUploadLog(
+        p_upload,
+        'E',
+        'Level 0 update of table ' || p_table_name || ' from dataset ' ||
+        v_dataset || ' failed in ' || v_task  || E'\nError: ' || SQLERRM
+    );
     EXECUTE 'DROP TABLE IF EXISTS ' || v_tmptable;
     DROP TABLE IF EXISTS table_diff;
     RETURN 0;
 END
-
 $body$
 LANGUAGE plpgsql;
 
@@ -2155,7 +2206,7 @@ BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
        DELETE FROM _tmp_inc_change 
            WHERE action='D' AND 
-           table_key_value NOT IN (SELECT %2% FROM %1%)
+           id NOT IN (SELECT %2% FROM %1%)
         $sql$,
         ARRAY[p_bde_table::text, quote_ident(p_key_column)]
         );
@@ -2178,13 +2229,13 @@ AS
 $$
 BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
-       UPDATE FROM _tmp_inc_change 
-           SET action='I'
-           WHERE action='U' AND 
-           id NOT IN (SELECT %2% FROM %1%)
+        UPDATE _tmp_inc_change 
+            SET action='I'
+            WHERE action='U' AND 
+            id NOT IN (SELECT %2% FROM %1%)
         $sql$,
         ARRAY[p_bde_table::text, quote_ident(p_key_column)]
-        );
+    );
 END;
 $$
 LANGUAGE plpgsql;
@@ -2204,13 +2255,13 @@ AS
 $$
 BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
-       UPDATE FROM _tmp_inc_change 
-           SET action='U'
-           WHERE action='I' AND 
-           id IN (SELECT %2% FROM %1%)
+        UPDATE _tmp_inc_change 
+            SET action='U'
+            WHERE action='I' AND 
+            id IN (SELECT %2% FROM %1%)
         $sql$,
         ARRAY[p_bde_table::text, quote_ident(p_key_column)]
-        );
+    );
 END;
 $$
 LANGUAGE plpgsql;
@@ -2261,9 +2312,9 @@ DECLARE
     v_table_cols bde_control.ATTRIBUTE[];
     v_col bde_control.ATTRIBUTE;
 BEGIN
-    v_table_cols := _bde_GetTableColumns(p_update_table);
+    v_table_cols := _bde_GetTableColumns(p_bde_table);
     IF v_table_cols IS NULL THEN
-        RAISE EXCEPTION 'Could not find any table columns for %', p_update_table;
+        RAISE EXCEPTION 'Could not find any table columns for %', p_bde_table;
     END IF;
     v_compare1 = _bde_GetCompareSql(v_table_cols, 'NEW_DAT');
     v_compare2 = _bde_GetCompareSql(v_table_cols, 'CUR');
@@ -2307,7 +2358,7 @@ DECLARE
     v_table_cols bde_control.ATTRIBUTE[];
     v_col bde_control.ATTRIBUTE;
 BEGIN
-    v_table_cols := _bde_GetTableUniqueConstraintColumns(p_update_table,p_key_column);
+    v_table_cols := _bde_GetTableUniqueConstraintColumns(p_bde_table,p_key_column);
     IF v_table_cols IS NULL THEN
         RETURN 0;
     END IF;
@@ -2347,12 +2398,12 @@ $$
 BEGIN
     RETURN bde_ExecuteTemplate( $sql$
         DELETE FROM %1% AS T
-          USING %2% AS INC
-          WHERE T.%3% = INC.id
-          AND  INC.action IN ('D','X')
+        USING %2% AS INC
+        WHERE T.%3% = INC.id
+        AND  INC.action IN ('D','X')
         $sql$,
         ARRAY[p_delete_table::text,p_inc_change_table,quote_ident(p_key_column)]
-        );
+    );
 END;
 $$
 LANGUAGE plpgsql;
@@ -2420,7 +2471,7 @@ DECLARE
 BEGIN
     v_table_cols := array_to_string(_bde_GetQuotedTableColumnNames(p_insert_table), ',');
     IF v_table_cols = '' THEN
-        RAISE EXCEPTION 'Could not find any table columns for %', p_update_table;
+        RAISE EXCEPTION 'Could not find any table columns for %', p_insert_table;
     END IF;
     
     RETURN bde_ExecuteTemplate( $sql$
