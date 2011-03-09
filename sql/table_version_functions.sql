@@ -237,7 +237,8 @@ BEGIN
         AND    table_name = p_table;
     ELSE
         INSERT INTO table_version.versioned_tables(schema_name, table_name, key_column, versioned)
-        VALUES (p_schema, p_table, v_key_col, TRUE);
+        VALUES (p_schema, p_table, v_key_col, TRUE)
+        RETURNING id INTO v_table_id;
     END IF;
     
     IF v_table_id IS NOT NULL AND v_table_has_data THEN
@@ -896,8 +897,8 @@ BEGIN
     
     CLOSE v_col_cur;
 
-    -- Create difference function for table called: 
-    -- ver_get_$schema$_$table$_diff(p_revision1 integer)
+    -- Create difference function for table called:
+    -- ver_get_$schema$_$table$_diff(p_revision1 integer, p_revision2 integer)
     v_sql := $template$
     
 CREATE OR REPLACE FUNCTION %func_sig%
@@ -964,7 +965,7 @@ AS $FUNC$
         SELECT
             CASE WHEN LVC._revision_expired <= v_revision2 THEN
                 'D'::CHAR(1)
-            WHEN OSC.id IS NULL THEN
+            WHEN OSC.%key_col% IS NULL THEN
                 'I'::CHAR(1)
             ELSE
                 'U'::CHAR(1)
@@ -972,7 +973,7 @@ AS $FUNC$
 %select_columns%
         FROM
             last_value_changed AS LVC
-            LEFT JOIN old_state_changed AS OSC ON LVC.id = OSC.id;
+            LEFT JOIN old_state_changed AS OSC ON LVC.%key_col% = OSC.%key_col%;
             
         DROP TABLE last_value_changed;
         
