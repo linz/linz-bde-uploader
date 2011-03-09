@@ -1526,6 +1526,8 @@ $body$
 DECLARE
     v_fail_if_inconsistent BOOLEAN;
     v_check_null_updates   BOOLEAN;
+    v_msg                  TEXT;
+    v_messages             TEXT[];
     v_inconsistent         BOOLEAN;
     v_dataset              VARCHAR(14);
     v_tmptable             REGCLASS;
@@ -1547,6 +1549,7 @@ BEGIN
     
     v_fail_if_inconsistent = TRUE;
     v_check_null_updates = TRUE;
+    v_messages := '{}';
     
     -- task is used in error reporting, updated throughout process to indicate what stage
     -- the update has got to.
@@ -1661,7 +1664,10 @@ BEGIN
     -- processing them.
     
     IF v_rcount <= 0 THEN
-        RAISE EXCEPTION 'BDE:I:There are no changes to apply for %', p_table_name;
+        PERFORM bde_WriteUploadLog(
+            p_upload, 'I', 'There are no changes to apply for ' || p_table_name
+        );
+        RETURN 1;
     END IF;
     
     -- Optimize use of _tmp_inc_change
@@ -1690,46 +1696,34 @@ BEGIN
     IF v_rcount > 0 THEN
         PERFORM bde_WriteUploadLog(
             p_upload,
-            'I',
-            '' || v_rcount || ' records to be deleted in ' || v_bdetable ||
+            '3',
+            v_rcount::TEXT || ' records to be deleted in ' || v_bdetable ||
             ' do not exist'
         );
-        v_inconsistent := TRUE;
     END IF;
     
     v_rcount := _bde_FixMissingUpdateRecords( v_bdetable,v_key_column);
     IF v_rcount > 0 THEN
-        PERFORM bde_WriteUploadLog(
-            p_upload,
-            'I',
-            '' || v_rcount || ' records to be updated in ' || v_bdetable ||
-            ' don''t exist
-        ');
-        v_inconsistent := TRUE;
+        v_messages := v_messages || (v_rcount::TEXT ||
+            ' records to be updated in ' || v_bdetable || ' don''t exist');
+        v_inconsistent = TRUE;
     END IF;
     
     v_rcount := _bde_FixExistingInsertRecords( v_bdetable,v_key_column);
     IF v_rcount > 0 THEN
-        PERFORM bde_WriteUploadLog(
-            p_upload,
-            'I',
-            '' || v_rcount || ' records to be inserted in ' || v_bdetable ||
-            ' already exist'
-        );
-        v_inconsistent := TRUE;
+        v_messages := v_messages || (v_rcount::TEXT ||
+            ' records to be inserted in ' || v_bdetable || ' already exist');
+        v_inconsistent = TRUE;
     END IF;
     
     -- Ensure required records are actually in the incremental update table
     
     v_rcount := _bde_DropUpdatesWithMissingData( v_tmptable,v_key_column);
     IF v_rcount > 0 THEN
-        PERFORM bde_WriteUploadLog(
-            p_upload,
-            'I',
-            '' || v_rcount || ' records to be updated/inserted in ' ||
-            v_bdetable || ' are not in incremental data'
-        );
-        v_inconsistent := TRUE;
+        v_messages := v_messages || (v_rcount::TEXT ||
+            ' records to be updated/inserted in ' || v_bdetable ||
+            ' are not in incremental data');
+        v_inconsistent = TRUE;
     END IF;
     
     -- If we are failing on inconsistent data, then then abort now
@@ -1797,6 +1791,14 @@ BEGIN
 EXCEPTION
     WHEN others THEN
     v_errmsg = SQLERRM;
+    
+    -- Capture any messages that maybe of interest before the exception was
+    -- thrown
+    IF array_ndims(v_messages) IS NOT NULL THEN
+        FOR v_msg IN SELECT * FROM unnest(v_messages) LOOP
+            PERFORM bde_WriteUploadLog( p_upload, 'W', v_msg );
+        END LOOP;
+    END IF;
     
     -- Exception raised deliberately to abort process but ensure clean up
     -- Messages starts BDE:x: where x is level
@@ -2192,7 +2194,7 @@ LANGUAGE 'plpgsql';
 ALTER FUNCTION bde_ExecuteTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 
 -- Removes delete requests for key values that don't exist.
--- Returns  the count of records found
+-- Returns the count of records found
 
 CREATE OR REPLACE FUNCTION _bde_FixMissingDeleteRecords(
     p_bde_table REGCLASS,
@@ -2325,9 +2327,9 @@ BEGIN
               %2% AS CUR
         WHERE 
            _tmp_inc_change.action = 'U' AND
-           NEW_DAT.%3% = _tmp_inc_change.%3% AND
-           CUR.%3% = _tmp_inc_change.%3% AND
-           %4% = %5%
+           NEW_DAT.%3% = _tmp_inc_change.id AND
+           CUR.%3% = _tmp_inc_change.id AND
+           (%4%) = (%5%)
         $sql$,
         ARRAY[p_inc_data_table::text,p_bde_table::text,quote_ident(p_key_column),v_compare1,v_compare2]
     );
@@ -2372,9 +2374,9 @@ BEGIN
              %2% AS CUR
         WHERE 
            _tmp_inc_change.action = 'U' AND
-           NEW_DAT.%3% = _tmp_inc_change.%3% AND
-           CUR.%3% = _tmp_inc_change.%3% AND
-           %4% <> %5%
+           NEW_DAT.%3% = _tmp_inc_change.id AND
+           CUR.%3% = _tmp_inc_change.id AND
+           (%4%) <> (%5%)
         $sql$,
         ARRAY[p_inc_data_table::text,p_bde_table::text,quote_ident(p_key_column),v_compare1,v_compare2]
     );
