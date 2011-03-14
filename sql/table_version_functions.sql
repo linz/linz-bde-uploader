@@ -24,12 +24,16 @@ DROP FUNCTION IF EXISTS ver_enable_versioning(NAME, NAME);
 * Enable versioning for a table. Versioning a table will do the following things:
 *   1. A revision table with the schema_name_revision naming convention will be
 *        created in the table_version schema.
-*   2. A trigger will be created on the versioned table that will maintain the changes
+*   2. Any data in the table will be inserted into the revision data table. If
+*      SQL session is not currently in an active revision, a revision will be
+*      will be automatically created, then completed once the data has been
+*      inserted.
+*   3. A trigger will be created on the versioned table that will maintain the changes
 *      in the revision table.
-*   3. A function will be created with the ver_schema_name_revision_diff naming 
+*   4. A function will be created with the ver_schema_name_revision_diff naming 
 *      convention in the table_version schema that allow you to get changeset data
 *      for a range of revisions.
-*   4. A function will be created with the ver_schema_name_revision_revision naming 
+*   5. A function will be created with the ver_schema_name_revision_revision naming 
 *      convention in the table_version schema that allow you to get a specific revision
 *      of the table.
 *
@@ -131,6 +135,8 @@ BEGIN
     -- insert base data into table using a revision that is currently in
     -- progress, or if one does not exist create one.
     
+    v_revision_exists := FALSE;
+    
     EXECUTE 'SELECT EXISTS (SELECT * FROM ' || CAST(v_table_oid AS TEXT) || ' LIMIT 1)'
     INTO v_table_has_data;
     
@@ -155,6 +161,11 @@ BEGIN
             'INSERT INTO ' || v_revision_table ||
             ' SELECT ' || v_revision || ', NULL, * FROM ' || CAST(v_table_oid AS TEXT);
         EXECUTE v_sql;
+        
+        IF NOT v_revision_exists THEN
+            PERFORM table_version.ver_complete_revision();
+        END IF;
+    
     END IF;
 
     v_sql := 'ALTER TABLE  ' || v_revision_table || ' ADD CONSTRAINT ' ||
@@ -260,10 +271,6 @@ BEGIN
 
     PERFORM table_version.ver_create_table_functions(p_schema, p_table, v_key_col);
     PERFORM table_version.ver_create_version_trigger(p_schema, p_table, v_key_col);
-    
-    IF NOT v_revision_exists THEN
-        PERFORM table_version.ver_complete_revision();
-    END IF;
     
     RETURN TRUE;
 END;
