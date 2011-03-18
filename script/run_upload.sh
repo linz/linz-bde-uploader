@@ -6,8 +6,8 @@ SCRIPTDIR=$(dirname $(readlink -f $0))
 cd $SCRIPTDIR
 
 LOGDIR=../log
-SCRIPTLOG=bde_geo.log
-RUNLOG=bde_geo_run.log
+SCRIPTLOG=linz_bde_loader.log
+RUNLOG=linz_bde_loader_run.log
 LAST=11
 
 for i in 10 9 8 7 6 5 4 3 2 1

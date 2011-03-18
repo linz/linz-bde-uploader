@@ -91,7 +91,7 @@ indefinitely.
 
 =item   $cfg->allow_concurrent_uploads
 
-Allow simultaneous jobs to load.  The bde_geo job should generally be
+Allow simultaneous jobs to load.  The linz_bde_loader job should generally be
 run with -purge if this is not allowed, as otherwise an expired job will
 prevent the upload running
 
