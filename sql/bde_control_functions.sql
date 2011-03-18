@@ -311,7 +311,7 @@ BEGIN
     
     INSERT INTO bde_control.upload( schema_name, status )
     VALUES (v_bde_schema, 'A')
-    RETURN id INTO v_upload;
+    RETURNING id INTO v_upload;
     
     v_tmp_schema := bde_TmpSchema(v_upload);
     EXECUTE 'CREATE SCHEMA ' || v_tmp_schema;
