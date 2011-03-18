@@ -134,8 +134,6 @@ its id is first required to execute a function.
     tempTableExists 
     tmpSchema
     uploadDataToTempTable 
-    uploadIsActive
-    uploadIsActive
     writeUploadLog
     getLastLogId
     getLogMessagesSince
@@ -288,7 +286,14 @@ sub new
 
     my $dbh = DBI->connect("dbi:Pg:".$self->{_connection}, 
         $self->{_user}, $self->{_pwd}, 
-        {AutoCommit=>1,PrintError=>0, PrintWarn=>0,pg_errorlevel=>2} )
+        {
+            AutoCommit    =>1,
+            PrintError    =>0,
+            PrintWarn     =>0,
+            RaiseError    =>1,
+            pg_errorlevel =>2,
+        }
+    )
        || die "Cannot connect to database\n",DBI->errstr,"\n";
        
     my $pg_server_version = $dbh->{'pg_server_version'};
@@ -532,9 +537,9 @@ sub _setupFunctions
             { 
                 my($self) = shift(@_);
                 return if $self->{stack}->{$name};
-                $self->{stack}->{name} = 1;
+                $self->{stack}->{$name} = 1;
                 my $result = $self->_executeFunction($name,$sqlf,\@_,$nparam,$returntype); 
-                $self->{stack}->{name} = 0;
+                $self->{stack}->{$name} = 0;
                 return $result;
             }; 
 
