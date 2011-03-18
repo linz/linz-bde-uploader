@@ -1,11 +1,11 @@
 @echo off
-rem Script to run the bde_geo perl script, rotating log files
+rem Script to run the linz_bde_uploader perl script, rotating log files
 
 setlocal enabledelayedexpansion
 chdir /d %~dp0
 set logdir=..\log
-set scriptlog=bde_geo.log
-set runlog=bde_geo_run.log
+set scriptlog=linz_bde_uploader.log
+set runlog=linz_bde_uploader_run.log
 set last=11
 
 for %%f in (10 9 8 7 6 5 4 3 2 1) do (
@@ -19,4 +19,4 @@ for %%f in (10 9 8 7 6 5 4 3 2 1) do (
 rename %logdir%\%scriptlog% %scriptlog%.1 >nul 2>&1
 rename %logdir%\%runlog% %runlog%.1 >nul 2>&1
 
-perl bde_geo.pl -verbose -listing %logdir%\%scriptlog% %* >%logdir%\%runlog% 2>&1
+perl linz_bde_uploader.pl -verbose -listing %logdir%\%scriptlog% %* >%logdir%\%runlog% 2>&1
