@@ -936,13 +936,11 @@ RETURNS
     INTEGER
 AS
 $body$
-BEGIN
    INSERT INTO bde_control.upload_log(upl_id, type, message)
-   VALUES (p_upload, p_message_type, COALESCE(p_message_text,'(Null message)'))
+   VALUES ($1, $2, COALESCE($3,'(Null message)'))
    RETURNING id;
-END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE sql;
 
 ALTER FUNCTION bde_WriteUploadLog(INTEGER, CHAR(1), TEXT) OWNER TO bde_dba;
 
