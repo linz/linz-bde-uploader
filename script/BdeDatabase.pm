@@ -462,12 +462,19 @@ sub _runSQLBlock
 {
     my ($self, $sql_block) =  @_;
     return if ! $sql_block;
-    my $id = $self->uploadId;
+    my $id;
     foreach my $cmd (grep {/\S/} split(/\;\n?/,$sql_block))
     {
-        $cmd =~ s/\{id\}/$id/g;
-        $self->_dbh->do($cmd)
-            || die "Cannot run SQL command\nSQL: $cmd\n", $self->_dbh->errstr,"\n";
+        if ($cmd =~ /\{id\}/)
+        {
+            if (!defined $id)
+            {
+                $id = $self->uploadId;
+            }
+            $cmd =~ s/\{id\}/$id/g;
+        }
+        $self->_dbh->do($cmd) ||
+            die "Cannot run SQL command\nSQL: $cmd\n", $self->_dbh->errstr,"\n";
     }
 }
 
