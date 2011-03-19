@@ -1083,7 +1083,7 @@ sub UploadTable
             }
         }
         
-        my $create_temp = $self->cfg->apply_level0_inc || $dataset->level eq '5' ? 't' : 'f';
+        my $create_temp = $self->cfg->apply_level0_inc || $dataset->level eq '5' || 0;
         $db->createWorkingCopy($tablename,  $create_temp )
             || $self->die_error("Cannot create working copy of table ", $table->name);
         my $details = 'BdeUpload';

@@ -3339,8 +3339,8 @@ ALTER TABLE crs_title_action ALTER COLUMN act_tin_id SET STATISTICS 1000;
 ALTER TABLE crs_title_action ALTER COLUMN act_id SET STATISTICS 1000;
 ALTER TABLE crs_title_action ALTER COLUMN audit_id SET STATISTICS 1000;
 
-CREATE UNIQUE INDEX fk_tta_ttl ON crs_title_action USING btree (ttl_title_no);
-CREATE UNIQUE INDEX fk_tta_act ON crs_title_action USING btree (act_tin_id, act_id);
+CREATE INDEX fk_tta_ttl ON crs_title_action USING btree (ttl_title_no);
+CREATE INDEX fk_tta_act ON crs_title_action USING btree (act_tin_id, act_id);
 CREATE UNIQUE INDEX tta_aud_id ON crs_title_action USING btree (audit_id);
 
 ALTER TABLE crs_title_action OWNER TO bde_dba;

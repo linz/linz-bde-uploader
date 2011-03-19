@@ -2089,6 +2089,8 @@ BEGIN
         IF v_nins <> 0 OR v_nupd <> 0 OR v_ndel <> 0 THEN
             PERFORM bde_CheckTableCount(p_upload, p_table_name);
         END IF;
+
+        EXECUTE 'DROP TABLE ' || v_tmptable;
     ELSE
         -- Get dependent object SQL
         
@@ -2145,8 +2147,6 @@ BEGIN
         v_ndel
     );
     
-    EXECUTE 'DROP TABLE ' || v_tmptable;
-    
     RETURN 1;
 
 EXCEPTION
@@ -2157,7 +2157,7 @@ EXCEPTION
         'Level 0 update of table ' || p_table_name || ' from dataset ' ||
         v_dataset || ' failed in ' || v_task  || E'\nError: ' || SQLERRM
     );
-    EXECUTE 'DROP TABLE IF EXISTS ' || v_tmptable;
+    
     DROP TABLE IF EXISTS table_diff;
     RETURN 0;
 END
