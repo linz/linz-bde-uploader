@@ -1436,7 +1436,7 @@ BEGIN
             DISTINCT(
                 ETTT.char_value || ', ' || 
                 ETT.share || COALESCE(', ' || LGD.legal_desc_text, '') ||
-                COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m²', '')
+                COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m2', '')
             ),
             E'\r\n'
         ) AS estate_description,
