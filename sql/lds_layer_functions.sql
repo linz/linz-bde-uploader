@@ -48,6 +48,7 @@ $$ LANGUAGE plpgsql VOLATILE STRICT SECURITY DEFINER;
 
 ALTER FUNCTION LDS_MaintainSimplifiedLayers(integer) SET search_path=lds, bde, bde_control, public;
 
+ALTER FUNCTION LDS_MaintainSimplifiedLayers(integer) OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION LDS_GetTable(
     p_schema NAME,
@@ -180,7 +181,7 @@ RETURNS
     SELECT LDS.LDS_TableHasData(LDS.LDS_GetTable($1, $2));
 $$ LANGUAGE sql;
 
-ALTER FUNCTION LDS_TableHasData(NAME, NAME) OWNER TO bde_dba;
+ALTER FUNCTION LDS_TableHasData(REGCLASS) OWNER TO bde_dba;
 
 
 CREATE OR REPLACE FUNCTION LDS_CreateTempCopy(
