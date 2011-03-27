@@ -1818,7 +1818,7 @@ BEGIN
             shape
         )
         SELECT
-            RCL.id,
+            RNS.audit_id as id,
             RNA.id AS road_id,
             RNA.name,
             RNA.location,
