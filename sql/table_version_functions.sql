@@ -884,7 +884,7 @@ BEGIN
     
     OPEN v_col_cur FOR
     SELECT column_name, column_type
-    FROM _ver_get_table_cols(p_schema, p_table);
+    FROM table_version._ver_get_table_cols(p_schema, p_table);
 
     FETCH FIRST IN v_col_cur INTO v_column_name, v_column_type;
     LOOP
@@ -1068,7 +1068,7 @@ BEGIN
     v_column_update := '';
     FOR v_column_name IN
         SELECT column_name
-        FROM _ver_get_table_cols(p_schema, p_table)
+        FROM table_version._ver_get_table_cols(p_schema, p_table)
     LOOP
         IF v_column_name = p_key_col THEN
             CONTINUE;
