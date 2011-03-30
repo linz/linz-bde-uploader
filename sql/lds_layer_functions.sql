@@ -36,11 +36,23 @@ CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedLayers(
 )
 RETURNS
     INTEGER AS $$
-BEGIN    
+BEGIN
+    -- Need to drop idle connections, as otherwise they may block
+    -- updates to database
+    PERFORM bde.bde_drop_idle_connections(p_upload_id);
+    
+    PERFORM bde_control.bde_WriteUploadLog(
+        p_upload_id, 'I', 'Maintaining simplified layers'
+    );
+    
     PERFORM LDS.LDS_MaintainSimplifiedGeodeticLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedElectoralLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedParcelLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedSurveyLayers(p_upload_id);
+    
+    PERFORM bde_control.bde_WriteUploadLog(
+        p_upload_id, '1', 'Finished maintaining simplified layers'
+    );
     
     RETURN 1;
 END;
