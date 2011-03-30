@@ -1013,7 +1013,12 @@ BEGIN
     CREATE TEMP TABLE tmp_par_stat_action AS
     SELECT
         SAP.par_id,
-        string_agg(bde_get_par_stat_act(SAP.sta_id, SAP.par_id), E'\r\n') AS statutory_actions
+        string_agg(
+            bde_get_par_stat_act(SAP.sta_id, SAP.par_id), 
+            E'\r\n'
+            ORDER BY
+                bde_get_par_stat_act(SAP.sta_id, SAP.par_id)
+        ) AS statutory_actions
     FROM
         crs_stat_act_parcl SAP
     WHERE
@@ -1050,18 +1055,24 @@ BEGIN
         bde_get_combined_appellation(PAR.id, 'N') AS appellation,
         string_agg(
             DISTINCT 
-            CASE WHEN SUR.dataset_suffix IS NULL THEN
-                SUR.dataset_series || ' ' || SUR.dataset_id
-            ELSE
-                SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-            END,
-            ', ' 
+                CASE WHEN SUR.dataset_suffix IS NULL THEN
+                    SUR.dataset_series || ' ' || SUR.dataset_id
+                ELSE
+                    SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
+                END,
+            ', '
+            ORDER BY
+                CASE WHEN SUR.dataset_suffix IS NULL THEN
+                    SUR.dataset_series || ' ' || SUR.dataset_id
+                ELSE
+                    SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
+                END
         ) AS affected_surveys,
         PAR.parcel_intent,
         PAR.toc_code,
         PSA.statutory_actions,
         LOC.name AS land_district,
-        string_agg(DISTINCT TTL.title_no, ', ' ) AS titles,
+        string_agg(DISTINCT TTL.title_no, ', ' ORDER BY TTL.title_no ASC) AS titles,
         COALESCE(PAR.total_area, PAR.area) AS survey_area,
         CASE WHEN WDR.name = 'chathams' THEN
             CAST(ST_Area(ST_Transform(PAR.shape, 3793)) AS NUMERIC(20, 4))
@@ -1451,24 +1462,36 @@ BEGIN
                 COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m2', '')
             ),
             E'\r\n'
+            ORDER BY
+                ETTT.char_value || ', ' || 
+                ETT.share || COALESCE(', ' || LGD.legal_desc_text, '') ||
+                COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m2', '') ASC
         ) AS estate_description,
         string_agg(
             DISTINCT 
-            CASE PRP.type
-                WHEN 'CORP' THEN PRP.corporate_name
-                WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-            END,
+                CASE PRP.type
+                    WHEN 'CORP' THEN PRP.corporate_name
+                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                END,
             ', '
+            ORDER BY
+                CASE PRP.type
+                    WHEN 'CORP' THEN PRP.corporate_name
+                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                END ASC
         ) AS owners,
         count(
-        DISTINCT
-            CASE PRP.type
-                WHEN 'CORP' THEN PRP.corporate_name
-                WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-            END
+            DISTINCT
+                CASE PRP.type
+                    WHEN 'CORP' THEN PRP.corporate_name
+                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                END
         ) AS number_owners,
         TPA.title_no IS NOT NULL AS part_share,
-        ST_Multi(ST_Collect(PAR.shape)) AS shape
+        -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
+        -- collection when a null value is found. To fix this the shapes 
+        -- are order so all null shapes row are at the end of input list.
+        ST_Multi(ST_Collect(PAR.shape ORDER BY PAR.shape ASC)) AS shape
     FROM
         crs_title TTL
         LEFT JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
@@ -1624,7 +1647,10 @@ BEGIN
         TTL.status AS title_status,
         ETS.share,
         LOC.name AS land_district,
-        ST_Multi(ST_Collect(PAR.shape)) AS shape
+        -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
+        -- collection when a null value is found. To fix this the shapes 
+        -- are order so all null shapes row are at the end of input list.
+        ST_Multi(ST_Collect(PAR.shape ORDER BY PAR.shape ASC)) AS shape
     FROM
         crs_title TTL
         JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
