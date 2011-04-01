@@ -2396,8 +2396,8 @@ $$
 BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
         DELETE FROM _tmp_inc_change 
-        WHERE action='D' 
-        AND   id NOT IN (SELECT %2% FROM %1%)
+        WHERE action='D' AND
+        NOT EXISTS (SELECT 1 FROM %1% WHERE %1%.%2% = _tmp_inc_change.id )
         $sql$,
         ARRAY[p_bde_table::text, quote_ident(p_key_column)]
     );
@@ -2421,9 +2421,9 @@ $$
 BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
         UPDATE _tmp_inc_change 
-            SET action='I'
-            WHERE action='U' AND 
-            id NOT IN (SELECT %2% FROM %1%)
+        SET action='I'
+        WHERE action='U' AND
+        NOT EXISTS (SELECT 1 FROM %1% WHERE %1%.%2% = _tmp_inc_change.id )
         $sql$,
         ARRAY[p_bde_table::text, quote_ident(p_key_column)]
     );
