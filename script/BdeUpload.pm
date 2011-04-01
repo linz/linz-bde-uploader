@@ -948,6 +948,7 @@ sub ApplyLevel5Updates
             $self->db->rollBackDataset;
             $self->error("Failed to load level 5 update for " . $dataset->name .
                 ". The transaction has been rolled back");
+            last;
         }
         else
         {
