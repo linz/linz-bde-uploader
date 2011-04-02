@@ -37,6 +37,9 @@ SET SEARCH_PATH TO bde_control;
 -- still happens.  Also may be good to continue checking to get all messages
 -- relating to update rather than just first failure (eg delete, update, insert)
 
+SET client_min_messages TO WARNING;
+BEGIN;
+
 DO $$
 DECLARE
    pcid text;
@@ -1862,11 +1865,18 @@ BEGIN
     END IF;
     
     -- If we are failing on inconsistent data, then then abort now
-    
-    IF v_inconsistent AND p_fail_if_inconsistent THEN
-        RAISE EXCEPTION
-            'BDE:E:Incremental update of table % in dataset % abandoned due to data inconsistencies',
-            p_table_name, v_dataset;
+    IF v_inconsistent THEN
+        IF array_ndims(v_messages) IS NOT NULL THEN
+            FOR v_msg IN SELECT * FROM unnest(v_messages) LOOP
+                PERFORM bde_WriteUploadLog( p_upload, 'W', v_msg );
+            END LOOP;
+        END IF;
+        
+        IF p_fail_if_inconsistent THEN
+            RAISE EXCEPTION
+                'BDE:E:Incremental update of table % in dataset % abandoned due to data inconsistencies',
+                p_table_name, v_dataset;
+        END IF;
     END IF;
     
     -- If check for null updates, then remove them from the dataset
@@ -1938,14 +1948,6 @@ BEGIN
 EXCEPTION
     WHEN others THEN
     v_errmsg = SQLERRM;
-    
-    -- Capture any messages that maybe of interest before the exception was
-    -- thrown
-    IF array_ndims(v_messages) IS NOT NULL THEN
-        FOR v_msg IN SELECT * FROM unnest(v_messages) LOOP
-            PERFORM bde_WriteUploadLog( p_upload, 'W', v_msg );
-        END LOOP;
-    END IF;
     
     -- Exception raised deliberately to abort process but ensure clean up
     -- Messages starts BDE:x: where x is level
@@ -3776,3 +3778,5 @@ BEGIN
     END LOOP;
 END
 $$;
+
+COMMIT;
