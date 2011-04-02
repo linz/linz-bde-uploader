@@ -1642,16 +1642,16 @@ ALTER FUNCTION _bde_GetValidIncrementKey(INTEGER, NAME) OWNER TO bde_dba;
 -- and the upload temp table have been populated.
 
 CREATE OR REPLACE FUNCTION bde_ApplyLevel5Update (
-    p_upload     INTEGER,
-    p_table_name NAME,
-    p_bdetime    TIMESTAMP,
-    p_details    TEXT
+    p_upload               INTEGER,
+    p_table_name           NAME,
+    p_bdetime              TIMESTAMP,
+    p_details              TEXT,
+    p_fail_if_inconsistent BOOLEAN DEFAULT TRUE
     )
 RETURNS INTEGER
 AS
 $body$
 DECLARE
-    v_fail_if_inconsistent BOOLEAN;
     v_check_null_updates   BOOLEAN;
     v_msg                  TEXT;
     v_messages             TEXT[];
@@ -1674,8 +1674,7 @@ DECLARE
 BEGIN
     -- Configuration stuff..
     
-    v_fail_if_inconsistent = TRUE;
-    v_check_null_updates = TRUE;
+    v_check_null_updates := TRUE;
     v_messages := '{}';
     
     -- task is used in error reporting, updated throughout process to indicate
@@ -1864,7 +1863,7 @@ BEGIN
     
     -- If we are failing on inconsistent data, then then abort now
     
-    IF v_inconsistent AND v_fail_if_inconsistent THEN
+    IF v_inconsistent AND p_fail_if_inconsistent THEN
         RAISE EXCEPTION
             'BDE:E:Incremental update of table % in dataset % abandoned due to data inconsistencies',
             p_table_name, v_dataset;
@@ -2362,7 +2361,7 @@ CREATE OR REPLACE FUNCTION bde_ExecuteTemplate (
 RETURNS BIGINT
 AS
 $body$
-DECLARE 
+DECLARE
     v_sql TEXT;
     v_count BIGINT;
 BEGIN
@@ -2386,7 +2385,7 @@ ALTER FUNCTION bde_ExecuteTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 -- Returns the count of records found
 
 CREATE OR REPLACE FUNCTION _bde_FixMissingDeleteRecords(
-    p_bde_table REGCLASS,
+    p_bde_table  REGCLASS,
     p_key_column NAME
 )
 RETURNS
@@ -2474,7 +2473,7 @@ BEGIN
     RETURN bde_ExecuteTemplate ( $sql$
        DELETE FROM _tmp_inc_change 
            WHERE action IN ('I','U') AND 
-           id NOT IN (SELECT %2% FROM %1%)
+           NOT EXISTS (SELECT 1 FROM %1% WHERE %1%.%2% = _tmp_inc_change.id)
         $sql$,
         ARRAY[p_inc_data_table::text, quote_ident(p_key_column)]
         );
