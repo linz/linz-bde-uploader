@@ -1974,7 +1974,7 @@ $body$
 LANGUAGE plpgsql
 SET search_path FROM CURRENT;
 
-ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT)
+ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
 
 -- Apply a level 0 update to a table.  Adds the indexes from the table, analyses
