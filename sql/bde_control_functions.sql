@@ -1830,7 +1830,7 @@ BEGIN
     
     v_inconsistent := FALSE;
     
-    v_rcount := _bde_FixMissingDeleteRecords( v_bdetable,v_key_column);
+    v_rcount := _bde_FixMissingDeleteRecords(v_bdetable,v_key_column);
     IF v_rcount > 0 THEN
         PERFORM bde_WriteUploadLog(
             p_upload,
@@ -1840,14 +1840,17 @@ BEGIN
         );
     END IF;
     
-    v_rcount := _bde_FixMissingUpdateRecords( v_bdetable,v_key_column);
+    v_rcount := _bde_FixMissingUpdateRecords(v_bdetable,v_key_column);
     IF v_rcount > 0 THEN
-        v_messages := v_messages || (v_rcount::TEXT ||
-            ' records to be updated in ' || v_bdetable || ' don''t exist');
-        v_inconsistent = TRUE;
+        PERFORM bde_WriteUploadLog(
+            p_upload,
+            '3',
+            v_rcount::TEXT || ' records to be updated in ' || v_bdetable || 
+            ' don''t exist'
+        );
     END IF;
     
-    v_rcount := _bde_FixExistingInsertRecords( v_bdetable,v_key_column);
+    v_rcount := _bde_FixExistingInsertRecords(v_bdetable,v_key_column);
     IF v_rcount > 0 THEN
         v_messages := v_messages || (v_rcount::TEXT ||
             ' records to be inserted in ' || v_bdetable || ' already exist');
@@ -1856,7 +1859,7 @@ BEGIN
     
     -- Ensure required records are actually in the incremental update table
     
-    v_rcount := _bde_DropUpdatesWithMissingData( v_tmptable,v_key_column);
+    v_rcount := _bde_DropUpdatesWithMissingData(v_tmptable,v_key_column);
     IF v_rcount > 0 THEN
         v_messages := v_messages || (v_rcount::TEXT ||
             ' records to be updated/inserted in ' || v_bdetable ||
