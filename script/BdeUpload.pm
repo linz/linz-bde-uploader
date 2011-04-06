@@ -1110,7 +1110,7 @@ sub UploadTable
         }
         else
         {
-            $db->applyLevel5Update($tablename,$bdedate,$details)
+            $db->applyLevel5Update($tablename,$bdedate,$details, 1)
                 || $self->die_error("Cannot apply level ",$dataset->level, 
                     " update for ",$tablename," in ",$dataset->name);
         }
