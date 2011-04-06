@@ -39,13 +39,22 @@ CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedLayers(
 )
 RETURNS
     INTEGER AS $$
+DECLARE
+    v_dataset        TEXT;
 BEGIN
     -- Need to drop idle connections, as otherwise they may block
     -- updates to database
     PERFORM bde.bde_drop_idle_connections(p_upload_id);
     
+    v_dataset := COALESCE(
+        bde_control.bde_GetOption(p_upload_id, '_dataset'),
+        '(undefined dataset)'
+    );
+    
     PERFORM bde_control.bde_WriteUploadLog(
-        p_upload_id, 'I', 'Maintaining simplified layers'
+        p_upload_id,
+        'I',
+        'Maintaining simplified layers for dataset ' || v_dataset
     );
     
     PERFORM LDS.LDS_MaintainSimplifiedGeodeticLayers(p_upload_id);
@@ -54,7 +63,9 @@ BEGIN
     PERFORM LDS.LDS_MaintainSimplifiedSurveyLayers(p_upload_id);
     
     PERFORM bde_control.bde_WriteUploadLog(
-        p_upload_id, '1', 'Finished maintaining simplified layers'
+        p_upload_id,
+        '1',
+        'Finished maintaining simplified layers ' || v_dataset
     );
     
     RETURN 1;
