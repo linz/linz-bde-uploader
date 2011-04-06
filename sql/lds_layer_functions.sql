@@ -14,6 +14,9 @@
 --------------------------------------------------------------------------------
 -- Creates functions to maintain LDS simplified layers
 --------------------------------------------------------------------------------
+SET client_min_messages TO WARNING;
+BEGIN;
+
 SET SEARCH_PATH = lds, bde_control, public;
 
 DO $$
@@ -2774,3 +2777,5 @@ END;
 $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION LDS_MaintainSimplifiedSurveyLayers(INTEGER) OWNER TO bde_dba;
+
+COMMIT;

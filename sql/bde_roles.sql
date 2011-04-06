@@ -12,15 +12,34 @@
 -- LICENSE file for more information.
 --
 --------------------------------------------------------------------------------
-CREATE ROLE bde_admin
-  NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
-ALTER ROLE bde_admin SET search_path=bde, public;
+SET client_min_messages TO WARNING;
 
-CREATE ROLE bde_dba
-  SUPERUSER INHERIT CREATEDB CREATEROLE;
-ALTER ROLE bde_dba SET search_path=bde, bde_control, public;
+DO $ROLES$
+BEGIN
 
-CREATE ROLE bde_user
-  NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
-ALTER ROLE bde_user SET search_path=bde, public;
+IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'bde_dba') THEN
+    CREATE ROLE bde_dba
+        SUPERUSER INHERIT CREATEDB CREATEROLE;
+    ALTER ROLE bde_dba SET search_path=bde, bde_control, public;
+END IF;
 
+IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'bde_admin') THEN
+    CREATE ROLE bde_admin
+        NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
+    ALTER ROLE bde_admin SET search_path=bde, public;
+END IF;
+
+IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'bde_user') THEN
+    CREATE ROLE bde_user
+        NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
+    ALTER ROLE bde_user SET search_path=bde, public;
+END IF;
+
+IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'test') THEN
+    CREATE ROLE test
+        NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
+    ALTER ROLE test SET search_path=bde, public;
+END IF;
+
+END;
+$ROLES$;

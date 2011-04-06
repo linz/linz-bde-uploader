@@ -14,7 +14,14 @@
 --------------------------------------------------------------------------------
 -- Creates system tables required for table versioning support
 --------------------------------------------------------------------------------
-DROP SCHEMA IF EXISTS table_version CASCADE;
+SET client_min_messages TO WARNING;
+
+DO $SCHEMA$
+BEGIN
+
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'table_version') THEN
+    RETURN;
+END IF;
 
 CREATE SCHEMA table_version AUTHORIZATION bde_dba;
 
@@ -32,7 +39,7 @@ CREATE TABLE revision (
     comment TEXT
 );
 
-SELECT setval('table_version.revision_id_seq', 1000, true);
+PERFORM setval('table_version.revision_id_seq', 1000, true);
 
 ALTER TABLE revision OWNER TO bde_dba;
 REVOKE ALL ON TABLE revision FROM PUBLIC;
@@ -85,3 +92,7 @@ GRANT SELECT ON TABLE tables_changed TO bde_user;
 COMMENT ON TABLE tables_changed IS $$
 Defines which tables are modified by a given revision.
 $$;
+
+
+END;
+$SCHEMA$;

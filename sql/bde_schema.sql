@@ -15,10 +15,15 @@
 -- Creates a PostgreSQL 8.4+ and PostGIS 1.0+ schema and set of table
 -- definitions for BDE data
 --------------------------------------------------------------------------------
+SET client_min_messages TO WARNING;
 
-DROP SCHEMA IF EXISTS bde CASCADE;
+DO $SCHEMA$
+BEGIN
 
-BEGIN;
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde') THEN
+    RETURN;
+END IF;
+
 
 CREATE SCHEMA bde AUTHORIZATION bde_dba;
 
@@ -4017,4 +4022,6 @@ VALUES
     ('', current_schema(), 'crs_sur_plan_ref',   'shape', 2, 4167, 'POINT'),
     ('', current_schema(), 'crs_vector',         'shape', 2, 4167, 'LINESTRING');
 
-COMMIT;
+END;
+$SCHEMA$;
+

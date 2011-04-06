@@ -14,8 +14,15 @@
 --------------------------------------------------------------------------------
 -- Creates LINZ Data Service (LDS) simplified Landonline layers tables
 --------------------------------------------------------------------------------
+SET client_min_messages TO WARNING;
 
-DROP SCHEMA IF EXISTS lds CASCADE;
+DO $SCHEMA$
+BEGIN
+
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'lds') THEN
+    RETURN;
+END IF;
+
 CREATE SCHEMA lds AUTHORIZATION bde_dba;
 
 GRANT USAGE ON SCHEMA lds TO bde_admin;
@@ -44,7 +51,7 @@ CREATE TABLE geodetic_marks (
     longitude NUMERIC(22,12) NOT NULL,
     ellipsoidal_height NUMERIC(22,12) NULL
 );
-SELECT AddGeometryColumn('geodetic_marks', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('geodetic_marks', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE geodetic_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_geo_shape ON geodetic_marks USING gist (shape);
@@ -74,7 +81,7 @@ CREATE TABLE geodetic_vertical_marks(
     normal_orthometric_height NUMERIC(22, 12),
     coordinate_system VARCHAR(100) NOT NULL
 );
-SELECT AddGeometryColumn('geodetic_vertical_marks', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('geodetic_vertical_marks', 'shape', 4167, 'POINT', 2);
 
 CREATE SEQUENCE geodetic_vertical_marks_id_seq;
 ALTER TABLE geodetic_vertical_marks_id_seq OWNER TO bde_dba;
@@ -107,7 +114,7 @@ CREATE TABLE geodetic_antarctic_marks (
     longitude NUMERIC(22,12) NOT NULL,
     ellipsoidal_height NUMERIC(22,12) NULL
 );
-SELECT AddGeometryColumn('geodetic_antarctic_marks', 'shape', 4764, 'POINT', 2);
+PERFORM AddGeometryColumn('geodetic_antarctic_marks', 'shape', 4764, 'POINT', 2);
 
 ALTER TABLE geodetic_antarctic_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_geo_ant_shape ON geodetic_antarctic_marks USING gist (shape);
@@ -136,7 +143,7 @@ CREATE TABLE geodetic_antarctic_vertical_marks(
     normal_orthometric_height NUMERIC(22, 12),
     coordinate_system VARCHAR(100) NOT NULL
 );
-SELECT AddGeometryColumn('geodetic_antarctic_vertical_marks', 'shape', 4764, 'POINT', 2);
+PERFORM AddGeometryColumn('geodetic_antarctic_vertical_marks', 'shape', 4764, 'POINT', 2);
 
 CREATE SEQUENCE geodetic_antarctic_vertical_marks_id_seq;
 ALTER TABLE geodetic_antarctic_vertical_marks_id_seq OWNER TO bde_dba;
@@ -168,7 +175,7 @@ CREATE TABLE primary_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE primary_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_all_prim_par_shape ON primary_parcels USING gist (shape);
@@ -196,7 +203,7 @@ CREATE TABLE land_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('land_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('land_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE land_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_lnd_par_shape ON land_parcels USING gist (shape);
@@ -224,7 +231,7 @@ CREATE TABLE hydro_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('hydro_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('hydro_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE hydro_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_hyd_par_shape ON hydro_parcels USING gist (shape);
@@ -252,7 +259,7 @@ CREATE TABLE road_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('road_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('road_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE road_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_road_par_shape ON road_parcels USING gist (shape);
@@ -280,7 +287,7 @@ CREATE TABLE non_primary_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('non_primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('non_primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE non_primary_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_non_prim_par_shape ON non_primary_parcels USING gist (shape);
@@ -308,7 +315,7 @@ CREATE TABLE non_primary_linear_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4)
 );
-SELECT AddGeometryColumn('non_primary_linear_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('non_primary_linear_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE non_primary_linear_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_non_pril_par_shape ON non_primary_linear_parcels USING gist (shape);
@@ -336,7 +343,7 @@ CREATE TABLE strata_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
-SELECT AddGeometryColumn('strata_parcels', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('strata_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE strata_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_str_par_shape ON strata_parcels USING gist (shape);
@@ -364,7 +371,7 @@ CREATE TABLE titles (
     number_owners INT8 NOT NULL,
     part_share BOOLEAN NOT NULL
 );
-SELECT AddGeometryColumn('titles', 'shape', 4167, 'MULTIPOLYGON', 2);
+PERFORM AddGeometryColumn('titles', 'shape', 4167, 'MULTIPOLYGON', 2);
 
 ALTER TABLE titles ADD PRIMARY KEY (id);
 CREATE INDEX shx_title_shape ON titles USING gist (shape);
@@ -392,7 +399,7 @@ CREATE TABLE titles_plus (
     owners TEXT,
     part_share BOOLEAN NOT NULL
 );
-SELECT AddGeometryColumn('titles_plus', 'shape', 4167, 'MULTIPOLYGON', 2);
+PERFORM AddGeometryColumn('titles_plus', 'shape', 4167, 'MULTIPOLYGON', 2);
 
 ALTER TABLE titles_plus ADD PRIMARY KEY (id);
 CREATE INDEX shx_title_plus_shape ON titles_plus USING gist (shape);
@@ -416,7 +423,7 @@ CREATE TABLE title_owners (
     land_district VARCHAR(100) NOT NULL,
     share character(100) NOT NULL
 );
-SELECT AddGeometryColumn('title_owners', 'shape', 4167, 'MULTIPOLYGON', 2);
+PERFORM AddGeometryColumn('title_owners', 'shape', 4167, 'MULTIPOLYGON', 2);
 
 CREATE SEQUENCE title_owners_id_seq;
 ALTER TABLE title_owners_id_seq OWNER TO bde_dba;
@@ -441,7 +448,7 @@ CREATE TABLE road_centre_line (
     "name" VARCHAR(100) NOT NULL,
     location VARCHAR(100)
 );
-SELECT AddGeometryColumn('road_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
+PERFORM AddGeometryColumn('road_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
 
 ALTER TABLE road_centre_line ADD PRIMARY KEY (id);
 CREATE INDEX shx_rcl_shape ON road_centre_line USING gist (shape);
@@ -464,7 +471,7 @@ CREATE TABLE road_centre_line_subsection (
     location VARCHAR(100),
     parcel_derived BOOLEAN NOT NULL
 );
-SELECT AddGeometryColumn('road_centre_line_subsection', 'shape', 4167, 'LINESTRING', 2);
+PERFORM AddGeometryColumn('road_centre_line_subsection', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE road_centre_line_subsection ADD PRIMARY KEY (id);
 CREATE INDEX shx_rcls_shape ON road_centre_line_subsection USING gist (shape);
@@ -484,7 +491,7 @@ CREATE TABLE railway_centre_line (
     id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL
 );
-SELECT AddGeometryColumn('railway_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
+PERFORM AddGeometryColumn('railway_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
 
 ALTER TABLE railway_centre_line ADD PRIMARY KEY (id);
 CREATE INDEX shx_rlwy_cl_shape ON railway_centre_line USING gist (shape);
@@ -507,7 +514,7 @@ CREATE TABLE street_address (
     road_name VARCHAR(100) NOT NULL,
     location VARCHAR(100)
 );
-SELECT AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE street_address ADD PRIMARY KEY (id);
 CREATE INDEX shx_sad_shape ON street_address USING gist (shape);
@@ -527,7 +534,7 @@ CREATE TABLE land_districts (
     id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL
 );
-SELECT AddGeometryColumn('land_districts', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('land_districts', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE land_districts ADD PRIMARY KEY (id);
 CREATE INDEX shx_land_districts_shape ON land_districts USING gist (shape);
@@ -554,7 +561,7 @@ CREATE TABLE survey_plans (
     type VARCHAR(100) NOT NULL,
     datum VARCHAR(10)
 );
-SELECT AddGeometryColumn('survey_plans', 'shape', 4167, 'MULTIPOINT', 2);
+PERFORM AddGeometryColumn('survey_plans', 'shape', 4167, 'MULTIPOINT', 2);
 
 ALTER TABLE survey_plans ADD PRIMARY KEY (id);
 CREATE INDEX shx_sur_shape ON survey_plans USING gist (shape);
@@ -577,7 +584,7 @@ CREATE TABLE cadastral_adjustments (
     survey_reference TEXT,
     adjusted_nodes INTEGER NOT NULL
 );
-SELECT AddGeometryColumn('cadastral_adjustments', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('cadastral_adjustments', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE cadastral_adjustments ADD PRIMARY KEY (id);
 CREATE INDEX shx_cad_adj_shape ON cadastral_adjustments USING gist (shape);
@@ -605,7 +612,7 @@ CREATE TABLE survey_observations (
     ref_datetime TIMESTAMP NOT NULL,
     survey_reference TEXT
 );
-SELECT AddGeometryColumn('survey_observations', 'shape', 4167, 'LINESTRING', 2);
+PERFORM AddGeometryColumn('survey_observations', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE survey_observations ADD PRIMARY KEY (id);
 CREATE INDEX shx_sur_obs_shape ON survey_observations USING gist (shape);
@@ -635,7 +642,7 @@ CREATE TABLE survey_arc_observations (
     ref_datetime TIMESTAMP NOT NULL,
     survey_reference TEXT NOT NULL
 );
-SELECT AddGeometryColumn('survey_arc_observations', 'shape', 4167, 'LINESTRING', 2);
+PERFORM AddGeometryColumn('survey_arc_observations', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE survey_arc_observations ADD PRIMARY KEY (id);
 CREATE INDEX shx_sur_arc_obs_shape ON survey_arc_observations USING gist (shape);
@@ -658,7 +665,7 @@ CREATE TABLE parcel_vectors (
     distance NUMERIC(22,12),
     type TEXT NOT NULL
 );
-SELECT AddGeometryColumn('parcel_vectors', 'shape', 4167, 'LINESTRING', 2);
+PERFORM AddGeometryColumn('parcel_vectors', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE parcel_vectors ADD PRIMARY KEY (id);
 CREATE INDEX shx_par_vct_shape ON parcel_vectors USING gist (shape);
@@ -685,7 +692,7 @@ CREATE TABLE survey_network_marks (
     "order" INTEGER NOT NULL,
     last_survey TEXT
 );
-SELECT AddGeometryColumn('survey_network_marks', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('survey_network_marks', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE survey_network_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_csnm_shape ON survey_network_marks USING gist (shape);
@@ -709,7 +716,7 @@ CREATE TABLE survey_bdy_marks (
     nominal_accuracy NUMERIC(12,4) NOT NULL,
     date_last_adjusted TIMESTAMP
 );
-SELECT AddGeometryColumn('survey_bdy_marks', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('survey_bdy_marks', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE survey_bdy_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_cad_bdy_mrk_shape ON survey_bdy_marks USING gist (shape);
@@ -733,7 +740,7 @@ CREATE TABLE survey_non_bdy_marks (
     nominal_accuracy NUMERIC(12,4) NOT NULL,
     date_last_adjusted TIMESTAMP
 );
-SELECT AddGeometryColumn('survey_non_bdy_marks', 'shape', 4167, 'POINT', 2);
+PERFORM AddGeometryColumn('survey_non_bdy_marks', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE survey_non_bdy_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_cad_nbdy_mrk_shape ON survey_non_bdy_marks USING gist (shape);
@@ -743,3 +750,6 @@ ALTER TABLE survey_non_bdy_marks OWNER TO bde_dba;
 REVOKE ALL ON TABLE survey_non_bdy_marks FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE survey_non_bdy_marks TO bde_admin;
 GRANT SELECT ON TABLE survey_non_bdy_marks TO bde_user;
+
+END
+$SCHEMA$;

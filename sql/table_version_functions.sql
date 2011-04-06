@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 -- Creates a PostgreSQL 9.0+ table version management system.
 --------------------------------------------------------------------------------
-
+SET client_min_messages TO WARNING;
 BEGIN;
 
 SET search_path = table_version, public;
