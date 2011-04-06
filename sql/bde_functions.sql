@@ -12,6 +12,8 @@
 -- LICENSE file for more information.
 --
 --------------------------------------------------------------------------------
+SET client_min_messages TO WARNING;
+BEGIN;
 
 SET search_path = bde, public;
 
@@ -1089,3 +1091,5 @@ BEGIN
     END LOOP;
 END
 $$;
+
+COMMIT;

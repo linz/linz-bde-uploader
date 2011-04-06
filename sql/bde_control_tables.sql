@@ -14,8 +14,14 @@
 --------------------------------------------------------------------------------
 -- Creates system tables required for linz_bde_loader
 --------------------------------------------------------------------------------
+SET client_min_messages TO WARNING;
 
-DROP SCHEMA IF EXISTS bde_control CASCADE;
+DO $SCHEMA$
+BEGIN
+
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde_control') THEN
+    RETURN;
+END IF;
 
 CREATE SCHEMA bde_control AUTHORIZATION bde_dba;
 
@@ -171,3 +177,6 @@ Type can be one of I (information), W (warning), E (error)
 Also number '1', '2', ... can be used to denote more verbose informational
 messages
 $comment$;
+
+END;
+$SCHEMA$
