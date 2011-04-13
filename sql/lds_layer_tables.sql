@@ -83,6 +83,8 @@ CREATE TABLE geodetic_vertical_marks(
 );
 PERFORM AddGeometryColumn('geodetic_vertical_marks', 'shape', 4167, 'POINT', 2);
 
+ALTER TABLE geodetic_vertical_marks ADD UNIQUE (nod_id, coordinate_system);
+
 CREATE SEQUENCE geodetic_vertical_marks_id_seq;
 ALTER TABLE geodetic_vertical_marks_id_seq OWNER TO bde_dba;
 ALTER TABLE geodetic_vertical_marks ALTER COLUMN id SET DEFAULT nextval('geodetic_vertical_marks_id_seq');
@@ -144,6 +146,8 @@ CREATE TABLE geodetic_antarctic_vertical_marks(
     coordinate_system VARCHAR(100) NOT NULL
 );
 PERFORM AddGeometryColumn('geodetic_antarctic_vertical_marks', 'shape', 4764, 'POINT', 2);
+
+ALTER TABLE geodetic_antarctic_vertical_marks ADD UNIQUE (nod_id, coordinate_system);
 
 CREATE SEQUENCE geodetic_antarctic_vertical_marks_id_seq;
 ALTER TABLE geodetic_antarctic_vertical_marks_id_seq OWNER TO bde_dba;
@@ -421,9 +425,11 @@ CREATE TABLE title_owners (
     title_no VARCHAR(20) NOT NULL,
     title_status VARCHAR(4) NOT NULL, 
     land_district VARCHAR(100) NOT NULL,
-    share character(100) NOT NULL
+    part_ownership BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('title_owners', 'shape', 4167, 'MULTIPOLYGON', 2);
+
+ALTER TABLE title_owners ADD UNIQUE (owner, title_no);
 
 CREATE SEQUENCE title_owners_id_seq;
 ALTER TABLE title_owners_id_seq OWNER TO bde_dba;

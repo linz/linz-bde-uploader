@@ -1652,26 +1652,65 @@ BEGIN
     );
 
     CREATE TEMP TABLE tmp_title_owners AS
+    WITH title_owner_parcels (
+        owner,
+        title_no,
+        title_status,
+        land_district,
+        par_id
+    ) AS
+    (
+        SELECT
+            CASE PRP.type
+                WHEN 'CORP' THEN PRP.corporate_name
+                WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+            END AS owner,
+            TTL.title_no,
+            TTL.status AS title_status,
+            LOC.name AS land_district,
+            LGP.par_id
+        FROM
+            crs_title TTL
+            JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
+            JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id AND ETT.status = 'REGD'
+            JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
+            LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
+            LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
+            JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
+        WHERE
+            TTL.status IN ('LIVE', 'PRTC') AND
+            TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        GROUP BY
+            1,
+            TTL.title_no,
+            TTL.status,
+            LOC.name,
+            LGP.par_id
+    ),
+    parcel_part_ownership (
+        par_id
+    ) AS (
+        SELECT
+            TOP.par_id
+        FROM
+            title_owner_parcels TOP
+        GROUP BY
+            TOP.par_id
+        HAVING
+           count(DISTINCT TOP.owner) > 1
+    )
     SELECT
-        CASE PRP.type
-            WHEN 'CORP' THEN PRP.corporate_name
-            WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-        END AS owner,
-        TTL.title_no,
-        TTL.status AS title_status,
-        ETS.share,
-        LOC.name AS land_district,
+        TOP.owner,
+        TOP.title_no,
+        TOP.title_status,
+        TOP.land_district,
+        count(PART.par_id) > 0 AS part_ownership,
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
         -- are order so all null shapes row are at the end of input list.
         ST_Multi(ST_Collect(PAR.shape ORDER BY PAR.shape ASC)) AS shape
     FROM
-        crs_title TTL
-        JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
-        JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id AND ETT.status = 'REGD'
-        JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
-        LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
-        LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
+        title_owner_parcels TOP
         LEFT JOIN (
             SELECT
                 id,
@@ -1681,20 +1720,13 @@ BEGIN
             WHERE
                 status = 'CURR' AND 
                 ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON LGP.par_id = PAR.id 
-        JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
-    WHERE
-        TTL.status IN ('LIVE', 'PRTC') AND
-        TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ) PAR ON TOP.par_id = PAR.id
+        LEFT JOIN parcel_part_ownership PART ON TOP.par_id = PART.par_id
     GROUP BY
-        PRP.type,
-        PRP.corporate_name,
-        PRP.prime_other_names,
-        PRP.prime_surname,
-        TTL.title_no,
-        TTL.status,
-        ETS.share,
-        LOC.name;
+        TOP.owner,
+        TOP.title_no,
+        TOP.title_status,
+        TOP.land_district;
     
     PERFORM bde_control.bde_WriteUploadLog(
         p_upload,
@@ -1713,7 +1745,7 @@ BEGIN
             title_no,
             title_status,
             land_district,
-            share,
+            part_ownership,
             shape
         )
         SELECT
@@ -1721,7 +1753,7 @@ BEGIN
             title_no,
             title_status,
             land_district,
-            share,
+            part_ownership,
             shape
         FROM
             tmp_title_owners;
@@ -1734,7 +1766,7 @@ BEGIN
             title_no,
             title_status,
             land_district,
-            share,
+            part_ownership,
             shape
         )
         SELECT
@@ -1743,7 +1775,7 @@ BEGIN
             TMP.title_no,
             TMP.title_status,
             TMP.land_district,
-            TMP.share,
+            TMP.part_ownership,
             TMP.shape
         FROM
             tmp_title_owners AS TMP
