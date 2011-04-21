@@ -42,19 +42,19 @@ BEGIN;
 
 DO $$
 DECLARE
-   pcid text;
+   v_pcid    TEXT;
+   v_schema  TEXT = 'bde_control';
 BEGIN
-    FOR pcid IN 
-        SELECT proname || '(' || pg_get_function_identity_arguments(oid) || ')'
+    FOR v_pcid IN 
+        SELECT v_schema || '.' || proname || '(' || pg_get_function_identity_arguments(oid) || ')'
         FROM pg_proc 
-        WHERE pronamespace=(
-            SELECT oid FROM pg_namespace WHERE nspname ILIKE 'bde_control'
-        )
+        WHERE pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = v_schema)
     LOOP
-        EXECUTE 'DROP FUNCTION ' || pcid;
+        EXECUTE 'DROP FUNCTION ' || v_pcid;
     END LOOP;
-END
+END;
 $$;
+
 
 DROP TYPE IF EXISTS ATTRIBUTE CASCADE;
 
@@ -928,6 +928,52 @@ LANGUAGE plpgsql;
 
 ALTER FUNCTION _bde_UploadTableId(INTEGER, NAME) OWNER TO bde_dba;
 
+CREATE OR REPLACE FUNCTION bde_SetLogFile(
+    p_file TEXT
+)
+RETURNS
+    BOOLEAN AS 
+$$
+    my $file = shift;
+    my $status = open(TMP,">$file") ? 1 : 0;
+    if ($status)
+    {
+        close(TMP);
+        chmod 0664, $file;
+        $_SHARED{_bde_logfile} = $file;
+    }
+    else
+    {
+        elog(WARNING, "Cannot open log file $file: $!");
+    }
+    return $status;
+$$
+  LANGUAGE plperlu;
+
+ALTER FUNCTION bde_SetLogFile(TEXT) OWNER TO bde_dba;
+
+CREATE OR REPLACE FUNCTION bde_WriteLogFile(
+    p_message_type CHAR, 
+    p_message_text TEXT
+)
+RETURNS
+    BOOLEAN AS 
+$$
+    my $message_type = shift;
+    my $text = shift;
+    my $file = $_SHARED{_bde_logfile};
+    return if ! $file;
+
+    my $timestamp = localtime;
+    open(TMP,">>$file");
+    print TMP "$timestamp\t$message_type\t$text\n";
+    close(TMP);
+    return 1;
+$$
+  LANGUAGE plperlu;
+
+ALTER FUNCTION bde_WriteLogFile(character, text) OWNER TO bde_dba;
+
 -- Function to write to the log file for the upload
 
 CREATE OR REPLACE FUNCTION bde_WriteUploadLog(
@@ -937,13 +983,20 @@ CREATE OR REPLACE FUNCTION bde_WriteUploadLog(
 )
 RETURNS
     INTEGER
-AS
-$body$
-   INSERT INTO bde_control.upload_log(upl_id, type, message)
-   VALUES ($1, $2, COALESCE($3,'(Null message)'))
-   RETURNING id;
-$body$
-LANGUAGE sql;
+AS $$
+DECLARE
+    v_log_id INTEGER;
+BEGIN
+    PERFORM bde_control.bde_WriteLogFile(p_message_type, p_message_text);
+
+    INSERT INTO bde_control.upload_log(upl_id, type, message)
+    VALUES (p_upload, p_message_type, COALESCE(p_message_text,'(Null message)'))
+    RETURNING id INTO v_log_id;
+
+    RETURN v_log_id;
+END;
+$$
+    LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_WriteUploadLog(INTEGER, CHAR(1), TEXT) OWNER TO bde_dba;
 
@@ -3760,6 +3813,7 @@ DO $$
 DECLARE
     v_comment TEXT;
     v_pcid    TEXT;
+    v_schema  TEXT = 'bde_control';
 BEGIN
     FOR v_comment, v_pcid IN
         SELECT
@@ -3768,9 +3822,8 @@ BEGIN
         FROM
             pg_proc
         WHERE
-            pronamespace=(
-                SELECT oid FROM pg_namespace WHERE nspname = 'bde_control'
-            )
+            pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = v_schema)  AND
+            proname NOT ILIKE '_createVersionComment'
     LOOP
         IF v_comment IS NULL THEN
             v_comment := '';
@@ -3778,12 +3831,11 @@ BEGIN
             v_comment := E'\n\n' || v_comment;
         END IF;
        
-        v_comment := 'Version: ' ||
-            '$Id$'
-            || E'\n' || 'Installed: ' ||
-            to_char(current_timestamp,'YYYY-MM-DD HH:MI') || v_comment;
+        v_comment := 'Version: ' ||  '$Id$'
+                    || E'\n' || 'Installed: ' ||
+                    to_char(current_timestamp,'YYYY-MM-DD HH:MI') || v_comment;
        
-        EXECUTE 'COMMENT ON FUNCTION ' || v_pcid || ' IS '
+        EXECUTE 'COMMENT ON FUNCTION ' || v_schema || '.' || v_pcid || ' IS '
             || quote_literal( v_comment );
     END LOOP;
 END
