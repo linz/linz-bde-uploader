@@ -944,23 +944,21 @@ AS $FUNC$
             v_revision1 := v_base_version;
         END IF;
         
-        CREATE TEMP TABLE last_value_changed AS
-        SELECT DISTINCT ON (T.%key_col%)
-            T.*
-        FROM
-            %revision_table% AS T
-        WHERE (
-            (T._revision_created <= v_revision1 AND T._revision_expired > v_revision1 AND T._revision_expired <= v_revision2) OR
-            (T._revision_created > v_revision1  AND T._revision_created <= v_revision2)
-        )
-        ORDER BY
-            T.%key_col%, 
-            T._revision_created DESC;
-        
-        ANALYSE last_value_changed;
-        
         RETURN QUERY
-        WITH old_state_changed AS(
+        WITH last_value_changed AS (
+            SELECT DISTINCT ON (T.%key_col%)
+                T.*
+            FROM
+                %revision_table% AS T
+            WHERE (
+                (T._revision_created <= v_revision1 AND T._revision_expired > v_revision1 AND T._revision_expired <= v_revision2) OR
+                (T._revision_created > v_revision1  AND T._revision_created <= v_revision2)
+            )
+            ORDER BY
+                T.%key_col%, 
+                T._revision_created DESC
+        ),
+        old_state_changed AS(
             SELECT DISTINCT
                 T.%key_col%
             FROM
@@ -981,8 +979,6 @@ AS $FUNC$
         FROM
             last_value_changed AS LVC
             LEFT JOIN old_state_changed AS OSC ON LVC.%key_col% = OSC.%key_col%;
-            
-        DROP TABLE last_value_changed;
         
         RETURN;
     END;
