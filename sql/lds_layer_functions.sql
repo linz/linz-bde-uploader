@@ -440,6 +440,70 @@ $$ LANGUAGE plpgsql;
 ALTER FUNCTION LDS_ApplyTableDifferences(INTEGER, REGCLASS, REGCLASS, NAME) OWNER TO bde_dba;
 
 
+CREATE OR REPLACE FUNCTION LDS_CreateSurveyPlansTable(
+    p_upload INTEGER
+)
+RETURNS
+    BOOLEAN AS $$
+BEGIN
+    IF EXISTS (
+        SELECT
+            TRUE
+        FROM
+            pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE
+            n.nspname LIKE 'pg_temp_%' AND
+            pg_catalog.pg_table_is_visible(c.oid) AND
+            c.relkind = 'r' AND
+            c.relname = 'tmp_survey_plans'
+    )
+    THEN
+        RETURN FALSE;
+    END IF;
+    
+    CREATE TEMP TABLE tmp_survey_plans AS
+    SELECT
+        SUR.wrk_id,
+        CASE WHEN SUR.dataset_suffix IS NULL THEN
+            SUR.dataset_series || ' ' || SUR.dataset_id
+        ELSE
+            SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
+        END AS survey_reference
+    FROM
+        crs_survey SUR,
+        crs_work   WRK
+    WHERE
+        WRK.id = SUR.wrk_id AND
+        WRK.restricted = 'N';
+
+    ALTER TABLE tmp_survey_plans ADD PRIMARY KEY (wrk_id);
+    ANALYSE tmp_survey_plans;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER FUNCTION LDS_CreateSurveyPlansTable(INTEGER) OWNER TO bde_dba;
+
+CREATE OR REPLACE FUNCTION LDS_DropSurveyPlansTable(
+    p_upload INTEGER
+)
+RETURNS
+    BOOLEAN AS $$
+DECLARE
+
+BEGIN
+    DROP TABLE tmp_survey_plans;
+    RETURN TRUE;
+EXCEPTION
+    WHEN undefined_table THEN
+        RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER FUNCTION LDS_DropSurveyPlansTable(INTEGER) OWNER TO bde_dba;
+
 CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedGeodeticLayers(
     p_upload INTEGER
 )
@@ -457,7 +521,7 @@ BEGIN
         '2',
         'Starting maintenance on geodetic simplified layers'
     );
-
+    
     IF (
         NOT (
             SELECT bde_control.bde_TablesAffected(
@@ -470,6 +534,8 @@ BEGIN
                     'crs_cord_order',
                     'crs_coordinate_tpe',
                     'crs_coordinate_sys',
+                    'crs_geodetic_network',
+                    'crs_geodetic_node_network',
                     'crs_site_locality',
                     'crs_locality',
                     'crs_mrk_phys_state',
@@ -482,6 +548,7 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'geodetic_vertical_marks')
         AND LDS.LDS_TableHasData('lds', 'geodetic_antarctic_marks')
         AND LDS.LDS_TableHasData('lds', 'geodetic_antarctic_vertical_marks')
+        AND LDS.LDS_TableHasData('lds', 'geodetic_network_marks')
     )
     THEN
         PERFORM bde_control.bde_WriteUploadLog(
@@ -500,8 +567,8 @@ BEGIN
         MRK.nod_id,
         MKN.name AS geodetic_code
     FROM
-        bde.crs_mark MRK,
-        bde.crs_mark_name MKN
+        crs_mark MRK,
+        crs_mark_name MKN
     WHERE
         MRK.id = MKN.mrk_id AND
         UPPER(MKN.type) = 'CODE';
@@ -552,11 +619,11 @@ BEGIN
         '3',
         'Started creating temp tables for ' || v_table
     );
-    
+
     -- The windowing partition will prioritise the commissioned, non-replaced marks for each node.
     CREATE TEMP TABLE tmp_geodetic_marks AS
     SELECT
-        row_number() OVER (ORDER BY GEO.geodetic_code, MRK.status, MRK.replaced) AS row_number,
+        row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
         NOD.id,
         GEO.geodetic_code, 
         MKN.name AS current_mark_name, 
@@ -578,8 +645,8 @@ BEGIN
     FROM
         tmp_geo_nodes GEO
         JOIN crs_node NOD ON NOD.id = GEO.NOD_ID
-        JOIN crs_mark MRK ON MRK.nod_id = NOD.id
-        LEFT JOIN crs_mark_name mkn ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
+        JOIN crs_mark MRK ON MRK.nod_id = NOD.id AND MRK.status <> 'PEND'
+        LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
         LEFT JOIN crs_site_locality SLO ON SLO.sit_id = NOD.sit_id
         LEFT JOIN crs_locality LOC ON LOC.id = SLO.loc_id AND LOC.type = 'LDST'
         JOIN crs_coordinate COO ON NOD.cos_id_official = COO.cos_id AND NOD.id = COO.nod_id AND COO.status = 'AUTH'
@@ -712,7 +779,7 @@ BEGIN
     -- The windowing partition will prioritise the commissioned, non-replaced marks for each node.
     CREATE TEMP TABLE tmp_geodetic_vertical_mark AS
     SELECT
-        row_number() OVER (ORDER BY COS.name, GEO.geodetic_code, MRK.status, MRK.replaced) AS row_number,
+        row_number() OVER (PARTITION BY COS.name, NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
         NOD.id AS nod_id,
         GEO.geodetic_code,
         MKN.name AS current_mark_name,
@@ -736,7 +803,7 @@ BEGIN
         tmp_geo_nodes GEO
         JOIN crs_node NOD ON NOD.id = GEO.NOD_ID 
         JOIN crs_mark MRK ON MRK.nod_id = NOD.id
-        LEFT JOIN crs_mark_name mkn ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR' 
+        LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR' 
         LEFT JOIN crs_site_locality SLO ON SLO.sit_id = NOD.sit_id 
         LEFT JOIN crs_locality LOC ON LOC.id = SLO.loc_id AND LOC.type = 'LDST' 
         LEFT JOIN crs_coordinate ANT_COO ON ANT_COO.nod_id = NOD.id AND ANT_COO.status = 'AUTH' AND ANT_COO.cos_id = 142
@@ -782,7 +849,7 @@ BEGIN
             shape
         )
         SELECT
-            COALESCE(ORG.id, nextval('lds.geodetic_vertical_marks_id_seq')),
+            COALESCE(ORG.id, nextval('lds.geodetic_vertical_marks_id_seq')) AS id,
             TMP.nod_id,
             TMP.geodetic_code, 
             TMP.current_mark_name, 
@@ -799,7 +866,7 @@ BEGIN
             tmp_geodetic_vertical_mark AS TMP
             LEFT JOIN %2% AS ORG ON (ORG.nod_id = TMP.nod_id AND ORG.coordinate_system = TMP.coordinate_system)
         WHERE
-            cos_id_official = 109
+            TMP.cos_id_official = 109
         ORDER BY
             TMP.nod_id,
             TMP.coordinate_system
@@ -836,7 +903,7 @@ BEGIN
         FROM
             tmp_geodetic_vertical_mark
         WHERE
-            TMP.cos_id_official = 109
+            cos_id_official = 109
         ORDER BY
             nod_id,
             coordinate_system
@@ -870,7 +937,7 @@ BEGIN
             shape
         )
         SELECT
-            COALESCE(ORG.id, nextval('lds.geodetic_antarctic_vertical_marks_id_seq')),
+            COALESCE(ORG.id, nextval('lds.geodetic_antarctic_vertical_marks_id_seq')) AS id,
             TMP.nod_id,
             TMP.geodetic_code, 
             TMP.current_mark_name, 
@@ -949,7 +1016,7 @@ BEGIN
     
     CREATE TEMP TABLE tmp_geodetic_network_marks AS
     SELECT
-        row_number() OVER (ORDER BY GEO.geodetic_code, MRK.status, MRK.replaced) AS row_number,
+        row_number() OVER (PARTITION BY GDN.code, NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
         NOD.id AS nod_id,
         GEO.geodetic_code,
         GDN.code as geodetic_network,
@@ -974,8 +1041,8 @@ BEGIN
         JOIN crs_geodetic_node_network GNN ON (GEO.nod_id = GNN.nod_id)
         JOIN crs_geodetic_network GDN ON (GNN.gdn_id = GDN.id)
         JOIN crs_node NOD ON NOD.id = GEO.NOD_ID
-        JOIN crs_mark MRK ON MRK.nod_id = NOD.id
-        LEFT JOIN crs_mark_name mkn ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
+        JOIN crs_mark MRK ON MRK.nod_id = NOD.id AND MRK.status <> 'PEND'
+        LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
         LEFT JOIN crs_site_locality SLO ON SLO.sit_id = NOD.sit_id
         LEFT JOIN crs_locality LOC ON LOC.id = SLO.loc_id AND LOC.type = 'LDST'
         JOIN crs_coordinate COO ON NOD.cos_id_official = COO.cos_id AND NOD.id = COO.nod_id AND COO.status = 'AUTH'
@@ -1018,7 +1085,7 @@ BEGIN
             shape
         )
         SELECT
-            COALESCE(ORG.id, nextval('lds.geodetic_network_marks_id_seq')),
+            COALESCE(ORG.id, nextval('lds.geodetic_network_marks_id_seq')) AS id,
             TMP.nod_id,
             TMP.geodetic_code,
             TMP.geodetic_network,
@@ -1110,6 +1177,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION LDS_MaintainSimplifiedGeodeticLayers(INTEGER) OWNER TO bde_dba;
+
 
 CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedParcelLayers(
     p_upload INTEGER
@@ -1222,6 +1290,7 @@ BEGIN
         JOIN crs_title TTL ON LGD.ttl_title_no = TTL.title_no
     WHERE
         PAR.status = 'CURR' AND
+        LGD.status = 'REGD' AND
         LGD.ttl_title_no IS NOT NULL AND
         TTL.status IN ('LIVE', 'PRTC') AND
         TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
@@ -1257,6 +1326,8 @@ BEGIN
     ALTER TABLE tmp_par_stat_action ADD PRIMARY KEY (par_id);
     ANALYSE tmp_par_stat_action;
     
+    PERFORM LDS.LDS_CreateSurveyPlansTable(p_upload);
+    
     -- make region data for determining how to calc areas
     CREATE TEMP TABLE tmp_world_regions (
         id INTEGER NOT NULL PRIMARY KEY,
@@ -1283,18 +1354,10 @@ BEGIN
         bde_get_combined_appellation(PAR.id, 'N') AS appellation,
         string_agg(
             DISTINCT 
-                CASE WHEN SUR.dataset_suffix IS NULL THEN
-                    SUR.dataset_series || ' ' || SUR.dataset_id
-                ELSE
-                    SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-                END,
+                SUR.survey_reference,
             ', '
             ORDER BY
-                CASE WHEN SUR.dataset_suffix IS NULL THEN
-                    SUR.dataset_series || ' ' || SUR.dataset_id
-                ELSE
-                    SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-                END
+                SUR.survey_reference
         ) AS affected_surveys,
         PAR.parcel_intent,
         PAR.toc_code,
@@ -1315,7 +1378,7 @@ BEGIN
         LEFT JOIN tmp_parcel_titles TTL ON PAR.id = TTL.par_id
         LEFT JOIN tmp_par_stat_action PSA ON PAR.id = PSA.par_id
         LEFT JOIN crs_affected_parcl AFP ON PAR.id = AFP.par_id
-        LEFT JOIN crs_survey SUR ON AFP.sur_wrk_id = SUR.wrk_id
+        LEFT JOIN tmp_survey_plans SUR ON AFP.sur_wrk_id = SUR.wrk_id
     WHERE
         PAR.status = 'CURR' AND
         ST_Contains(WDR.shape, PAR.shape)
@@ -2022,7 +2085,7 @@ BEGIN
             shape
         )
         SELECT
-            COALESCE(ORG.id, nextval('lds.title_owners_id_seq')),
+            COALESCE(ORG.id, nextval('lds.title_owners_id_seq')) AS id,
             TMP.owner,
             TMP.title_no,
             TMP.title_status,
@@ -2373,7 +2436,10 @@ BEGIN
         v_data_insert_sql
     );
 
-    -- built mapping for datums
+    -- build survey plan reference cache
+    PERFORM LDS.LDS_CreateSurveyPlansTable(p_upload);
+    
+    -- build mapping for datums
 
     CREATE TEMP TABLE tmp_proxy_datum AS
     SELECT id AS cos_id,
@@ -2451,7 +2517,8 @@ BEGIN
             SCO1.code = SUR.type_of_dataset AND
             SCO2.scg_code = 'WRKC' AND
             SCO2.code = WRK.status AND
-            SPF.shape IS NOT NULL
+            SPF.shape IS NOT NULL AND
+            WRK.restricted = 'N'
         GROUP BY
             1, 2, 3, 4, 5, 6, 7, 8, 9
         ORDER BY
@@ -2483,11 +2550,7 @@ BEGIN
         SELECT
             ADJ.id,
             ADJ.adjust_datetime AS date_adjusted,
-            CASE WHEN SUR.dataset_suffix IS NULL THEN
-                SUR.dataset_series || ' ' || SUR.dataset_id
-            ELSE
-                SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-            END AS survey_reference,
+            SUR.survey_reference,
             count(*) AS adjusted_nodes,
             CASE WHEN count(*) < 3 THEN
                 ST_Buffer(St_ConvexHull(ST_Collect(NOD.shape ORDER BY NOD.shape ASC)), 0.00001, 4)
@@ -2497,7 +2560,7 @@ BEGIN
         FROM
             crs_adjustment_run ADJ
             JOIN crs_adjust_method ADM ON ADJ.adm_id = ADM.id
-            LEFT JOIN crs_survey SUR ON ADJ.wrk_id = SUR.wrk_id
+            LEFT JOIN tmp_survey_plans SUR ON ADJ.wrk_id = SUR.wrk_id
             JOIN crs_ordinate_adj ORJ ON ADJ.id = ORJ.adj_id
             JOIN crs_coordinate COO ON ORJ.coo_id_output = COO.id
             JOIN crs_node NOD ON COO.nod_id = NOD.id
@@ -2508,9 +2571,7 @@ BEGIN
         GROUP BY
             ADJ.id,
             ADJ.adjust_datetime,
-            SUR.dataset_suffix,
-            SUR.dataset_series,
-            SUR.dataset_id
+            SUR.survey_reference
         ORDER BY
             ADJ.id;
     $sql$;
@@ -2555,11 +2616,7 @@ BEGIN
             SCO.char_value,
             COS.name,
             OBN.ref_datetime,
-            CASE WHEN SUR.dataset_suffix IS NULL THEN
-                SUR.dataset_series || ' ' || SUR.dataset_id
-            ELSE
-                SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-            END AS survey_reference,
+            SUR.survey_reference,
             VCT.shape
         FROM
             crs_observation OBN
@@ -2568,7 +2625,7 @@ BEGIN
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN crs_survey SUR ON STP.wrk_id = SUR.wrk_id
+            LEFT JOIN tmp_survey_plans SUR ON STP.wrk_id = SUR.wrk_id
         WHERE
             OBN.rdn_id IS NULL AND
             OBN.obt_type = 'REDC' AND
@@ -2620,11 +2677,7 @@ BEGIN
             SCO.char_value,
             COS.name,
             OBN.ref_datetime,
-            CASE WHEN SUR.dataset_suffix IS NULL THEN
-                SUR.dataset_series || ' ' || SUR.dataset_id
-            ELSE
-                SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-            END AS survey_reference,
+            SUR.survey_reference,
             LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
             to_char(OBN.value_2, 'FM9999999999D00') AS arc_length_label,
             to_char(OBN.arc_radius, 'FM9999999999D00') AS arc_radius_label,
@@ -2635,7 +2688,7 @@ BEGIN
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN crs_survey SUR ON STP.wrk_id = SUR.wrk_id
+            LEFT JOIN tmp_survey_plans SUR ON STP.wrk_id = SUR.wrk_id
         WHERE
             OBN.rdn_id IS NULL AND
             OBN.obt_type = 'REDC' AND
@@ -2697,11 +2750,11 @@ BEGIN
     CREATE TEMP TABLE tmp_parcel_vector_detail AS
     WITH latest_vector (row_number, id, type, bearing, distance, shape) AS (
         SELECT
-            row_number() OVER (PARTITION BY TPV.vct_id),
+            row_number() OVER (PARTITION BY TPV.vct_id ORDER BY OBN.ref_datetime DESC, OBN.id DESC) AS row_number,
             VCT.id,
             'Arc'::TEXT AS type,
-            first_value(OBN.value_1) OVER (PARTITION BY TPV.vct_id ORDER BY OBN.ref_datetime DESC),
-            first_value(OBN.value_2) OVER (PARTITION BY TPV.vct_id ORDER BY OBN.ref_datetime DESC),
+            OBN.value_1,
+            OBN.value_2,
             VCT.shape
         FROM
             tmp_parcel_vectors TPV
@@ -2744,16 +2797,16 @@ BEGIN
     )
     WITH latest_vector (row_number, id, bearing, distance, type, shape) AS (
         SELECT
-            row_number() OVER (PARTITION BY TPV.vct_id),
+            row_number() OVER (PARTITION BY TPV.vct_id) AS row_number,
             VCT.id,
-            first_value(OBN_B.value_1) OVER (PARTITION BY TPV.vct_id ORDER BY OBN_B.ref_datetime DESC),
-            first_value(OBN_D.value_1) OVER (PARTITION BY TPV.vct_id ORDER BY OBN_D.ref_datetime DESC),
+            first_value(OBN_B.value_1) OVER (PARTITION BY TPV.vct_id ORDER BY OBN_B.ref_datetime DESC, OBN_B.id DESC),
+            first_value(OBN_D.value_1) OVER (PARTITION BY TPV.vct_id ORDER BY OBN_D.ref_datetime DESC, OBN_D.id DESC),
             'Vector'::TEXT,
             VCT.shape
         FROM
             tmp_parcel_vectors TPV
             JOIN crs_vector VCT ON TPV.vct_id = VCT.id
-            JOIN crs_observation OBN_B ON TPV.vct_id = OBN_B.vct_id AND
+            LEFT JOIN crs_observation OBN_B ON TPV.vct_id = OBN_B.vct_id AND
                 OBN_B.rdn_id IS NULL AND
                 OBN_B.obt_type = 'REDC' AND
                 OBN_B.obt_sub_type = 'BEAR' AND
@@ -2877,7 +2930,7 @@ BEGIN
             shape
         ) AS (
             SELECT
-                row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status, MRK.replaced) AS row_number,
+                row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
                 NOD.id,
                 GEO.name AS geodetic_code, 
                 MKN.name AS current_mark_name,
@@ -2886,22 +2939,18 @@ BEGIN
                 SCOC.char_value AS mark_condition,
                 CAST(COR.display AS INTEGER) AS "order",
                 CNE.error AS nominal_accuracy,
-                CASE WHEN SUR.dataset_suffix IS NULL THEN
-                    SUR.dataset_series || ' ' || SUR.dataset_id
-                ELSE
-                    SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-                END AS last_survey,
+                SUR.survey_reference as last_survey,
                 NOD.shape
             FROM
                 crs_node NOD
                 JOIN crs_coordinate COO ON NOD.cos_id_official = COO.cos_id AND NOD.id = COO.nod_id AND COO.status = 'AUTH'
                 JOIN crs_cord_order COR ON COO.cor_id = COR.id
                 LEFT JOIN tmp_cord_nominal_error CNE ON COR.id = CNE.cor_id
-                LEFT JOIN crs_mark MRK ON MRK.nod_id = NOD.id
+                LEFT JOIN crs_mark MRK ON MRK.nod_id = NOD.id AND MRK.status <> 'PEND'
                 LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
                 LEFT JOIN crs_mark_name GEO ON MRK.id = GEO.mrk_id AND GEO.type = 'CODE'
                 LEFT JOIN crs_mrk_phys_state MPS ON MPS.mrk_id = MRK.id AND MPS.type = 'MARK' AND MPS.status = 'CURR'
-                LEFT JOIN crs_survey SUR ON MPS.wrk_id = SUR.wrk_id
+                LEFT JOIN tmp_survey_plans SUR ON MPS.wrk_id = SUR.wrk_id
                 LEFT JOIN crs_sys_code SCOC ON MPS.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
             WHERE
                 COO.cor_id < 1908 AND
@@ -3008,7 +3057,7 @@ BEGIN
         shape
     ) AS (
         SELECT
-            row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status, MRK.replaced) AS row_number,
+            row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
             NOD.id,
             MKN.name,
             CAST(COR.display AS INTEGER) AS order,
@@ -3027,7 +3076,7 @@ BEGIN
             LEFT JOIN tmp_cord_nominal_error CNE ON COR.id = CNE.cor_id
             LEFT JOIN tmp_node_last_adjusted NAJ ON NOD.id = NAJ.nod_id
             LEFT JOIN tmp_bdy_nodes BDY ON NOD.id = BDY.nod_id
-            LEFT JOIN crs_mark MRK ON NOD.id = MRK.nod_id
+            LEFT JOIN crs_mark MRK ON NOD.id = MRK.nod_id AND MRK.status <> 'PEND'
             LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
         WHERE
             NOD.status = 'AUTH' AND
@@ -3125,6 +3174,8 @@ BEGIN
         '2',
         'Finished maintenance on cadastral survey simplified layers'
     );
+    
+    PERFORM LDS.LDS_DropSurveyPlansTable(p_upload);
     
     DROP TABLE IF EXISTS tmp_cord_nominal_error;
     DROP TABLE IF EXISTS tmp_bdy_nodes;
