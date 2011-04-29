@@ -24,7 +24,6 @@ IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde') THEN
     RETURN;
 END IF;
 
-
 CREATE SCHEMA bde AUTHORIZATION bde_dba;
 
 GRANT ALL ON SCHEMA bde TO bde_dba;
@@ -60,12 +59,6 @@ ALTER TABLE crs_action ALTER COLUMN att_type SET STATISTICS 500;
 ALTER TABLE crs_action ALTER COLUMN ste_id SET STATISTICS 500;
 ALTER TABLE crs_action ALTER COLUMN audit_id SET STATISTICS 500;
 
-CREATE INDEX fk_act_tin ON crs_action USING btree (tin_id);
-CREATE INDEX fk_act_att ON crs_action USING btree (att_type);
-CREATE INDEX fk_act_ste ON crs_action USING btree (ste_id);
-CREATE INDEX fk_act_act ON crs_action USING btree (act_tin_id_orig, act_id_orig);
-CREATE UNIQUE INDEX act_aud_id ON crs_action USING btree (audit_id);
-
 ALTER TABLE crs_action OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_action FROM PUBLIC;
@@ -87,9 +80,6 @@ CREATE TABLE crs_action_type (
 
 ALTER TABLE ONLY crs_action_type
     ADD CONSTRAINT pkey_crs_action_type PRIMARY KEY (type);
-
-CREATE INDEX fk_att_sob ON crs_action_type USING btree (sob_name);
-CREATE UNIQUE INDEX att_aud_id ON crs_action_type USING btree (audit_id);
 
 ALTER TABLE crs_action_type OWNER TO bde_dba;
 
@@ -135,10 +125,6 @@ ALTER TABLE crs_adj_obs_change ALTER COLUMN adj_id SET STATISTICS 1000;
 ALTER TABLE crs_adj_obs_change ALTER COLUMN obn_id SET STATISTICS 1000;
 ALTER TABLE crs_adj_obs_change ALTER COLUMN audit_id SET STATISTICS 1000;
 
-CREATE INDEX fk_aoc_adj ON crs_adj_obs_change USING btree (adj_id);
-CREATE INDEX fk_aoc_obn ON crs_adj_obs_change USING btree (obn_id);
-CREATE UNIQUE INDEX aoc_aud_id ON crs_adj_obs_change USING btree (audit_id);
-
 ALTER TABLE crs_adj_obs_change OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_adj_obs_change FROM PUBLIC;
@@ -158,10 +144,6 @@ CREATE TABLE crs_adj_user_coef (
 
 ALTER TABLE ONLY crs_adj_user_coef
     ADD CONSTRAINT pkey_crs_adj_user_coef PRIMARY KEY (adc_id, adj_id);
-
-CREATE UNIQUE INDEX auc_aud_id ON crs_adj_user_coef USING btree (audit_id);
-CREATE INDEX fk_auc_adc ON crs_adj_user_coef USING btree (adc_id);
-CREATE INDEX fk_auc_adj ON crs_adj_user_coef USING btree (adj_id);
 
 ALTER TABLE crs_adj_user_coef OWNER TO bde_dba;
 
@@ -186,9 +168,6 @@ CREATE TABLE crs_adjust_coef (
 ALTER TABLE ONLY crs_adjust_coef
     ADD CONSTRAINT pkey_crs_adjust_coef PRIMARY KEY (id);
 
-CREATE UNIQUE INDEX adc_aud_id ON crs_adjust_coef USING btree (audit_id);
-CREATE INDEX fk_adc_adm ON crs_adjust_coef USING btree (adm_id);
-
 ALTER TABLE crs_adjust_coef OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_adjust_coef FROM PUBLIC;
@@ -211,9 +190,6 @@ CREATE TABLE crs_adjust_method (
 
 ALTER TABLE ONLY crs_adjust_method
     ADD CONSTRAINT pkey_crs_adjust_method PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX adm_aud_id ON crs_adjust_method USING btree (audit_id);
-CREATE UNIQUE INDEX adm_name ON crs_adjust_method USING btree (name);
 
 ALTER TABLE crs_adjust_method OWNER TO bde_dba;
 
@@ -253,13 +229,6 @@ ALTER TABLE crs_adjustment_run ALTER COLUMN status SET STATISTICS 250;
 ALTER TABLE crs_adjustment_run ALTER COLUMN usr_id_exec SET STATISTICS 250;
 ALTER TABLE crs_adjustment_run ALTER COLUMN wrk_id SET STATISTICS 250;
 
-CREATE UNIQUE INDEX adj_aud_id ON crs_adjustment_run USING btree (audit_id);
-CREATE INDEX adj_status ON crs_adjustment_run USING btree (status);
-CREATE INDEX fk_adj_adm ON crs_adjustment_run USING btree (adm_id);
-CREATE INDEX fk_adj_cos ON crs_adjustment_run USING btree (cos_id);
-CREATE INDEX fk_adj_usr ON crs_adjustment_run USING btree (usr_id_exec);
-CREATE INDEX fk_adj_wrk ON crs_adjustment_run USING btree (wrk_id);
-
 ALTER TABLE crs_adjustment_run OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_adjustment_run FROM PUBLIC;
@@ -288,10 +257,6 @@ ALTER TABLE crs_adoption ALTER COLUMN obn_id_new SET STATISTICS 500;
 ALTER TABLE crs_adoption ALTER COLUMN obn_id_orig SET STATISTICS 500;
 ALTER TABLE crs_adoption ALTER COLUMN sur_wrk_id_orig SET STATISTICS 500;
 
-CREATE UNIQUE INDEX adp_aud_id ON crs_adoption USING btree (audit_id);
-CREATE INDEX fk_adp_obn_orig ON crs_adoption USING btree (obn_id_orig);
-CREATE INDEX fk_adp_sur ON crs_adoption USING btree (sur_wrk_id_orig);
-
 ALTER TABLE crs_adoption OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_adoption FROM PUBLIC;
@@ -316,10 +281,6 @@ ALTER TABLE crs_affected_parcl ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_affected_parcl ALTER COLUMN par_id SET STATISTICS 500;
 ALTER TABLE crs_affected_parcl ALTER COLUMN sur_wrk_id SET STATISTICS 500;
 
-CREATE UNIQUE INDEX afp_aud_id ON crs_affected_parcl USING btree (audit_id);
-CREATE INDEX fk_afp_par ON crs_affected_parcl USING btree (par_id);
-CREATE INDEX fk_afp_sur ON crs_affected_parcl USING btree (sur_wrk_id);
-
 ALTER TABLE crs_affected_parcl OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_affected_parcl FROM PUBLIC;
@@ -339,8 +300,6 @@ CREATE TABLE crs_alias (
 
 ALTER TABLE ONLY crs_alias
     ADD CONSTRAINT pkey_crs_alias PRIMARY KEY (id);
-
-CREATE INDEX fk_ali_prp ON crs_alias USING btree (prp_id);
 
 ALTER TABLE crs_alias OWNER TO bde_dba;
 
@@ -392,14 +351,6 @@ ALTER TABLE crs_appellation ALTER COLUMN other_appellation SET STATISTICS 500;
 ALTER TABLE crs_appellation ALTER COLUMN parcel_value SET STATISTICS 500;
 ALTER TABLE crs_appellation ALTER COLUMN par_id SET STATISTICS 500;
 
-CREATE UNIQUE INDEX app_aud_id ON crs_appellation USING btree (audit_id);
-CREATE INDEX fi_app_general ON crs_appellation USING btree (appellation_value, parcel_value);
-CREATE INDEX fi_app_maori ON crs_appellation USING btree (maori_name, parcel_value);
-CREATE INDEX fi_app_other ON crs_appellation USING btree (other_appellation);
-CREATE INDEX fk_app_act_crt ON crs_appellation USING btree (act_tin_id_crt, act_id_crt);
-CREATE INDEX fk_app_act_ext ON crs_appellation USING btree (act_tin_id_ext, act_id_ext);
-CREATE INDEX fk_app_par ON crs_appellation USING btree (par_id);
-
 ALTER TABLE crs_appellation OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_appellation FROM PUBLIC;
@@ -440,10 +391,6 @@ ALTER TABLE crs_audit_detail ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_audit_detail ALTER COLUMN record_no SET STATISTICS 500;
 ALTER TABLE crs_audit_detail ALTER COLUMN table_name SET STATISTICS 500;
 
-CREATE INDEX ak_crs_audit_detail ON crs_audit_detail USING btree (id, table_name);
-CREATE INDEX aud_table_name ON crs_audit_detail USING btree (table_name, "timestamp");
-CREATE INDEX pk_crs_audit_detail ON crs_audit_detail USING btree (record_no);
-
 ALTER TABLE crs_audit_detail OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_audit_detail FROM PUBLIC;
@@ -466,8 +413,6 @@ CREATE TABLE crs_comprised_in (
 
 ALTER TABLE ONLY crs_comprised_in
     ADD CONSTRAINT pkey_crs_comprised_in PRIMARY KEY (id);
-
-CREATE INDEX fk_cmp_wrk ON crs_comprised_in USING btree (wrk_id);
 
 ALTER TABLE crs_comprised_in OWNER TO bde_dba;
 
@@ -513,18 +458,6 @@ ALTER TABLE crs_coordinate ALTER COLUMN value2 SET STATISTICS 1000;
 ALTER TABLE crs_coordinate ALTER COLUMN value3 SET STATISTICS 1000;
 ALTER TABLE crs_coordinate ALTER COLUMN wrk_id_created SET STATISTICS 1000;
 
-CREATE UNIQUE INDEX coo_aud_id ON crs_coordinate USING btree (audit_id);
-CREATE INDEX coo_value1 ON crs_coordinate USING btree (value1);
-CREATE INDEX coo_value2 ON crs_coordinate USING btree (value2);
-CREATE INDEX coo_value3 ON crs_coordinate USING btree (value3);
-CREATE INDEX fk_coo_cor ON crs_coordinate USING btree (cor_id);
-CREATE INDEX fk_coo_cos ON crs_coordinate USING btree (cos_id);
-CREATE INDEX fk_coo_nod ON crs_coordinate USING btree (nod_id);
-CREATE INDEX fk_coo_ort1 ON crs_coordinate USING btree (ort_type_1);
-CREATE INDEX fk_coo_ort2 ON crs_coordinate USING btree (ort_type_2);
-CREATE INDEX fk_coo_ort3 ON crs_coordinate USING btree (ort_type_3);
-CREATE INDEX fk_coo_wrk ON crs_coordinate USING btree (wrk_id_created);
-
 ALTER TABLE crs_coordinate OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_coordinate FROM PUBLIC;
@@ -548,11 +481,6 @@ CREATE TABLE crs_coordinate_sys (
 
 ALTER TABLE ONLY crs_coordinate_sys
     ADD CONSTRAINT pkey_crs_coordinate_sys PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX cos_aud_id ON crs_coordinate_sys USING btree (audit_id);
-CREATE INDEX fk_cos_cos ON crs_coordinate_sys USING btree (cos_id_adjust);
-CREATE INDEX fk_cos_cot ON crs_coordinate_sys USING btree (cot_id);
-CREATE INDEX fk_cos_dtm ON crs_coordinate_sys USING btree (dtm_id);
 
 ALTER TABLE crs_coordinate_sys OWNER TO bde_dba;
 
@@ -586,11 +514,6 @@ CREATE TABLE crs_coordinate_tpe (
 ALTER TABLE ONLY crs_coordinate_tpe
     ADD CONSTRAINT pkey_crs_coordinate_tpe PRIMARY KEY (id);
 
-CREATE UNIQUE INDEX cot_aud_id ON crs_coordinate_tpe USING btree (audit_id);
-CREATE INDEX fk_cot_ort1 ON crs_coordinate_tpe USING btree (ort_type_1);
-CREATE INDEX fk_cot_ort2 ON crs_coordinate_tpe USING btree (ort_type_2);
-CREATE INDEX fk_cot_ort3 ON crs_coordinate_tpe USING btree (ort_type_3);
-
 ALTER TABLE crs_coordinate_tpe OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_coordinate_tpe FROM PUBLIC;
@@ -610,10 +533,6 @@ CREATE TABLE crs_cor_precision (
 
 ALTER TABLE ONLY crs_cor_precision
     ADD CONSTRAINT pkey_crs_cor_precision PRIMARY KEY (cor_id, ort_type);
-
-CREATE UNIQUE INDEX cop_aud_id ON crs_cor_precision USING btree (audit_id);
-CREATE INDEX fk_cop_cor ON crs_cor_precision USING btree (cor_id);
-CREATE INDEX fk_cop_ort ON crs_cor_precision USING btree (ort_type);
 
 ALTER TABLE crs_cor_precision OWNER TO bde_dba;
 
@@ -637,9 +556,6 @@ CREATE TABLE crs_cord_order (
 
 ALTER TABLE ONLY crs_cord_order
     ADD CONSTRAINT pkey_crs_cord_order PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX cor_aud_id ON crs_cord_order USING btree (audit_id);
-CREATE INDEX fk_cor_dtm ON crs_cord_order USING btree (dtm_id);
 
 ALTER TABLE crs_cord_order OWNER TO bde_dba;
 
@@ -666,9 +582,6 @@ CREATE TABLE crs_datum (
 
 ALTER TABLE ONLY crs_datum
     ADD CONSTRAINT pkey_crs_datum PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX dtm_aud_id ON crs_datum USING btree (audit_id);
-CREATE INDEX fk_dtm_elp ON crs_datum USING btree (elp_id);
 
 ALTER TABLE crs_datum OWNER TO bde_dba;
 
@@ -722,17 +635,6 @@ ALTER TABLE crs_dealing ALTER COLUMN usr_id_dept SET STATISTICS 500;
 ALTER TABLE crs_dealing ALTER COLUMN usr_id_lodged SET STATISTICS 500;
 ALTER TABLE crs_dealing ALTER COLUMN usr_id_lodged_firm SET STATISTICS 500;
 
-CREATE INDEX fk_dlg_alt ON crs_dealing USING btree (alt_id);
-CREATE INDEX fk_dlg_dlg ON crs_dealing USING btree (dlg_id_rejected);
-CREATE INDEX fk_dlg_fhr ON crs_dealing USING btree (fhr_id);
-CREATE INDEX fk_dlg_ldt ON crs_dealing USING btree (ldt_loc_id);
-CREATE INDEX fk_dlg_off ON crs_dealing USING btree (off_code);
-CREATE INDEX fk_dlg_usr_dept ON crs_dealing USING btree (usr_id_dept);
-CREATE INDEX fk_dlg_usr_ldg ON crs_dealing USING btree (usr_id_lodged);
-CREATE INDEX fk_usr_firm_lodged ON crs_dealing USING btree (usr_id_lodged_firm);
-CREATE INDEX idx_dlg_1 ON crs_dealing USING btree (queue_state, status, id);
-CREATE UNIQUE INDEX fk_dlg_aud ON crs_dealing USING btree (audit_id);
-
 ALTER TABLE crs_dealing OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_dealing FROM PUBLIC;
@@ -754,9 +656,6 @@ ALTER TABLE ONLY crs_dealing_survey
 
 ALTER TABLE crs_dealing_survey ALTER COLUMN dlg_id SET STATISTICS 250;
 ALTER TABLE crs_dealing_survey ALTER COLUMN sur_wrk_id SET STATISTICS 250;
-
-CREATE INDEX fk_dsu_dlg ON crs_dealing_survey USING btree (dlg_id);
-CREATE INDEX fk_dsu_sur ON crs_dealing_survey USING btree (sur_wrk_id);
 
 ALTER TABLE crs_dealing_survey OWNER TO bde_dba;
 
@@ -786,10 +685,6 @@ CREATE TABLE crs_elect_place (
 ALTER TABLE ONLY crs_elect_place
     ADD CONSTRAINT pkey_crs_elect_place PRIMARY KEY (id);
 
-CREATE UNIQUE INDEX epl_aud_id ON crs_elect_place USING btree (audit_id);
-CREATE INDEX epl_shape_index ON crs_elect_place USING gist (shape);
-CREATE INDEX fk_epl_alt ON crs_elect_place USING btree (alt_id);
-
 ALTER TABLE crs_elect_place OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_elect_place FROM PUBLIC;
@@ -810,8 +705,6 @@ CREATE TABLE crs_ellipsoid (
 
 ALTER TABLE ONLY crs_ellipsoid
     ADD CONSTRAINT pkey_crs_ellipsoid PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX elp_aud_id ON crs_ellipsoid USING btree (audit_id);
 
 ALTER TABLE crs_ellipsoid OWNER TO bde_dba;
 
@@ -842,9 +735,6 @@ ALTER TABLE crs_enc_share ALTER COLUMN act_tin_id_crt SET STATISTICS 500;
 ALTER TABLE crs_enc_share ALTER COLUMN enc_id SET STATISTICS 500;
 ALTER TABLE crs_enc_share ALTER COLUMN id SET STATISTICS 500;
 
-CREATE INDEX fk_enc_ecs ON crs_enc_share USING btree (enc_id);
-CREATE INDEX idx_ens_act_crt ON crs_enc_share USING btree (act_tin_id_crt);
-
 ALTER TABLE crs_enc_share OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_enc_share FROM PUBLIC;
@@ -873,9 +763,6 @@ ALTER TABLE crs_encumbrance ALTER COLUMN act_tin_id_crt SET STATISTICS 500;
 ALTER TABLE crs_encumbrance ALTER COLUMN act_tin_id_orig SET STATISTICS 500;
 ALTER TABLE crs_encumbrance ALTER COLUMN id SET STATISTICS 500;
 
-CREATE INDEX fk_enc_crt ON crs_encumbrance USING btree (act_tin_id_crt);
-CREATE INDEX fk_enc_orig ON crs_encumbrance USING btree (act_tin_id_orig);
-
 ALTER TABLE crs_encumbrance OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_encumbrance FROM PUBLIC;
@@ -900,8 +787,6 @@ ALTER TABLE ONLY crs_encumbrancee
 
 ALTER TABLE crs_encumbrancee ALTER COLUMN ens_id SET STATISTICS 500;
 ALTER TABLE crs_encumbrancee ALTER COLUMN id SET STATISTICS 500;
-
-CREATE INDEX fk_ene_ens ON crs_encumbrancee USING btree (ens_id);
 
 ALTER TABLE crs_encumbrancee OWNER TO bde_dba;
 
@@ -938,9 +823,6 @@ ALTER TABLE crs_estate_share ALTER COLUMN act_tin_id_crt SET STATISTICS 500;
 ALTER TABLE crs_estate_share ALTER COLUMN ett_id SET STATISTICS 500;
 ALTER TABLE crs_estate_share ALTER COLUMN id SET STATISTICS 500;
 
-CREATE INDEX fk_ets_act_crt ON crs_estate_share USING btree (act_tin_id_crt);
-CREATE INDEX fk_tle_ess ON crs_estate_share USING btree (ett_id);
-
 ALTER TABLE crs_estate_share OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_estate_share FROM PUBLIC;
@@ -966,9 +848,6 @@ CREATE TABLE crs_feature_name (
 
 ALTER TABLE ONLY crs_feature_name
     ADD CONSTRAINT pkey_crs_feature_name PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX fen_aud_id ON crs_feature_name USING btree (audit_id);
-CREATE INDEX fen_shape_index ON crs_feature_name USING gist (shape);
 
 ALTER TABLE crs_feature_name OWNER TO bde_dba;
 
@@ -1010,9 +889,6 @@ ALTER TABLE ONLY crs_geodetic_node_network
 
 ALTER TABLE crs_geodetic_node_network OWNER TO bde_dba;
 
-CREATE INDEX fk_gnn_gdn ON crs_geodetic_node_network USING btree (gdn_id);
-CREATE UNIQUE INDEX gnn_aud_id ON crs_geodetic_node_network USING btree (audit_id);
-
 REVOKE ALL ON TABLE crs_geodetic_node_network FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_geodetic_node_network TO bde_admin;
 GRANT SELECT ON TABLE crs_geodetic_node_network TO bde_user;
@@ -1033,9 +909,6 @@ CREATE TABLE crs_image (
 
 ALTER TABLE ONLY crs_image
     ADD CONSTRAINT pkey_crs_image PRIMARY KEY (id);
-
-CREATE INDEX ak_ims_id ON crs_image USING btree (ims_id);
-CREATE INDEX idx_ims_centera_id ON crs_image USING btree (centera_id);
 
 ALTER TABLE crs_image OWNER TO bde_dba;
 
@@ -1077,12 +950,6 @@ ALTER TABLE crs_inst_role ALTER COLUMN usr_id_cp SET STATISTICS 500;
 ALTER TABLE crs_inst_role ALTER COLUMN usr_id_firm_cntct SET STATISTICS 500;
 ALTER TABLE crs_inst_role ALTER COLUMN usr_id_firm_cp SET STATISTICS 500;
 
-CREATE INDEX ak_inr_cp_user_firm ON crs_inst_role USING btree (tin_id, inst_role, usr_id_cp, usr_id_firm_cp);
-CREATE INDEX ak_inr_resp_for_fees ON crs_inst_role USING btree (resp_for_fees);
-CREATE INDEX fk_inr_fmu_contact ON crs_inst_role USING btree (usr_id_contact, usr_id_firm_cntct);
-CREATE INDEX fk_inr_fmu_cp ON crs_inst_role USING btree (usr_id_cp, usr_id_firm_cp);
-CREATE INDEX fk_inr_tin ON crs_inst_role USING btree (tin_id);
-
 ALTER TABLE crs_inst_role OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_inst_role FROM PUBLIC;
@@ -1117,11 +984,6 @@ ALTER TABLE crs_job ALTER COLUMN off_code_current SET STATISTICS 500;
 ALTER TABLE crs_job ALTER COLUMN off_code_original SET STATISTICS 500;
 ALTER TABLE crs_job ALTER COLUMN status SET STATISTICS 500;
 
-CREATE INDEX fk_job_off_cur ON crs_job USING btree (off_code_current);
-CREATE INDEX fk_job_off_orig ON crs_job USING btree (off_code_original);
-CREATE UNIQUE INDEX job_audit_id ON crs_job USING btree (audit_id);
-CREATE UNIQUE INDEX job_ix1_off_stat ON crs_job USING btree (off_code_current, status, datetime_due, id, "type");
-
 ALTER TABLE crs_job OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_job FROM PUBLIC;
@@ -1153,13 +1015,6 @@ ALTER TABLE crs_job_task_list ALTER COLUMN status SET STATISTICS 500;
 ALTER TABLE crs_job_task_list ALTER COLUMN tkl_id SET STATISTICS 500;
 ALTER TABLE crs_job_task_list ALTER COLUMN usr_id SET STATISTICS 500;
 
-CREATE INDEX fk_jtl_job ON crs_job_task_list USING btree (job_id);
-CREATE INDEX fk_jtl_tkl ON crs_job_task_list USING btree (tkl_id);
-CREATE INDEX fk_jtl_usr ON crs_job_task_list USING btree (usr_id);
-CREATE INDEX idx_jtl_date_comp ON crs_job_task_list USING btree (date_completed);
-CREATE INDEX idx_crs_jtl_stat ON crs_job_task_list USING btree (status, usr_id);
-CREATE INDEX jtl_audit_id ON crs_job_task_list USING btree (audit_id);
-
 ALTER TABLE crs_job_task_list OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_job_task_list FROM PUBLIC;
@@ -1184,10 +1039,6 @@ CREATE TABLE crs_land_district (
 
 ALTER TABLE ONLY crs_land_district
     ADD CONSTRAINT pkey_crs_land_district PRIMARY KEY (loc_id);
-
-CREATE INDEX fk_ldt_off ON crs_land_district USING btree (off_code);
-CREATE UNIQUE INDEX ldt_aud_id ON crs_land_district USING btree (audit_id);
-CREATE INDEX ldt_shape_index ON crs_land_district USING gist (shape);
 
 ALTER TABLE crs_land_district OWNER TO bde_dba;
 
@@ -1216,9 +1067,6 @@ ALTER TABLE crs_legal_desc ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_legal_desc ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_legal_desc ALTER COLUMN ttl_title_no SET STATISTICS 500;
 
-CREATE INDEX fk_lgd_ttl ON crs_legal_desc USING btree (ttl_title_no);
-CREATE UNIQUE INDEX lgd_aud_id ON crs_legal_desc USING btree (audit_id);
-
 ALTER TABLE crs_legal_desc OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_legal_desc FROM PUBLIC;
@@ -1246,11 +1094,6 @@ ALTER TABLE crs_legal_desc_prl ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_legal_desc_prl ALTER COLUMN lgd_id SET STATISTICS 500;
 ALTER TABLE crs_legal_desc_prl ALTER COLUMN par_id SET STATISTICS 500;
 ALTER TABLE crs_legal_desc_prl ALTER COLUMN sur_wrk_id_crt SET STATISTICS 500;
-
-CREATE INDEX fk_lgp_sur ON crs_legal_desc_prl USING btree (sur_wrk_id_crt);
-CREATE INDEX fk_rap_par ON crs_legal_desc_prl USING btree (par_id);
-CREATE INDEX fk_rap_rar ON crs_legal_desc_prl USING btree (lgd_id);
-CREATE UNIQUE INDEX lgp_aud_id ON crs_legal_desc_prl USING btree (audit_id);
 
 ALTER TABLE crs_legal_desc_prl OWNER TO bde_dba;
 
@@ -1291,12 +1134,6 @@ ALTER TABLE crs_line ALTER COLUMN nod_id_end SET STATISTICS 1000;
 ALTER TABLE crs_line ALTER COLUMN nod_id_start SET STATISTICS 1000;
 ALTER TABLE crs_line ALTER COLUMN pnx_id_created SET STATISTICS 1000;
 
-CREATE INDEX fk_lin_nod_end ON crs_line USING btree (nod_id_end);
-CREATE INDEX fk_lin_nod_start ON crs_line USING btree (nod_id_start);
-CREATE INDEX fk_lin_pnx ON crs_line USING btree (pnx_id_created);
-CREATE UNIQUE INDEX lin_aud_id ON crs_line USING btree (audit_id);
-CREATE INDEX lin_shape_index ON crs_line USING gist (shape);
-
 ALTER TABLE crs_line OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_line FROM PUBLIC;
@@ -1322,10 +1159,6 @@ CREATE TABLE crs_locality (
 ALTER TABLE ONLY crs_locality
     ADD CONSTRAINT pkey_crs_locality PRIMARY KEY (id);
 
-CREATE INDEX fk_loc_loc ON crs_locality USING btree (loc_id_parent);
-CREATE UNIQUE INDEX loc_aud_id ON crs_locality USING btree (audit_id);
-CREATE INDEX loc_shape_index ON crs_locality USING gist (shape);
-
 ALTER TABLE crs_locality OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_locality FROM PUBLIC;
@@ -1347,10 +1180,6 @@ CREATE TABLE crs_maintenance (
 
 ALTER TABLE ONLY crs_maintenance
     ADD CONSTRAINT pkey_crs_maintenance PRIMARY KEY (mrk_id, type);
-
-CREATE INDEX fk_mnt_mrk ON crs_maintenance USING btree (mrk_id);
-CREATE UNIQUE INDEX mnt_aud_id ON crs_maintenance USING btree (audit_id);
-CREATE INDEX mnt_status ON crs_maintenance USING btree (status);
 
 ALTER TABLE crs_maintenance OWNER TO bde_dba;
 
@@ -1375,9 +1204,6 @@ CREATE TABLE crs_map_grid (
 
 ALTER TABLE ONLY crs_map_grid
     ADD CONSTRAINT pkey_crs_map_grid PRIMARY KEY (major_grid, minor_grid);
-
-CREATE UNIQUE INDEX map_aud_id ON crs_map_grid USING btree (audit_id);
-CREATE INDEX map_shape_index ON crs_map_grid USING gist (shape);
 
 ALTER TABLE crs_map_grid OWNER TO bde_dba;
 
@@ -1421,12 +1247,6 @@ ALTER TABLE crs_mark ALTER COLUMN mrk_id_repl SET STATISTICS 1000;
 ALTER TABLE crs_mark ALTER COLUMN nod_id SET STATISTICS 1000;
 ALTER TABLE crs_mark ALTER COLUMN wrk_id_created SET STATISTICS 1000;
 
-CREATE INDEX fk_mark_wrk ON crs_mark USING btree (wrk_id_created);
-CREATE INDEX fk_mrk_mrk_dist ON crs_mark USING btree (mrk_id_dist);
-CREATE INDEX fk_mrk_mrk_rep ON crs_mark USING btree (mrk_id_repl);
-CREATE INDEX fk_mrk_nod ON crs_mark USING btree (nod_id);
-CREATE INDEX mrk_aud_id ON crs_mark USING btree (audit_id);
-
 ALTER TABLE crs_mark OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mark FROM PUBLIC;
@@ -1451,12 +1271,6 @@ ALTER TABLE crs_mark_name ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_mark_name ALTER COLUMN mrk_id SET STATISTICS 500;
 ALTER TABLE crs_mark_name ALTER COLUMN name SET STATISTICS 500;
 
-CREATE INDEX fk_mkn_mrk ON crs_mark_name USING btree (mrk_id);
-CREATE UNIQUE INDEX mkn_aud_id ON crs_mark_name USING btree (audit_id);
-CREATE INDEX mkn_name ON crs_mark_name USING btree (name);
-CREATE INDEX mkn_type_code ON crs_mark_name USING btree (type) WHERE UPPER(type) = 'CODE';
-CREATE INDEX mkn_type ON crs_mark_name USING btree ("type");
-
 ALTER TABLE crs_mark_name OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mark_name FROM PUBLIC;
@@ -1479,16 +1293,11 @@ ALTER TABLE ONLY crs_mark_sup_doc
 ALTER TABLE crs_mark_sup_doc ALTER COLUMN mrk_id SET STATISTICS 250;
 ALTER TABLE crs_mark_sup_doc ALTER COLUMN sud_id SET STATISTICS 250;
 
-CREATE INDEX fk_msd_mrk ON crs_mark_sup_doc USING btree (mrk_id);
-CREATE INDEX fk_msd_sud ON crs_mark_sup_doc USING btree (sud_id);
-CREATE UNIQUE INDEX msd_aud_id ON crs_mark_sup_doc USING btree (audit_id);
-
 ALTER TABLE crs_mark_sup_doc OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mark_sup_doc FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_mark_sup_doc TO bde_admin;
 GRANT SELECT ON TABLE crs_mark_sup_doc TO bde_user;
-
 
 --------------------------------------------------------------------------------
 -- BDE table crs_mrk_phys_state
@@ -1530,10 +1339,6 @@ ALTER TABLE ONLY crs_mrk_phys_state
 ALTER TABLE crs_mrk_phys_state ALTER COLUMN mrk_id SET STATISTICS 500;
 ALTER TABLE crs_mrk_phys_state ALTER COLUMN wrk_id SET STATISTICS 500;
 
-CREATE INDEX fk_mps_mrk ON crs_mrk_phys_state USING btree (mrk_id);
-CREATE INDEX fk_mps_wrk ON crs_mrk_phys_state USING btree (wrk_id);
-CREATE UNIQUE INDEX mps_aud_id ON crs_mrk_phys_state USING btree (audit_id);
-
 ALTER TABLE crs_mrk_phys_state OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mrk_phys_state FROM PUBLIC;
@@ -1564,10 +1369,6 @@ ALTER TABLE crs_mesh_blk ALTER COLUMN alt_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk ALTER COLUMN id SET STATISTICS 250;
 
-CREATE INDEX fk_mbk_alt ON crs_mesh_blk USING btree (alt_id);
-CREATE UNIQUE INDEX mbk_aud_id ON crs_mesh_blk USING btree (audit_id);
-CREATE INDEX mbk_shape_index ON crs_mesh_blk USING gist (shape);
-
 ALTER TABLE crs_mesh_blk OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mesh_blk FROM PUBLIC;
@@ -1593,11 +1394,6 @@ ALTER TABLE crs_mesh_blk_area ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk_area ALTER COLUMN mbk_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk_area ALTER COLUMN stt_id SET STATISTICS 250;
 
-CREATE INDEX fk_mba_alt ON crs_mesh_blk_area USING btree (alt_id);
-CREATE INDEX fk_mba_mbk ON crs_mesh_blk_area USING btree (mbk_id);
-CREATE INDEX fk_mba_stt ON crs_mesh_blk_area USING btree (stt_id);
-CREATE UNIQUE INDEX mba_aud_id ON crs_mesh_blk_area USING btree (audit_id);
-
 ALTER TABLE crs_mesh_blk_area OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mesh_blk_area FROM PUBLIC;
@@ -1622,11 +1418,6 @@ ALTER TABLE crs_mesh_blk_bdry ALTER COLUMN alt_id SET STATISTICS 500;
 ALTER TABLE crs_mesh_blk_bdry ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_mesh_blk_bdry ALTER COLUMN mbk_id SET STATISTICS 500;
 ALTER TABLE crs_mesh_blk_bdry ALTER COLUMN mbl_id SET STATISTICS 500;
-
-CREATE INDEX fk_mbb_alt ON crs_mesh_blk_bdry USING btree (alt_id);
-CREATE INDEX fk_mbb_mbk ON crs_mesh_blk_bdry USING btree (mbk_id);
-CREATE INDEX fk_mbb_mbl ON crs_mesh_blk_bdry USING btree (mbl_id);
-CREATE UNIQUE INDEX mbb_aud_id ON crs_mesh_blk_bdry USING btree (audit_id);
 
 ALTER TABLE crs_mesh_blk_bdry OWNER TO bde_dba;
 
@@ -1658,10 +1449,6 @@ ALTER TABLE crs_mesh_blk_line ALTER COLUMN alt_id SET STATISTICS 500;
 ALTER TABLE crs_mesh_blk_line ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_mesh_blk_line ALTER COLUMN id SET STATISTICS 500;
 
-CREATE INDEX fk_mbl_alt ON crs_mesh_blk_line USING btree (alt_id);
-CREATE UNIQUE INDEX mbl_aud_id ON crs_mesh_blk_line USING btree (audit_id);
-CREATE INDEX mbl_shape_index ON crs_mesh_blk_line USING gist (shape);
-
 ALTER TABLE crs_mesh_blk_line OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mesh_blk_line FROM PUBLIC;
@@ -1687,17 +1474,11 @@ ALTER TABLE crs_mesh_blk_place ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk_place ALTER COLUMN epl_id SET STATISTICS 250;
 ALTER TABLE crs_mesh_blk_place ALTER COLUMN mbk_id SET STATISTICS 250;
 
-CREATE INDEX fk_mpr_alt ON crs_mesh_blk_place USING btree (alt_id);
-CREATE INDEX fk_mpr_epl ON crs_mesh_blk_place USING btree (epl_id);
-CREATE INDEX fk_mpr_mbk ON crs_mesh_blk_place USING btree (mbk_id);
-CREATE UNIQUE INDEX mpr_aud_id ON crs_mesh_blk_place USING btree (audit_id);
-
 ALTER TABLE crs_mesh_blk_place OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_mesh_blk_place FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_mesh_blk_place TO bde_admin;
 GRANT SELECT ON TABLE crs_mesh_blk_place TO bde_user;
-
 
 --------------------------------------------------------------------------------
 -- BDE table crs_network_plan
@@ -1714,9 +1495,6 @@ CREATE TABLE crs_network_plan (
 
 ALTER TABLE ONLY crs_network_plan
     ADD CONSTRAINT pkey_crs_network_plan PRIMARY KEY (id);
-
-CREATE INDEX fk_nwp_dtm ON crs_network_plan USING btree (dtm_id);
-CREATE UNIQUE INDEX nwp_aud_id ON crs_network_plan USING btree (audit_id);
 
 ALTER TABLE crs_network_plan OWNER TO bde_dba;
 
@@ -1755,14 +1533,6 @@ ALTER TABLE crs_node ALTER COLUMN id SET STATISTICS 1000;
 ALTER TABLE crs_node ALTER COLUMN sit_id SET STATISTICS 1000;
 ALTER TABLE crs_node ALTER COLUMN wrk_id_created SET STATISTICS 1000;
 
-CREATE INDEX fk_nod_alt ON crs_node USING btree (alt_id);
-CREATE INDEX fk_nod_cos ON crs_node USING btree (cos_id_official);
-CREATE INDEX fk_nod_ogo ON crs_node USING btree (order_group_off);
-CREATE INDEX fk_nod_sit ON crs_node USING btree (sit_id);
-CREATE INDEX fk_nod_wrk ON crs_node USING btree (wrk_id_created);
-CREATE UNIQUE INDEX nod_aud_id ON crs_node USING btree (audit_id);
-CREATE INDEX nod_shape_index ON crs_node USING gist (shape);
-
 ALTER TABLE crs_node OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_node FROM PUBLIC;
@@ -1782,11 +1552,6 @@ CREATE TABLE crs_node_prp_order (
 
 ALTER TABLE ONLY crs_node_prp_order
     ADD CONSTRAINT pkey_crs_node_prp_order PRIMARY KEY (dtm_id, nod_id);
-
-CREATE INDEX fk_nwp_nod ON crs_node_prp_order USING btree (nod_id);
-CREATE INDEX fk_npo_dtm ON crs_node_prp_order USING btree (dtm_id);
-CREATE INDEX fk_nwp_cor ON crs_node_prp_order USING btree (cor_id);
-CREATE UNIQUE INDEX npo_aud_id ON crs_node_prp_order USING btree (audit_id);
 
 ALTER TABLE crs_node_prp_order OWNER TO bde_dba;
 
@@ -1813,10 +1578,6 @@ ALTER TABLE ONLY crs_node_works
 ALTER TABLE crs_node_works ALTER COLUMN audit_id SET STATISTICS 1000;
 ALTER TABLE crs_node_works ALTER COLUMN nod_id SET STATISTICS 1000;
 ALTER TABLE crs_node_works ALTER COLUMN wrk_id SET STATISTICS 1000;
-
-CREATE INDEX fk_now_nod ON crs_node_works USING btree (nod_id);
-CREATE INDEX fk_now_wrk ON crs_node_works USING btree (wrk_id);
-CREATE UNIQUE INDEX now_aud_id ON crs_node_works USING btree (audit_id);
 
 ALTER TABLE crs_node_works OWNER TO bde_dba;
 
@@ -1854,12 +1615,6 @@ ALTER TABLE crs_nominal_index ALTER COLUMN prp_id SET STATISTICS 1000;
 ALTER TABLE crs_nominal_index ALTER COLUMN surname SET STATISTICS 1000;
 ALTER TABLE crs_nominal_index ALTER COLUMN ttl_title_no SET STATISTICS 1000;
 
-CREATE INDEX ak_nmi_corp_name ON crs_nominal_index USING btree (corporate_name);
-CREATE INDEX ak_nmi_other_names ON crs_nominal_index USING btree (other_names);
-CREATE INDEX ak_nmi_surname ON crs_nominal_index USING btree (surname, other_names);
-CREATE INDEX fk_nmi_prp ON crs_nominal_index USING btree (prp_id);
-CREATE INDEX fk_prh_ttl ON crs_nominal_index USING btree (ttl_title_no);
-
 ALTER TABLE crs_nominal_index OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_nominal_index FROM PUBLIC;
@@ -1894,10 +1649,6 @@ ALTER TABLE crs_obs_accuracy ALTER COLUMN id SET STATISTICS 1000;
 ALTER TABLE crs_obs_accuracy ALTER COLUMN obn_id1 SET STATISTICS 1000;
 ALTER TABLE crs_obs_accuracy ALTER COLUMN obn_id2 SET STATISTICS 1000;
 
-CREATE INDEX fk_oba_obn1 ON crs_obs_accuracy USING btree (obn_id2);
-CREATE INDEX fk_oba_obn2 ON crs_obs_accuracy USING btree (obn_id1);
-CREATE UNIQUE INDEX oba_aud_id ON crs_obs_accuracy USING btree (audit_id);
-
 ALTER TABLE crs_obs_accuracy OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_obs_accuracy FROM PUBLIC;
@@ -1919,9 +1670,6 @@ CREATE TABLE crs_obs_elem_type (
 ALTER TABLE ONLY crs_obs_elem_type
     ADD CONSTRAINT pkey_crs_obs_elem_type PRIMARY KEY (type);
 
-CREATE INDEX fk_uom_oet ON crs_obs_elem_type USING btree (uom_code);
-CREATE UNIQUE INDEX oet_aud_id ON crs_obs_elem_type USING btree (audit_id);
-
 ALTER TABLE crs_obs_elem_type OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_obs_elem_type FROM PUBLIC;
@@ -1941,8 +1689,6 @@ CREATE TABLE crs_obs_set (
 
 ALTER TABLE ONLY crs_obs_set
     ADD CONSTRAINT pkey_crs_obs_set PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX obs_aud_id ON crs_obs_set USING btree (audit_id);
 
 ALTER TABLE crs_obs_set OWNER TO bde_dba;
 
@@ -1970,11 +1716,6 @@ CREATE TABLE crs_obs_type (
 
 ALTER TABLE ONLY crs_obs_type
     ADD CONSTRAINT pkey_crs_obs_type PRIMARY KEY (type, sub_type);
-
-CREATE INDEX fk_obt_oet1 ON crs_obs_type USING btree (oet_type_1);
-CREATE INDEX fk_obt_oet2 ON crs_obs_type USING btree (oet_type_2);
-CREATE INDEX fk_obt_oet3 ON crs_obs_type USING btree (oet_type_3);
-CREATE UNIQUE INDEX obt_aud_id ON crs_obs_type USING btree (audit_id);
 
 ALTER TABLE crs_obs_type OWNER TO bde_dba;
 
@@ -2027,16 +1768,6 @@ ALTER TABLE crs_observation ALTER COLUMN stp_id_local SET STATISTICS 1000;
 ALTER TABLE crs_observation ALTER COLUMN stp_id_remote SET STATISTICS 1000;
 ALTER TABLE crs_observation ALTER COLUMN vct_id SET STATISTICS 1000;
 
-CREATE INDEX fk_obn_cos ON crs_observation USING btree (cos_id);
-CREATE INDEX fk_obn_obn ON crs_observation USING btree (obn_id_amendment);
-CREATE INDEX fk_obn_obt ON crs_observation USING btree (obt_type, obt_sub_type);
-CREATE INDEX fk_obn_rdn ON crs_observation USING btree (rdn_id);
-CREATE INDEX fk_obn_stp1 ON crs_observation USING btree (stp_id_local);
-CREATE INDEX fk_obn_stp2 ON crs_observation USING btree (stp_id_remote);
-CREATE INDEX fk_obn_vct ON crs_observation USING btree (vct_id);
-CREATE INDEX fk_obs_obn ON crs_observation USING btree (obs_id);
-CREATE UNIQUE INDEX obn_aud_id ON crs_observation USING btree (audit_id);
-
 ALTER TABLE crs_observation OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_observation FROM PUBLIC;
@@ -2061,10 +1792,6 @@ CREATE TABLE crs_off_cord_sys (
 
 ALTER TABLE ONLY crs_off_cord_sys
     ADD CONSTRAINT pkey_crs_off_cord_sys PRIMARY KEY (id);
-
-CREATE INDEX fk_ocs_cos ON crs_off_cord_sys USING btree (cos_id);
-CREATE UNIQUE INDEX ocs_aud_id ON crs_off_cord_sys USING btree (audit_id);
-CREATE INDEX ocs_shape_index ON crs_off_cord_sys USING gist (shape);
 
 ALTER TABLE crs_off_cord_sys OWNER TO bde_dba;
 
@@ -2100,8 +1827,6 @@ CREATE TABLE crs_office (
 
 ALTER TABLE ONLY crs_office
     ADD CONSTRAINT pkey_crs_office PRIMARY KEY (code);
-
-CREATE UNIQUE INDEX ofc_aud_id ON crs_office USING btree (audit_id);
 
 ALTER TABLE crs_office OWNER TO bde_dba;
 
@@ -2140,13 +1865,6 @@ ALTER TABLE crs_ordinate_adj ALTER COLUMN coo_id_output SET STATISTICS 1000;
 ALTER TABLE crs_ordinate_adj ALTER COLUMN coo_id_source SET STATISTICS 1000;
 ALTER TABLE crs_ordinate_adj ALTER COLUMN cor_id_prop SET STATISTICS 1000;
 
-CREATE INDEX fk_orj_adj ON crs_ordinate_adj USING btree (adj_id);
-CREATE INDEX fk_orj_coo_output ON crs_ordinate_adj USING btree (coo_id_output);
-CREATE INDEX fk_orj_coo_source ON crs_ordinate_adj USING btree (coo_id_source);
-CREATE INDEX fk_orj_cor ON crs_ordinate_adj USING btree (cor_id_prop);
-CREATE INDEX orj_adj_coo ON crs_ordinate_adj USING btree (adj_id, coo_id_output);
-CREATE UNIQUE INDEX orj_aud_id ON crs_ordinate_adj USING btree (audit_id);
-
 ALTER TABLE crs_ordinate_adj OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_ordinate_adj FROM PUBLIC;
@@ -2168,9 +1886,6 @@ CREATE TABLE crs_ordinate_type (
 
 ALTER TABLE ONLY crs_ordinate_type
     ADD CONSTRAINT pkey_crs_ordinate_type PRIMARY KEY (type);
-
-CREATE INDEX fk_ort_uom ON crs_ordinate_type USING btree (uom_code);
-CREATE UNIQUE INDEX ort_aud_id ON crs_ordinate_type USING btree (audit_id);
 
 ALTER TABLE crs_ordinate_type OWNER TO bde_dba;
 
@@ -2214,14 +1929,6 @@ ALTER TABLE crs_parcel ALTER COLUMN img_id SET STATISTICS 500;
 ALTER TABLE crs_parcel ALTER COLUMN ldt_loc_id SET STATISTICS 500;
 ALTER TABLE crs_parcel ALTER COLUMN toc_code SET STATISTICS 500;
 
-CREATE INDEX fk_par_alt ON crs_parcel USING btree (alt_id);
-CREATE INDEX fk_par_fen ON crs_parcel USING btree (fen_id);
-CREATE INDEX fk_par_img ON crs_parcel USING btree (img_id);
-CREATE INDEX fk_par_ldt ON crs_parcel USING btree (ldt_loc_id);
-CREATE INDEX fk_par_toc ON crs_parcel USING btree (toc_code);
-CREATE UNIQUE INDEX par_aud_id ON crs_parcel USING btree (audit_id);
-CREATE INDEX par_shape_index ON crs_parcel USING gist (shape);
-
 ALTER TABLE crs_parcel OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_parcel FROM PUBLIC;
@@ -2247,10 +1954,6 @@ ALTER TABLE crs_parcel_bndry ALTER COLUMN audit_id SET STATISTICS 1000;
 ALTER TABLE crs_parcel_bndry ALTER COLUMN lin_id SET STATISTICS 1000;
 ALTER TABLE crs_parcel_bndry ALTER COLUMN pri_id SET STATISTICS 1000;
 
-CREATE INDEX fk_pab_lin ON crs_parcel_bndry USING btree (lin_id);
-CREATE INDEX fk_pab_pri ON crs_parcel_bndry USING btree (pri_id);
-CREATE UNIQUE INDEX pab_aud_id ON crs_parcel_bndry USING btree (audit_id);
-
 ALTER TABLE crs_parcel_bndry OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_parcel_bndry FROM PUBLIC;
@@ -2273,10 +1976,6 @@ ALTER TABLE ONLY crs_parcel_dimen
 ALTER TABLE crs_parcel_dimen ALTER COLUMN audit_id SET STATISTICS 1000;
 ALTER TABLE crs_parcel_dimen ALTER COLUMN obn_id SET STATISTICS 1000;
 ALTER TABLE crs_parcel_dimen ALTER COLUMN par_id SET STATISTICS 1000;
-
-CREATE INDEX fk_pdi_obn ON crs_parcel_dimen USING btree (obn_id);
-CREATE INDEX fk_pdi_par ON crs_parcel_dimen USING btree (par_id);
-CREATE UNIQUE INDEX pdi_aud_id ON crs_parcel_dimen USING btree (audit_id);
 
 ALTER TABLE crs_parcel_dimen OWNER TO bde_dba;
 
@@ -2306,10 +2005,6 @@ ALTER TABLE crs_parcel_label ALTER COLUMN audit_id SET STATISTICS 500;
 ALTER TABLE crs_parcel_label ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_parcel_label ALTER COLUMN par_id SET STATISTICS 500;
 
-CREATE INDEX fk_lb1_par ON crs_parcel_label USING btree (par_id);
-CREATE UNIQUE INDEX plb_aud_id ON crs_parcel_label USING btree (audit_id);
-CREATE INDEX plb_shape_index ON crs_parcel_label USING gist (shape);
-
 ALTER TABLE crs_parcel_label OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_parcel_label FROM PUBLIC;
@@ -2336,10 +2031,6 @@ ALTER TABLE crs_parcel_ring ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_parcel_ring ALTER COLUMN par_id SET STATISTICS 500;
 ALTER TABLE crs_parcel_ring ALTER COLUMN pri_id_parent_ring SET STATISTICS 500;
 
-CREATE INDEX fk_pri_par ON crs_parcel_ring USING btree (par_id);
-CREATE INDEX fk_pri_pri ON crs_parcel_ring USING btree (pri_id_parent_ring);
-CREATE UNIQUE INDEX pri_aud_id ON crs_parcel_ring USING btree (audit_id);
-
 ALTER TABLE crs_parcel_ring OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_parcel_ring FROM PUBLIC;
@@ -2361,8 +2052,6 @@ ALTER TABLE ONLY crs_process
 
 ALTER TABLE crs_process ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_process ALTER COLUMN job_id SET STATISTICS 500;
-
-CREATE INDEX fk_pro_job ON crs_process USING btree (job_id);
 
 ALTER TABLE crs_process OWNER TO bde_dba;
 
@@ -2393,10 +2082,6 @@ CREATE TABLE crs_programme (
 
 ALTER TABLE ONLY crs_programme
     ADD CONSTRAINT pkey_crs_programme PRIMARY KEY (id);
-
-CREATE INDEX fk_pgm_usr ON crs_programme USING btree (usr_id);
-CREATE INDEX fk_pgm_nwp ON crs_programme USING btree (nwp_id);
-CREATE UNIQUE INDEX pgm_aud_id ON crs_programme USING btree (audit_id);
 
 ALTER TABLE crs_programme OWNER TO bde_dba;
 
@@ -2430,8 +2115,6 @@ ALTER TABLE ONLY crs_proprietor
 ALTER TABLE crs_proprietor ALTER COLUMN ets_id SET STATISTICS 500;
 ALTER TABLE crs_proprietor ALTER COLUMN id SET STATISTICS 500;
 
-CREATE INDEX fk_ess_prp ON crs_proprietor USING btree (ets_id);
-
 ALTER TABLE crs_proprietor OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_proprietor FROM PUBLIC;
@@ -2452,9 +2135,6 @@ CREATE TABLE crs_reduct_meth (
 
 ALTER TABLE ONLY crs_reduct_meth
     ADD CONSTRAINT pkey_crs_reduct_meth PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX rdm_aud_id ON crs_reduct_meth USING btree (audit_id);
-CREATE UNIQUE INDEX rdm_name ON crs_reduct_meth USING btree (name);
 
 ALTER TABLE crs_reduct_meth OWNER TO bde_dba;
 
@@ -2480,10 +2160,6 @@ CREATE TABLE crs_reduct_run (
 ALTER TABLE ONLY crs_reduct_run
     ADD CONSTRAINT pkey_crs_reduct_run PRIMARY KEY (id);
 
-CREATE INDEX fk_rdn_rdm ON crs_reduct_run USING btree (rdm_id);
-CREATE INDEX fk_rdn_usr ON crs_reduct_run USING btree (usr_id_exec);
-CREATE UNIQUE INDEX rdn_aud_id ON crs_reduct_run USING btree (audit_id);
-
 ALTER TABLE crs_reduct_run OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_reduct_run FROM PUBLIC;
@@ -2507,10 +2183,6 @@ ALTER TABLE ONLY crs_ref_survey
 ALTER TABLE crs_ref_survey ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_ref_survey ALTER COLUMN sur_wrk_id_exist SET STATISTICS 250;
 ALTER TABLE crs_ref_survey ALTER COLUMN sur_wrk_id_new SET STATISTICS 250;
-
-CREATE INDEX fk_rsu_sur_frm ON crs_ref_survey USING btree (sur_wrk_id_new);
-CREATE INDEX fk_rsu_sur_to ON crs_ref_survey USING btree (sur_wrk_id_exist);
-CREATE UNIQUE INDEX rsu_aud_id ON crs_ref_survey USING btree (audit_id);
 
 ALTER TABLE crs_ref_survey OWNER TO bde_dba;
 
@@ -2543,10 +2215,6 @@ ALTER TABLE crs_req_det ALTER COLUMN rqh_id SET STATISTICS 500;
 ALTER TABLE crs_req_det ALTER COLUMN rqi_code SET STATISTICS 500;
 ALTER TABLE crs_req_det ALTER COLUMN tin_id SET STATISTICS 500;
 
-CREATE INDEX fk_rqd_rqh ON crs_req_det USING btree (rqh_id);
-CREATE INDEX fk_rqd_rqi ON crs_req_det USING btree (rqi_code);
-CREATE INDEX fk_rqd_tin ON crs_req_det USING btree (tin_id);
-
 ALTER TABLE crs_req_det OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_req_det FROM PUBLIC;
@@ -2578,12 +2246,6 @@ ALTER TABLE crs_req_hdr ALTER COLUMN sud_id SET STATISTICS 250;
 ALTER TABLE crs_req_hdr ALTER COLUMN usr_id SET STATISTICS 250;
 ALTER TABLE crs_req_hdr ALTER COLUMN wrk_id SET STATISTICS 250;
 
-CREATE INDEX fk_rqh_dlg ON crs_req_hdr USING btree (dlg_id);
-CREATE INDEX fk_rqh_sud ON crs_req_hdr USING btree (sud_id);
-CREATE INDEX fk_rqh_usr ON crs_req_hdr USING btree (usr_id);
-CREATE INDEX fk_rqh_wrk ON crs_req_hdr USING btree (wrk_id);
-CREATE UNIQUE INDEX fk_rqh_aud ON crs_req_hdr USING btree (audit_id);
-
 ALTER TABLE crs_req_hdr OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_req_hdr FROM PUBLIC;
@@ -2605,8 +2267,6 @@ CREATE TABLE crs_req_item (
 
 ALTER TABLE ONLY crs_req_item
     ADD CONSTRAINT pkey_crs_req_item PRIMARY KEY (code);
-
-CREATE UNIQUE INDEX fk_rqi_aud ON crs_req_item USING btree (audit_id);
 
 ALTER TABLE crs_req_item OWNER TO bde_dba;
 
@@ -2639,10 +2299,6 @@ ALTER TABLE crs_road_ctr_line ALTER COLUMN alt_id SET STATISTICS 250;
 ALTER TABLE crs_road_ctr_line ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_road_ctr_line ALTER COLUMN id SET STATISTICS 250;
 
-CREATE INDEX fk_rcl_alt ON crs_road_ctr_line USING btree (alt_id);
-CREATE UNIQUE INDEX rcl_aud_id ON crs_road_ctr_line USING btree (audit_id);
-CREATE INDEX rcl_shape_index ON crs_road_ctr_line USING gist (shape);
-
 ALTER TABLE crs_road_ctr_line OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_road_ctr_line FROM PUBLIC;
@@ -2666,10 +2322,6 @@ CREATE TABLE crs_road_name (
 
 ALTER TABLE ONLY crs_road_name
     ADD CONSTRAINT pkey_crs_road_name PRIMARY KEY (id);
-
-CREATE INDEX fk_rna_alt ON crs_road_name USING btree (alt_id);
-CREATE INDEX ix_rna_name ON crs_road_name USING btree (name);
-CREATE UNIQUE INDEX rna_aud_id ON crs_road_name USING btree (audit_id);
 
 ALTER TABLE crs_road_name OWNER TO bde_dba;
 
@@ -2696,11 +2348,6 @@ ALTER TABLE crs_road_name_asc ALTER COLUMN alt_id SET STATISTICS 250;
 ALTER TABLE crs_road_name_asc ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_road_name_asc ALTER COLUMN rcl_id SET STATISTICS 250;
 ALTER TABLE crs_road_name_asc ALTER COLUMN rna_id SET STATISTICS 250;
-
-CREATE INDEX fk_rns_alt ON crs_road_name_asc USING btree (alt_id);
-CREATE INDEX fk_rns_rcl ON crs_road_name_asc USING btree (rcl_id);
-CREATE INDEX fk_rns_rna ON crs_road_name_asc USING btree (rna_id);
-CREATE UNIQUE INDEX rns_aud_id ON crs_road_name_asc USING btree (audit_id);
 
 ALTER TABLE crs_road_name_asc OWNER TO bde_dba;
 
@@ -2731,11 +2378,6 @@ ALTER TABLE crs_setup ALTER COLUMN id SET STATISTICS 1000;
 ALTER TABLE crs_setup ALTER COLUMN nod_id SET STATISTICS 1000;
 ALTER TABLE crs_setup ALTER COLUMN wrk_id SET STATISTICS 1000;
 
-CREATE INDEX fk_stp_nod ON crs_setup USING btree (nod_id);
-CREATE INDEX fk_stp_wrk ON crs_setup USING btree (wrk_id);
-CREATE UNIQUE INDEX stp_aud_id ON crs_setup USING btree (audit_id);
-CREATE INDEX stp_equip_type ON crs_setup USING btree (equipment_type);
-
 ALTER TABLE crs_setup OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_setup FROM PUBLIC;
@@ -2762,9 +2404,6 @@ ALTER TABLE crs_site ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_site ALTER COLUMN id SET STATISTICS 250;
 ALTER TABLE crs_site ALTER COLUMN wrk_id_created SET STATISTICS 250;
 
-CREATE INDEX sit_wrk_id_created ON crs_site USING btree (wrk_id_created);
-CREATE UNIQUE INDEX sit_aud_id ON crs_site USING btree (audit_id);
-
 ALTER TABLE crs_site OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_site FROM PUBLIC;
@@ -2787,8 +2426,6 @@ ALTER TABLE ONLY crs_site_locality
 ALTER TABLE crs_site_locality ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_site_locality ALTER COLUMN loc_id SET STATISTICS 250;
 ALTER TABLE crs_site_locality ALTER COLUMN sit_id SET STATISTICS 250;
-
-CREATE UNIQUE INDEX slo_aud_id ON crs_site_locality USING btree (audit_id);
 
 ALTER TABLE crs_site_locality OWNER TO bde_dba;
 
@@ -2817,10 +2454,6 @@ ALTER TABLE ONLY crs_stat_act_parcl
 ALTER TABLE crs_stat_act_parcl ALTER COLUMN par_id SET STATISTICS 250;
 ALTER TABLE crs_stat_act_parcl ALTER COLUMN sta_id SET STATISTICS 250;
 
-CREATE INDEX fk_sap_par ON crs_stat_act_parcl USING btree (par_id);
-CREATE INDEX fk_sap_sta ON crs_stat_act_parcl USING btree (sta_id);
-CREATE UNIQUE INDEX fk_sap_aud ON crs_stat_act_parcl USING btree (audit_id);
-
 ALTER TABLE crs_stat_act_parcl OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_stat_act_parcl FROM PUBLIC;
@@ -2843,8 +2476,6 @@ CREATE TABLE crs_stat_version (
 
 ALTER TABLE ONLY crs_stat_version
     ADD CONSTRAINT pkey_crs_stat_version PRIMARY KEY (version, area_class);
-
-CREATE UNIQUE INDEX sav_aud_id ON crs_stat_version USING btree (audit_id);
 
 ALTER TABLE crs_stat_version OWNER TO bde_dba;
 
@@ -2877,12 +2508,6 @@ CREATE TABLE crs_statist_area (
 ALTER TABLE ONLY crs_statist_area
     ADD CONSTRAINT pkey_crs_statist_area PRIMARY KEY (id);
 
-CREATE INDEX fk_saa_alt ON crs_statist_area USING btree (alt_id);
-CREATE INDEX fk_stt_sav ON crs_statist_area USING btree (sav_version, sav_area_class);
-CREATE INDEX fk_stt_usr ON crs_statist_area USING btree (usr_id_firm_ta);
-CREATE UNIQUE INDEX stt_aud_id ON crs_statist_area USING btree (audit_id);
-CREATE INDEX stt_shape_index ON crs_statist_area USING gist (shape);
-
 ALTER TABLE crs_statist_area OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_statist_area FROM PUBLIC;
@@ -2907,9 +2532,6 @@ CREATE TABLE crs_statute  (
 
 ALTER TABLE ONLY crs_statute
     ADD CONSTRAINT pkey_crs_statute PRIMARY KEY (id);
-
-CREATE UNIQUE INDEX ak_ste_ak1 ON crs_statute USING btree (section, name_and_date);
-CREATE UNIQUE INDEX ste_aud_id ON crs_statute USING btree (audit_id);
 
 ALTER TABLE crs_statute OWNER TO bde_dba;
 
@@ -2942,10 +2564,6 @@ ALTER TABLE crs_statute_action ALTER COLUMN audit_id SET STATISTICS 250;
 ALTER TABLE crs_statute_action ALTER COLUMN id SET STATISTICS 250;
 ALTER TABLE crs_statute_action ALTER COLUMN ste_id SET STATISTICS 250;
 ALTER TABLE crs_statute_action ALTER COLUMN sur_wrk_id_vesting SET STATISTICS 250;
-
-CREATE INDEX fk_sta_ste ON crs_statute_action USING btree (ste_id);
-CREATE INDEX fk_sta_sur ON crs_statute_action USING btree (sur_wrk_id_vesting);
-CREATE UNIQUE INDEX sta_aud_id ON crs_statute_action USING btree (audit_id);
 
 ALTER TABLE crs_statute_action OWNER TO bde_dba;
 
@@ -2984,12 +2602,6 @@ ALTER TABLE crs_street_address ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_street_address ALTER COLUMN rcl_id SET STATISTICS 500;
 ALTER TABLE crs_street_address ALTER COLUMN rna_id SET STATISTICS 500;
 
-CREATE INDEX fk_sad_alt ON crs_street_address USING btree (alt_id);
-CREATE INDEX fk_sad_rcl ON crs_street_address USING btree (rcl_id);
-CREATE INDEX fk_sad_rna ON crs_street_address USING btree (rna_id);
-CREATE UNIQUE INDEX sad_aud_id ON crs_street_address USING btree (audit_id);
-CREATE INDEX sad_shape_index ON crs_street_address USING gist (shape);
-
 ALTER TABLE crs_street_address OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_street_address FROM PUBLIC;
@@ -3017,11 +2629,6 @@ ALTER TABLE crs_sur_admin_area ALTER COLUMN stt_id SET STATISTICS 250;
 ALTER TABLE crs_sur_admin_area ALTER COLUMN sur_wrk_id SET STATISTICS 250;
 ALTER TABLE crs_sur_admin_area ALTER COLUMN xstt_id SET STATISTICS 250;
 
-CREATE INDEX fk_saa_stt ON crs_sur_admin_area USING btree (stt_id);
-CREATE INDEX fk_saa_sur ON crs_sur_admin_area USING btree (sur_wrk_id);
-CREATE INDEX fk_saa_xstt ON crs_sur_admin_area USING btree (eed_req_id, xstt_id);
-CREATE UNIQUE INDEX saa_aud_id ON crs_sur_admin_area USING btree (audit_id);
-
 ALTER TABLE crs_sur_admin_area OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_sur_admin_area FROM PUBLIC;
@@ -3047,9 +2654,6 @@ ALTER TABLE ONLY crs_sur_plan_ref
 
 ALTER TABLE crs_sur_plan_ref ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_sur_plan_ref ALTER COLUMN wrk_id SET STATISTICS 500;
-
-CREATE INDEX fk_wrk_id ON crs_sur_plan_ref USING btree (wrk_id);
-CREATE INDEX spf_shape_index ON crs_sur_plan_ref USING gist (shape);
 
 ALTER TABLE crs_sur_plan_ref OWNER TO bde_dba;
 
@@ -3106,15 +2710,6 @@ ALTER TABLE crs_survey ALTER COLUMN usr_id_sol SET STATISTICS 500;
 ALTER TABLE crs_survey ALTER COLUMN usr_id_sol_firm SET STATISTICS 500;
 ALTER TABLE crs_survey ALTER COLUMN wrk_id SET STATISTICS 500;
 
-CREATE UNIQUE INDEX ak_sur_idx ON crs_survey USING btree (dataset_id, dataset_series, ldt_loc_id, dataset_suffix);
-CREATE INDEX fk_sur_fhr ON crs_survey USING btree (fhr_id);
-CREATE INDEX fk_sur_ldt ON crs_survey USING btree (ldt_loc_id);
-CREATE INDEX fk_sur_pnx ON crs_survey USING btree (pnx_id_submitted);
-CREATE INDEX fk_sur_sig ON crs_survey USING btree (sig_id);
-CREATE INDEX fk_sur_usr_firm_sol ON crs_survey USING btree (usr_id_sol_firm);
-CREATE INDEX fk_sur_usr_sol ON crs_survey USING btree (usr_id_sol);
-CREATE UNIQUE INDEX sur_aud_id ON crs_survey USING btree (audit_id);
-
 ALTER TABLE crs_survey OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_survey FROM PUBLIC;
@@ -3134,10 +2729,6 @@ CREATE TABLE crs_survey_image (
 
 ALTER TABLE ONLY crs_survey_image
     ADD CONSTRAINT pkey_crs_survey_image PRIMARY KEY (type, sur_wrk_id);
-
-CREATE INDEX fk_sim_img ON crs_survey_image USING btree (img_id);
-CREATE INDEX fk_sim_sur ON crs_survey_image USING btree (sur_wrk_id);
-CREATE UNIQUE INDEX sim_aud_id ON crs_survey_image USING btree (audit_id);
 
 ALTER TABLE crs_survey_image OWNER TO bde_dba;
 
@@ -3165,10 +2756,6 @@ CREATE TABLE crs_sys_code (
 ALTER TABLE ONLY crs_sys_code
     ADD CONSTRAINT pkey_crs_sys_code PRIMARY KEY (scg_code, code);
 
-CREATE INDEX fk_sco_scg ON crs_sys_code USING btree (scg_code);
-CREATE UNIQUE INDEX fk_sco_scg_code ON crs_sys_code USING btree (scg_code, code);
-CREATE UNIQUE INDEX sco_aud_id ON crs_sys_code USING btree (audit_id);
-
 ALTER TABLE crs_sys_code OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_sys_code FROM PUBLIC;
@@ -3194,8 +2781,6 @@ CREATE TABLE crs_sys_code_group (
 ALTER TABLE ONLY crs_sys_code_group
     ADD CONSTRAINT pkey_crs_sys_code_group PRIMARY KEY (code);
 
-CREATE UNIQUE INDEX scg_aud_id ON crs_sys_code_group USING btree (audit_id);
-
 ALTER TABLE crs_sys_code_group OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_sys_code_group FROM PUBLIC;
@@ -3218,10 +2803,6 @@ CREATE TABLE crs_task (
 
 ALTER TABLE ONLY crs_task
     ADD CONSTRAINT pkey_crs_task PRIMARY KEY (id);
-
-CREATE INDEX fk_tsk_skp ON crs_task USING btree (skp_id);
-CREATE INDEX fk_tsk_sob ON crs_task USING btree (sob_name);
-CREATE INDEX fk_tsk_sob_mdi ON crs_task USING btree (sob_mdi_name);
 
 ALTER TABLE crs_task OWNER TO bde_dba;
 
@@ -3249,10 +2830,6 @@ CREATE TABLE crs_task_list (
 
 ALTER TABLE ONLY crs_task_list
     ADD CONSTRAINT pkey_crs_task_list PRIMARY KEY (id);
-
-CREATE INDEX fk_tkl_trt ON crs_task_list USING btree (trt_grp, trt_type);
-CREATE INDEX fk_tkl_tsk ON crs_task_list USING btree (tsk_id);
-CREATE UNIQUE INDEX tkl_audit_id ON crs_task_list USING btree (audit_id);
 
 ALTER TABLE crs_task_list OWNER TO bde_dba;
 
@@ -3307,18 +2884,6 @@ ALTER TABLE crs_title ALTER COLUMN sur_wrk_id_preallc SET STATISTICS 500;
 ALTER TABLE crs_title ALTER COLUMN title_no SET STATISTICS 500;
 ALTER TABLE crs_title ALTER COLUMN ttl_title_no_srs SET STATISTICS 500;
 
-CREATE INDEX fk_ttl_alt ON crs_title USING btree (alt_id);
-CREATE INDEX fk_ttl_dlg ON crs_title USING btree (dlg_id);
-CREATE INDEX fk_ttl_ldt ON crs_title USING btree (ldt_loc_id);
-CREATE INDEX fk_ttl_phy ON crs_title USING btree (phy_prod_no);
-CREATE INDEX fk_ttl_ste ON crs_title USING btree (ste_id);
-CREATE INDEX fk_ttl_sur ON crs_title USING btree (sur_wrk_id);
-CREATE INDEX fk_ttl_ttl ON crs_title USING btree (ttl_title_no_srs);
-CREATE INDEX fk_ttl_wrk ON crs_title USING btree (sur_wrk_id_preallc);
-CREATE INDEX fk_ttl_psd ON crs_title USING btree (protect_start);
-CREATE INDEX fk_ttl_ped ON crs_title USING btree (protect_end);
-CREATE UNIQUE INDEX ttl_aud_id ON crs_title USING btree (audit_id);
-
 ALTER TABLE crs_title OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_title FROM PUBLIC;
@@ -3343,10 +2908,6 @@ ALTER TABLE crs_title_action ALTER COLUMN ttl_title_no SET STATISTICS 1000;
 ALTER TABLE crs_title_action ALTER COLUMN act_tin_id SET STATISTICS 1000;
 ALTER TABLE crs_title_action ALTER COLUMN act_id SET STATISTICS 1000;
 ALTER TABLE crs_title_action ALTER COLUMN audit_id SET STATISTICS 1000;
-
-CREATE INDEX fk_tta_ttl ON crs_title_action USING btree (ttl_title_no);
-CREATE INDEX fk_tta_act ON crs_title_action USING btree (act_tin_id, act_id);
-CREATE UNIQUE INDEX tta_aud_id ON crs_title_action USING btree (audit_id);
 
 ALTER TABLE crs_title_action OWNER TO bde_dba;
 
@@ -3406,10 +2967,6 @@ ALTER TABLE crs_title_estate ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_title_estate ALTER COLUMN lgd_id SET STATISTICS 500;
 ALTER TABLE crs_title_estate ALTER COLUMN ttl_title_no SET STATISTICS 500;
 
-CREATE INDEX fk_ett_act_crt ON crs_title_estate USING btree (act_tin_id_crt);
-CREATE INDEX fk_ett_lgd ON crs_title_estate USING btree (lgd_id);
-CREATE INDEX fk_ttl_ett ON crs_title_estate USING btree (ttl_title_no);
-
 ALTER TABLE crs_title_estate OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_title_estate FROM PUBLIC;
@@ -3441,9 +2998,6 @@ ALTER TABLE ONLY crs_title_mem_text
 ALTER TABLE crs_title_mem_text ALTER COLUMN ttm_id SET STATISTICS 1000;
 ALTER TABLE crs_title_mem_text ALTER COLUMN sequence_no SET STATISTICS 1000;
 ALTER TABLE crs_title_mem_text ALTER COLUMN audit_id SET STATISTICS 1000;
-
-CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
-CREATE UNIQUE INDEX tmt_aud_id ON crs_title_mem_text USING btree (audit_id);
 
 ALTER TABLE crs_title_mem_text OWNER TO bde_dba;
 
@@ -3495,12 +3049,6 @@ ALTER TABLE crs_title_memorial ALTER COLUMN act_id_orig SET STATISTICS 1000;
 ALTER TABLE crs_title_memorial ALTER COLUMN act_tin_id_ext SET STATISTICS 1000;
 ALTER TABLE crs_title_memorial ALTER COLUMN act_id_ext SET STATISTICS 1000;
 
-CREATE INDEX fk_ttl_ttm ON crs_title_memorial USING btree (ttl_title_no);
-CREATE INDEX fk_ttm_mmt ON crs_title_memorial USING btree (mmt_code);
-CREATE INDEX fk_ttm_act_crt ON crs_title_memorial USING btree (act_tin_id_crt, act_id_crt);
-CREATE INDEX fk_ttm_act_orig ON crs_title_memorial USING btree (act_tin_id_orig, act_id_orig);
-CREATE INDEX fk_ttm_act_ext ON crs_title_memorial USING btree (act_tin_id_ext, act_id_ext);
-
 ALTER TABLE crs_title_memorial OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_title_memorial FROM PUBLIC;
@@ -3520,8 +3068,6 @@ CREATE TABLE crs_topology_class  (
 
 ALTER TABLE ONLY crs_topology_class
     ADD CONSTRAINT pkey_crs_topology_class PRIMARY KEY (code);
-
-CREATE UNIQUE INDEX top_aud_id ON crs_topology_class USING btree (audit_id);
 
 ALTER TABLE crs_topology_class OWNER TO bde_dba;
 
@@ -3585,11 +3131,6 @@ CREATE TABLE crs_transact_type (
 ALTER TABLE ONLY crs_transact_type
     ADD CONSTRAINT pkey_crs_transact_type PRIMARY KEY (grp, type);
 
-CREATE INDEX fk_trt_sob ON crs_transact_type USING btree (sob_name);
-CREATE INDEX fk_trt_trt_dischar ON crs_transact_type USING btree (trt_grp_discrg, trt_type_discrg);
-CREATE UNIQUE INDEX idx_crs_tran_desc ON crs_transact_type USING btree (grp, description, "type");
-CREATE UNIQUE INDEX trt_aud_id ON crs_transact_type USING btree (audit_id);
-
 ALTER TABLE crs_transact_type OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_transact_type FROM PUBLIC;
@@ -3618,10 +3159,6 @@ ALTER TABLE crs_ttl_enc ALTER COLUMN act_tin_id_crt SET STATISTICS 500;
 ALTER TABLE crs_ttl_enc ALTER COLUMN enc_id SET STATISTICS 500;
 ALTER TABLE crs_ttl_enc ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_ttl_enc ALTER COLUMN ttl_title_no SET STATISTICS 500;
-
-CREATE INDEX fk_tte_enc ON crs_ttl_enc USING btree (enc_id);
-CREATE INDEX fk_tte_ttl ON crs_ttl_enc USING btree (ttl_title_no);
-CREATE INDEX idx_tin_usr ON crs_ttl_enc USING btree (act_tin_id_crt);
 
 ALTER TABLE crs_ttl_enc OWNER TO bde_dba;
 
@@ -3653,11 +3190,6 @@ ALTER TABLE crs_ttl_hierarchy ALTER COLUMN id SET STATISTICS 500;
 ALTER TABLE crs_ttl_hierarchy ALTER COLUMN tdr_id SET STATISTICS 500;
 ALTER TABLE crs_ttl_hierarchy ALTER COLUMN ttl_title_no_flw SET STATISTICS 500;
 ALTER TABLE crs_ttl_hierarchy ALTER COLUMN ttl_title_no_prior SET STATISTICS 500;
-
-CREATE INDEX fk_tlh_tdr ON crs_ttl_hierarchy USING btree (tdr_id);
-CREATE INDEX fk_tlh_ttl_flw ON crs_ttl_hierarchy USING btree (ttl_title_no_flw);
-CREATE INDEX fk_tlh_ttl_prior ON crs_ttl_hierarchy USING btree (ttl_title_no_prior);
-CREATE INDEX idx_act_tin_id_crt ON crs_ttl_hierarchy USING btree (act_tin_id_crt);
 
 ALTER TABLE crs_ttl_hierarchy OWNER TO bde_dba;
 
@@ -3714,16 +3246,6 @@ ALTER TABLE crs_ttl_inst ALTER COLUMN trt_grp SET STATISTICS 500;
 ALTER TABLE crs_ttl_inst ALTER COLUMN trt_type SET STATISTICS 500;
 ALTER TABLE crs_ttl_inst ALTER COLUMN usr_id_approve SET STATISTICS 500;
 
-CREATE INDEX ak_tin_inst_no ON crs_ttl_inst USING btree (inst_no);
-CREATE INDEX fk_tin_dlg ON crs_ttl_inst USING btree (dlg_id);
-CREATE INDEX fk_tin_img ON crs_ttl_inst USING btree (img_id);
-CREATE INDEX fk_tin_ldt ON crs_ttl_inst USING btree (ldt_loc_id);
-CREATE INDEX fk_tin_pro ON crs_ttl_inst USING btree (pro_id);
-CREATE INDEX fk_tin_tin ON crs_ttl_inst USING btree (tin_id_parent);
-CREATE INDEX fk_tin_trt ON crs_ttl_inst USING btree (trt_grp, trt_type);
-CREATE INDEX fk_tin_usr ON crs_ttl_inst USING btree (usr_id_approve);
-CREATE INDEX tin_aud_id ON crs_ttl_inst USING btree (audit_id);
-
 ALTER TABLE crs_ttl_inst OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_ttl_inst FROM PUBLIC;
@@ -3747,10 +3269,6 @@ ALTER TABLE ONLY crs_ttl_inst_title
 ALTER TABLE crs_ttl_inst_title ALTER COLUMN tin_id SET STATISTICS 1000;
 ALTER TABLE crs_ttl_inst_title ALTER COLUMN ttl_title_no SET STATISTICS 1000;
 
-CREATE INDEX fk_tnt_tin ON crs_ttl_inst_title USING btree (tin_id);
-CREATE INDEX fk_tnt_ttl ON crs_ttl_inst_title USING btree (ttl_title_no);
-CREATE UNIQUE INDEX tnt_aud_id ON crs_ttl_inst_title USING btree (audit_id);
-
 ALTER TABLE crs_ttl_inst_title OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_ttl_inst_title FROM PUBLIC;
@@ -3769,8 +3287,6 @@ CREATE TABLE crs_unit_of_meas (
 
 ALTER TABLE ONLY crs_unit_of_meas
     ADD CONSTRAINT pkey_crs_unit_of_meas PRIMARY KEY (code);
-
-CREATE UNIQUE INDEX uom_aud_id ON crs_unit_of_meas USING btree (audit_id);
 
 ALTER TABLE crs_unit_of_meas OWNER TO bde_dba;
 
@@ -3838,11 +3354,6 @@ CREATE TABLE crs_user (
 ALTER TABLE ONLY crs_user
     ADD CONSTRAINT pkey_crs_user PRIMARY KEY (id);
 
-CREATE INDEX fk_usr_off ON crs_user USING btree (off_code);
-CREATE INDEX fk_usr_usr ON crs_user USING btree (usr_id_coordinator);
-CREATE INDEX fk_usr_usr_parent ON crs_user USING btree (usr_id_parent);
-CREATE UNIQUE INDEX usr_aud_id ON crs_user USING btree (audit_id);
-
 ALTER TABLE crs_user OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_user FROM PUBLIC;
@@ -3875,12 +3386,6 @@ ALTER TABLE crs_vector ALTER COLUMN id SET STATISTICS 1000;
 ALTER TABLE crs_vector ALTER COLUMN nod_id_end SET STATISTICS 1000;
 ALTER TABLE crs_vector ALTER COLUMN nod_id_start SET STATISTICS 1000;
 
-CREATE INDEX fk_vct_nod_end ON crs_vector USING btree (nod_id_end);
-CREATE INDEX fk_vct_nod_start ON crs_vector USING btree (nod_id_start);
-CREATE UNIQUE INDEX vct_ak1 ON crs_vector USING btree ("type", nod_id_start, nod_id_end);
-CREATE UNIQUE INDEX vct_aud_id ON crs_vector USING btree (audit_id);
-CREATE INDEX vct_shape_index ON crs_vector USING gist (shape);
-
 ALTER TABLE crs_vector OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_vector FROM PUBLIC;
@@ -3903,9 +3408,6 @@ ALTER TABLE ONLY crs_vertx_sequence
     ADD CONSTRAINT pkey_crs_vertx_sequence PRIMARY KEY (lin_id, sequence);
 
 ALTER TABLE crs_vertx_sequence ALTER COLUMN lin_id SET STATISTICS 1000;
-
-CREATE INDEX fk_vts_lin_id ON crs_vertx_sequence USING btree (lin_id);
-CREATE UNIQUE INDEX vts_aud_id ON crs_vertx_sequence USING btree (audit_id);
 
 ALTER TABLE crs_vertx_sequence OWNER TO bde_dba;
 
@@ -3969,22 +3471,6 @@ ALTER TABLE crs_work ALTER COLUMN usr_id_prin_firm SET STATISTICS 500;
 ALTER TABLE crs_work ALTER COLUMN usr_id_validated SET STATISTICS 500;
 ALTER TABLE crs_work ALTER COLUMN validated_date SET STATISTICS 500;
 
-CREATE INDEX fk_wrk_alt ON crs_work USING btree (alt_id);
-CREATE INDEX fk_wrk_auth_date ON crs_work USING btree (authorised_date);
-CREATE INDEX fk_wrk_cel ON crs_work USING btree (cel_id);
-CREATE INDEX fk_wrk_con ON crs_work USING btree (con_id);
-CREATE INDEX fk_wrk_cos ON crs_work USING btree (cos_id);
-CREATE INDEX fk_wrk_lodged_date ON crs_work USING btree (lodged_date);
-CREATE INDEX fk_wrk_pro ON crs_work USING btree (pro_id);
-CREATE INDEX fk_wrk_trt ON crs_work USING btree (trt_grp, trt_type);
-CREATE INDEX fk_wrk_usr ON crs_work USING btree (usr_id_firm);
-CREATE INDEX fk_wrk_usr_auth ON crs_work USING btree (usr_id_authorised);
-CREATE INDEX fk_wrk_usr_firm_prin ON crs_work USING btree (usr_id_prin_firm);
-CREATE INDEX fk_wrk_usr_prpd ON crs_work USING btree (usr_id_principal);
-CREATE INDEX fk_wrk_usr_val ON crs_work USING btree (usr_id_validated);
-CREATE INDEX fk_wrk_val_date ON crs_work USING btree (validated_date);
-CREATE UNIQUE INDEX wrk_aud_id ON crs_work USING btree (audit_id);
-
 ALTER TABLE crs_work OWNER TO bde_dba;
 
 REVOKE ALL ON TABLE crs_work FROM PUBLIC;
@@ -4024,4 +3510,5 @@ VALUES
 
 END;
 $SCHEMA$;
+
 
