@@ -1157,7 +1157,7 @@ CREATE INDEX fk_jtl_job ON crs_job_task_list USING btree (job_id);
 CREATE INDEX fk_jtl_tkl ON crs_job_task_list USING btree (tkl_id);
 CREATE INDEX fk_jtl_usr ON crs_job_task_list USING btree (usr_id);
 CREATE INDEX idx_jtl_date_comp ON crs_job_task_list USING btree (date_completed);
-CREATE INDEX ix_crs_jtl_stat ON crs_job_task_list USING btree (status, usr_id);
+CREATE INDEX idx_crs_jtl_stat ON crs_job_task_list USING btree (status, usr_id);
 CREATE INDEX jtl_audit_id ON crs_job_task_list USING btree (audit_id);
 
 ALTER TABLE crs_job_task_list OWNER TO bde_dba;
@@ -2819,7 +2819,6 @@ ALTER TABLE crs_stat_act_parcl ALTER COLUMN sta_id SET STATISTICS 250;
 
 CREATE INDEX fk_sap_par ON crs_stat_act_parcl USING btree (par_id);
 CREATE INDEX fk_sap_sta ON crs_stat_act_parcl USING btree (sta_id);
-CREATE UNIQUE INDEX pk_crs_stat_act_pa ON crs_stat_act_parcl USING btree (sta_id, par_id);
 CREATE UNIQUE INDEX fk_sap_aud ON crs_stat_act_parcl USING btree (audit_id);
 
 ALTER TABLE crs_stat_act_parcl OWNER TO bde_dba;
@@ -3167,6 +3166,7 @@ ALTER TABLE ONLY crs_sys_code
     ADD CONSTRAINT pkey_crs_sys_code PRIMARY KEY (scg_code, code);
 
 CREATE INDEX fk_sco_scg ON crs_sys_code USING btree (scg_code);
+CREATE UNIQUE INDEX fk_sco_scg_code ON crs_sys_code USING btree (scg_code, code);
 CREATE UNIQUE INDEX sco_aud_id ON crs_sys_code USING btree (audit_id);
 
 ALTER TABLE crs_sys_code OWNER TO bde_dba;
@@ -3587,7 +3587,7 @@ ALTER TABLE ONLY crs_transact_type
 
 CREATE INDEX fk_trt_sob ON crs_transact_type USING btree (sob_name);
 CREATE INDEX fk_trt_trt_dischar ON crs_transact_type USING btree (trt_grp_discrg, trt_type_discrg);
-CREATE UNIQUE INDEX ix_crs_tran_desc ON crs_transact_type USING btree (grp, description, "type");
+CREATE UNIQUE INDEX idx_crs_tran_desc ON crs_transact_type USING btree (grp, description, "type");
 CREATE UNIQUE INDEX trt_aud_id ON crs_transact_type USING btree (audit_id);
 
 ALTER TABLE crs_transact_type OWNER TO bde_dba;
