@@ -99,6 +99,15 @@ CREATE INDEX fk_app_act_crt ON crs_appellation USING btree (act_tin_id_crt, act_
 CREATE INDEX fk_app_act_ext ON crs_appellation USING btree (act_tin_id_ext, act_id_ext);
 CREATE INDEX fk_app_par ON crs_appellation USING btree (par_id);
 
+/*
+--------------------------------------------------------------------------------
+-- table crs_audit_detail
+--------------------------------------------------------------------------------
+CREATE INDEX idx_crs_audit_detail ON crs_audit_detail USING btree (id, table_name);
+CREATE INDEX idx_aud_table_name ON crs_audit_detail USING btree (table_name, "timestamp");
+
+*/
+
 -------------------------------------------------------------------------------
 -- crs_comprised_in
 -------------------------------------------------------------------------------
@@ -154,6 +163,15 @@ CREATE INDEX fk_cor_dtm ON crs_cord_order USING btree (dtm_id);
 CREATE UNIQUE INDEX idx_dtm_aud_id ON crs_datum USING btree (audit_id);
 CREATE INDEX fk_dtm_elp ON crs_datum USING btree (elp_id);
 
+/*
+--------------------------------------------------------------------------------
+-- crs_dealing_survey
+--------------------------------------------------------------------------------
+CREATE INDEX fk_dsu_dlg ON crs_dealing_survey USING btree (dlg_id);
+CREATE INDEX fk_dsu_sur ON crs_dealing_survey USING btree (sur_wrk_id);
+
+*/
+
 -------------------------------------------------------------------------------
 -- crs_elect_place
 -------------------------------------------------------------------------------
@@ -206,6 +224,19 @@ CREATE UNIQUE INDEX idx_gnn_aud_id ON crs_geodetic_node_network USING btree (aud
 -------------------------------------------------------------------------------
 CREATE INDEX idx_ims_id ON crs_image USING btree (ims_id);
 CREATE INDEX idx_ims_centera_id ON crs_image USING btree (centera_id);
+
+/*
+--------------------------------------------------------------------------------
+-- crs_job_task_list
+--------------------------------------------------------------------------------
+CREATE INDEX fk_jtl_job ON crs_job_task_list USING btree (job_id);
+CREATE INDEX fk_jtl_tkl ON crs_job_task_list USING btree (tkl_id);
+CREATE INDEX fk_jtl_usr ON crs_job_task_list USING btree (usr_id);
+CREATE INDEX idx_jtl_date_comp ON crs_job_task_list USING btree (date_completed);
+CREATE INDEX idx_crs_jtl_stat ON crs_job_task_list USING btree (status, usr_id);
+CREATE INDEX idx_jtl_audit_id ON crs_job_task_list USING btree (audit_id);
+
+*/
 
 -------------------------------------------------------------------------------
 -- crs_land_district
@@ -474,6 +505,14 @@ CREATE INDEX fk_pri_par ON crs_parcel_ring USING btree (par_id);
 CREATE INDEX fk_pri_pri ON crs_parcel_ring USING btree (pri_id_parent_ring);
 CREATE UNIQUE INDEX idx_pri_aud_id ON crs_parcel_ring USING btree (audit_id);
 
+/*
+--------------------------------------------------------------------------------
+-- crs_process
+--------------------------------------------------------------------------------
+CREATE INDEX fk_pro_job ON crs_process USING btree (job_id);
+
+*/
+
 -------------------------------------------------------------------------------
 -- crs_programme
 -------------------------------------------------------------------------------
@@ -505,6 +544,33 @@ CREATE UNIQUE INDEX idx_rdn_aud_id ON crs_reduct_run USING btree (audit_id);
 CREATE INDEX fk_rsu_sur_frm ON crs_ref_survey USING btree (sur_wrk_id_new);
 CREATE INDEX fk_rsu_sur_to ON crs_ref_survey USING btree (sur_wrk_id_exist);
 CREATE UNIQUE INDEX idx_rsu_aud_id ON crs_ref_survey USING btree (audit_id);
+
+/*
+
+--------------------------------------------------------------------------------
+-- BDE table crs_req_det
+--------------------------------------------------------------------------------
+
+CREATE INDEX fk_rqd_rqh ON crs_req_det USING btree (rqh_id);
+CREATE INDEX fk_rqd_rqi ON crs_req_det USING btree (rqi_code);
+CREATE INDEX fk_rqd_tin ON crs_req_det USING btree (tin_id);
+
+--------------------------------------------------------------------------------
+-- BDE table crs_req_hdr
+--------------------------------------------------------------------------------
+
+CREATE INDEX fk_rqh_dlg ON crs_req_hdr USING btree (dlg_id);
+CREATE INDEX fk_rqh_sud ON crs_req_hdr USING btree (sud_id);
+CREATE INDEX fk_rqh_usr ON crs_req_hdr USING btree (usr_id);
+CREATE INDEX fk_rqh_wrk ON crs_req_hdr USING btree (wrk_id);
+CREATE UNIQUE INDEX fk_rqh_aud ON crs_req_hdr USING btree (audit_id);
+
+--------------------------------------------------------------------------------
+-- crs_req_item
+--------------------------------------------------------------------------------
+CREATE UNIQUE INDEX fk_rqi_aud ON crs_req_item USING btree (audit_id);
+
+*/
 
 -------------------------------------------------------------------------------
 -- crs_road_ctr_line
@@ -634,6 +700,16 @@ CREATE UNIQUE INDEX idx_sco_aud_id ON crs_sys_code USING btree (audit_id);
 -- crs_sys_code_group
 -------------------------------------------------------------------------------
 CREATE UNIQUE INDEX idx_scg_aud_id ON crs_sys_code_group USING btree (audit_id);
+
+/*
+--------------------------------------------------------------------------------
+-- crs_task_list
+--------------------------------------------------------------------------------
+CREATE INDEX fk_tkl_trt ON crs_task_list USING btree (trt_grp, trt_type);
+CREATE INDEX fk_tkl_tsk ON crs_task_list USING btree (tsk_id);
+CREATE UNIQUE INDEX idx_tkl_audit_id ON crs_task_list USING btree (audit_id);
+
+*/
 
 -------------------------------------------------------------------------------
 -- crs_title
