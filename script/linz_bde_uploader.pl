@@ -254,9 +254,13 @@ sub help
 {
     my($full) = @_;
     my $level = $full ? 2 : 99;
-    my $sections = ["Syntax"];
+    my $sections = 'Syntax';
     require Pod::Usage;
-    Pod::Usage::pod2usage({ -verbose=>$level, -sections=>$sections });
+    Pod::Usage::pod2usage({
+		-verbose=>$level,
+		-sections=>$sections,
+		-exitval=>'NOEXIT' 
+	});
     exit;
 }
 __END__

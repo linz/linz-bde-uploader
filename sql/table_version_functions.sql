@@ -177,20 +177,12 @@ BEGIN
         '(' || quote_ident(v_key_col) || ')';
     EXECUTE v_sql;
 
-    v_sql := 'CREATE INDEX ' || quote_ident('idx_' || p_table) || '_expired ON ' || v_revision_table ||
+    v_sql := 'CREATE INDEX ' || quote_ident('fk_' || p_table) || '_expired ON ' || v_revision_table ||
         '(_revision_expired)';
     EXECUTE v_sql;
 
-    v_sql := 'CREATE INDEX ' || quote_ident('idx_' || p_table) || '_created ON ' || v_revision_table ||
+    v_sql := 'CREATE INDEX ' || quote_ident('fk_' || p_table) || '_created ON ' || v_revision_table ||
         '(_revision_created)';
-    EXECUTE v_sql;
-
-    v_sql := 'CREATE INDEX ' || quote_ident('idx_' || p_table) || '_expired_key ON ' || v_revision_table ||
-        '(_revision_expired, ' || quote_ident(v_key_col) || ')';
-    EXECUTE v_sql;
-
-    v_sql := 'CREATE INDEX ' || quote_ident('idx_' || p_table) || '_expired_created ON ' || v_revision_table ||
-        '(_revision_expired, _revision_created)';
     EXECUTE v_sql;
     
     EXECUTE 'ANALYSE ' || v_revision_table;
@@ -888,8 +880,8 @@ BEGIN
 
     FETCH FIRST IN v_col_cur INTO v_column_name, v_column_type;
     LOOP
-        v_select_columns_rev := v_select_columns_rev || '        T.' || quote_ident(v_column_name);
-        v_select_columns_diff := v_select_columns_diff || '            LVC.' || quote_ident(v_column_name);
+        v_select_columns_rev := v_select_columns_rev || REPEAT(' ', 16) || 'T.' || quote_ident(v_column_name);
+        v_select_columns_diff := v_select_columns_diff || REPEAT(' ', 16) || 'LVC.' || quote_ident(v_column_name);
         v_table_columns := v_table_columns || '    ' || quote_ident(v_column_name) || ' ' || v_column_type;
         FETCH v_col_cur INTO v_column_name, v_column_type;
         IF FOUND THEN
@@ -944,46 +936,49 @@ AS $FUNC$
             v_revision1 := v_base_version;
         END IF;
         
-        CREATE TEMP TABLE last_value_changed AS
-        SELECT DISTINCT ON (T.%key_col%)
-            T.*
-        FROM
-            %revision_table% AS T
-        WHERE (
-            (T._revision_created <= v_revision1 AND T._revision_expired > v_revision1 AND T._revision_expired <= v_revision2) OR
-            (T._revision_created > v_revision1  AND T._revision_created <= v_revision2)
-        )
-        ORDER BY
-            T.%key_col%, 
-            T._revision_created DESC;
-        
-        ANALYSE last_value_changed;
-        
-        RETURN QUERY
-        WITH old_state_changed AS(
-            SELECT DISTINCT
-                T.%key_col%
-            FROM
-                %revision_table% AS T
-            WHERE
-                 T._revision_created <= v_revision1 AND T._revision_expired > v_revision1 AND
-                 T.%key_col% IN (SELECT last_value_changed.%key_col% FROM last_value_changed)
-        )
-        SELECT
-            CASE WHEN LVC._revision_expired <= v_revision2 THEN
-                'D'::CHAR(1)
-            WHEN OSC.%key_col% IS NULL THEN
-                'I'::CHAR(1)
-            ELSE
-                'U'::CHAR(1)
-            END AS diff_action,
+        RETURN QUERY EXECUTE
+        table_version.ver_ExpandTemplate(
+            $sql$
+            WITH last_value_changed AS (
+                SELECT DISTINCT ON (T.%key_col%)
+                    T.*
+                FROM
+                    %revision_table% AS T
+                WHERE (
+                    (T._revision_created <= %1% AND T._revision_expired > %1% AND T._revision_expired <= %2%) OR
+                    (T._revision_created > %1%  AND T._revision_created <= %2%)
+                )
+                ORDER BY
+                    T.%key_col%, 
+                    T._revision_created DESC
+            ),
+            old_state_changed AS(
+                SELECT DISTINCT
+                    T.%key_col%
+                FROM
+                    %revision_table% AS T
+                WHERE
+                     T._revision_created <= %1% AND T._revision_expired > %1% AND
+                     T.%key_col% IN (SELECT last_value_changed.%key_col% FROM last_value_changed)
+            )
+            SELECT
+                CASE WHEN LVC._revision_expired <= %2% THEN
+                    'D'::CHAR(1)
+                WHEN OSC.%key_col% IS NULL THEN
+                    'I'::CHAR(1)
+                ELSE
+                    'U'::CHAR(1)
+                END AS diff_action,
 %select_columns%
-        FROM
-            last_value_changed AS LVC
-            LEFT JOIN old_state_changed AS OSC ON LVC.%key_col% = OSC.%key_col%;
-            
-        DROP TABLE last_value_changed;
-        
+            FROM
+                last_value_changed AS LVC
+                LEFT JOIN old_state_changed AS OSC ON LVC.%key_col% = OSC.%key_col%;
+            $sql$,
+            ARRAY[
+                v_revision1::TEXT,
+                v_revision2::TEXT
+            ]
+        );
         RETURN;
     END;
 $FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -1009,14 +1004,24 @@ RETURNS TABLE(
     %table_columns%
 ) AS
 $FUNC$
-    SELECT
+BEGIN
+    RETURN QUERY EXECUTE
+    table_version.ver_ExpandTemplate(
+        $sql$
+            SELECT
 %select_columns%
-    FROM
-        %revision_table% AS T
-    WHERE
-        _revision_created <= $1 AND
-        (_revision_expired > $1 OR _revision_expired IS NULL)
-$FUNC$ LANGUAGE sql SECURITY DEFINER;
+            FROM
+                %revision_table% AS T
+            WHERE
+                _revision_created <= %1% AND
+                (_revision_expired > %1% OR _revision_expired IS NULL)
+        $sql$,
+        ARRAY[
+            p_revision::TEXT
+        ]
+    );
+END;
+$FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
 
     $template$;
     
@@ -1205,6 +1210,38 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ALTER FUNCTION ver_create_version_trigger(NAME, NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_create_version_trigger(NAME, NAME, NAME) FROM PUBLIC;
+
+DROP FUNCTION IF EXISTS ver_ExpandTemplate(TEXT, TEXT[]);
+/**
+* Processes a text template given a set of input template parameters. Template 
+* parameters within the text are substituted content must be written as '%1%' 
+* to '%n%' where n is the number of text parameters.
+*
+* @param p_template       The template text
+* @param p_params         The template parameters
+* @return                 The expanded template text
+*/
+CREATE OR REPLACE FUNCTION ver_ExpandTemplate (
+    p_template TEXT,
+    p_params TEXT[]
+)
+RETURNS
+    TEXT AS
+$$
+DECLARE 
+    v_expanded TEXT;
+BEGIN
+    v_expanded := p_template;
+    FOR i IN 1 .. array_length(p_params,1) LOOP
+        v_expanded := REPLACE( v_expanded, '%' || i || '%', p_params[i]);
+    END LOOP;
+    RETURN v_expanded;
+END;
+$$
+LANGUAGE plpgsql;
+
+ALTER FUNCTION ver_ExpandTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION ver_ExpandTemplate(TEXT, TEXT[]) FROM PUBLIC;
 
 DROP FUNCTION IF EXISTS _ver_get_table_cols(NAME, NAME);
 /**
