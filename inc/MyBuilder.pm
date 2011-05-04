@@ -18,22 +18,25 @@ use base qw(Module::Build);
 
 use Config;
 use File::Spec;
+use File::Basename;
+
+sub WIN32 () { $^O eq 'MSWin32' }
 
 my $PACKAGE_DIR = 'linz-bde-uploader';
 
 sub new
 {
-	my $class = shift;
-	my $self = $class->SUPER::new(@_);
-	$self->_set_extra_install_paths();
+    my $class = shift;
+    my $self = $class->SUPER::new(@_);
+    $self->_set_extra_install_paths();
     return $self;
 }
 
 sub resume
 {
-	my $class = shift;
-	my $self = $class->SUPER::resume(@_);
-	$self->_set_extra_install_paths();
+    my $class = shift;
+    my $self = $class->SUPER::resume(@_);
+    $self->_set_extra_install_paths();
     return $self;
 }
 
@@ -46,6 +49,34 @@ sub find_sql_files
 {
     shift->_find_files('sql', 'sql');
 }
+
+sub process_script_files {
+    my $self = shift;
+    my $files = $self->find_script_files;
+    return unless keys %$files;
+
+    my $script_dir = File::Spec->catdir($self->blib, 'script');
+    File::Path::mkpath( $script_dir );
+  
+    foreach my $filepath (keys %$files) {
+        my $file = File::Basename::basename($filepath);
+        if ( !WIN32 )
+        {
+            next if $file =~ /^(.*)\.bat$/i;
+            $file =~ s/\.PL$//i;
+        }
+        my $to_file = File::Spec->catfile($script_dir, $file);
+
+        my $result = $self->copy_if_modified(
+            from    => $filepath, 
+            to      => $to_file, 
+            flatten => 'flatten'
+        ) || next;
+        $self->fix_shebang_line($result) unless $self->is_vmsish;
+        $self->make_executable($result);
+    }
+}
+
 
 sub _set_extra_install_paths
 {
