@@ -12,10 +12,11 @@
 # LICENSE file for more information.
 #
 ################################################################################
-package BuildBDEUploader;
+package inc::MyBuilder;
 
 use base qw(Module::Build);
 
+use Config;
 use File::Spec;
 
 my $PACKAGE_DIR = 'linz-bde-uploader';
@@ -49,7 +50,7 @@ sub find_sql_files
 sub _set_extra_install_paths
 {
 	my $self = shift;
-    my $prefix = $self->install_base || $self->prefix || '';
+    my $prefix = $self->install_base || $self->prefix || $Config::Config{'prefix'} || '';
     my $sysconfdir =  $prefix eq '/usr' ? '/etc' : File::Spec->catdir($prefix, 'etc');
     my $datadir = File::Spec->catdir($prefix, 'share');
     
