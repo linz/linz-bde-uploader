@@ -11,16 +11,22 @@ Zealand Government.
 Dependencies
 ------------
 
- * Perl 5.88 or greater
-    - DBD-Pg Module 
- * PostgreSQL 9.0 or greater
- * pgc_checksum PostgreSQL extension library
- * linz_bde_copy
+ * Perl 5.88 or greater, plus
+    - DBD::Pg Module
+    - Date::Calc
+    - File::Which
+ * PostgreSQL 9.0 or greater, plus
+    - Postgis 1.5
+ * linz_bde_copy, plus
+    - zlib library for building
 
 Compatibility
 -------------
 
-Tested on Windows XP and Server 2003.
+Tested on Windows XP and Server 2003, and Ubuntu 10.4 (Lucid)
 
+Install
+-------------
 
-
+perl Makefile.pl
+make install

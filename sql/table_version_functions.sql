@@ -105,7 +105,7 @@ BEGIN
         RAISE EXCEPTION 'Table %.% does not have a unique non-compostite integer column', quote_ident(p_schema), quote_ident(p_table);
     END IF;
 
-    v_revision_table := table_version._ver_get_version_table_full(p_schema, p_table);
+    v_revision_table := table_version.ver_get_version_table_full(p_schema, p_table);
     
     v_sql :=
     'CREATE TABLE ' || v_revision_table || '(' ||
@@ -218,7 +218,7 @@ BEGIN
         cat.relname = 'pg_class' AND
         fnsp.nspname = 'table_version' AND
         fnsp.oid = fobj.relnamespace AND
-        fobj.relname = table_version._ver_get_version_table(p_schema, p_table) AND
+        fobj.relname = table_version.ver_get_version_table(p_schema, p_table) AND
         tnsp.nspname = p_schema AND
         tnsp.oid = tobj.relnamespace AND
         tobj.relname   = p_table;
@@ -299,10 +299,10 @@ BEGIN
 
     EXECUTE 'DROP TRIGGER IF EXISTS '  || table_version._ver_get_version_trigger(p_schema, p_table) || ' ON ' ||  
         quote_ident(p_schema) || '.' || quote_ident(p_table);
-    EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version._ver_get_version_table_full(p_schema, p_table) || '()';
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version.ver_get_version_table_full(p_schema, p_table) || '()';
     EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version._ver_get_diff_function(p_schema, p_table);
     EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version._ver_get_revision_function(p_schema, p_table);
-    EXECUTE 'DROP TABLE IF EXISTS '    || table_version._ver_get_version_table_full(p_schema, p_table) || ' CASCADE';    
+    EXECUTE 'DROP TABLE IF EXISTS '    || table_version.ver_get_version_table_full(p_schema, p_table) || ' CASCADE';    
     
     RETURN TRUE;
 END;
@@ -869,7 +869,7 @@ BEGIN
         RAISE EXCEPTION 'Table %.% is not versioned', quote_ident(p_schema), quote_ident(p_table);
     END IF;
     
-    v_revision_table := table_version._ver_get_version_table_full(p_schema, p_table);
+    v_revision_table := table_version.ver_get_version_table_full(p_schema, p_table);
     v_table_columns := '';
     v_select_columns_diff := '';
     v_select_columns_rev := '';
@@ -1068,7 +1068,7 @@ BEGIN
         RAISE EXCEPTION 'Table %.% is not versioned', quote_ident(p_schema), quote_ident(p_table);
     END IF;
     
-    v_revision_table := table_version._ver_get_version_table_full(p_schema, p_table);
+    v_revision_table := table_version.ver_get_version_table_full(p_schema, p_table);
     
     v_column_update := '';
     FOR v_column_name IN
@@ -1284,7 +1284,7 @@ REVOKE ALL ON FUNCTION _ver_get_table_cols(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_table_cols(NAME, NAME) TO bde_admin;
 
 
-DROP FUNCTION IF EXISTS _ver_get_version_table(NAME, NAME);
+DROP FUNCTION IF EXISTS ver_get_version_table(NAME, NAME);
 /**
 * Gets the tablename for the tables revision data.
 *
@@ -1292,7 +1292,7 @@ DROP FUNCTION IF EXISTS _ver_get_version_table(NAME, NAME);
 * @param p_table          The table name
 * @return                 The revision data table name
 */
-CREATE OR REPLACE FUNCTION _ver_get_version_table(
+CREATE OR REPLACE FUNCTION ver_get_version_table(
     p_schema NAME,
     p_table NAME
 ) 
@@ -1300,11 +1300,11 @@ RETURNS VARCHAR AS $$
     SELECT quote_ident($1 || '_' || $2 || '_revision');
 $$ LANGUAGE sql IMMUTABLE;
 
-ALTER FUNCTION _ver_get_version_table(NAME, NAME) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _ver_get_version_table(NAME, NAME) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION _ver_get_version_table(NAME, NAME) TO bde_admin;
+ALTER FUNCTION ver_get_version_table(NAME, NAME) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION ver_get_version_table(NAME, NAME) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ver_get_version_table(NAME, NAME) TO bde_admin;
 
-DROP FUNCTION IF EXISTS _ver_get_version_table_full(NAME, NAME);
+DROP FUNCTION IF EXISTS ver_get_version_table_full(NAME, NAME);
 /**
 * Gets the fully qualified tablename for the tables revision data.
 *
@@ -1312,17 +1312,17 @@ DROP FUNCTION IF EXISTS _ver_get_version_table_full(NAME, NAME);
 * @param p_table          The table name
 * @return                 The revision data fully qualified table name
 */
-CREATE OR REPLACE FUNCTION _ver_get_version_table_full(
+CREATE OR REPLACE FUNCTION ver_get_version_table_full(
     p_schema NAME,
     p_table NAME
 ) 
 RETURNS VARCHAR AS $$
-    SELECT 'table_version.' || table_version._ver_get_version_table($1, $2);
+    SELECT 'table_version.' || table_version.ver_get_version_table($1, $2);
 $$ LANGUAGE sql IMMUTABLE;
 
-ALTER FUNCTION _ver_get_version_table_full(NAME, NAME) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _ver_get_version_table_full(NAME, NAME) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION _ver_get_version_table_full(NAME, NAME) TO bde_admin;
+ALTER FUNCTION ver_get_version_table_full(NAME, NAME) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION ver_get_version_table_full(NAME, NAME) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ver_get_version_table_full(NAME, NAME) TO bde_admin;
 
 DROP FUNCTION IF EXISTS _ver_get_version_trigger(NAME, NAME);
 /**
