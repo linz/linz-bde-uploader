@@ -1,3 +1,4 @@
+#!usr/bin/perl
 ################################################################################
 #
 # $Id$
@@ -28,7 +29,7 @@ my $requires = {
 
 my $build =  inc::MyBuilder->new(
     module_name   => 'LINZ::BDEUploader',
-    license       => 'BSD',
+    license       => 'bsd',
     dist_author   => 'LINZ',
     dist_version_from  => 'bin/linz_bde_uploader.pl',
     dist_abstract => 'Software for loading LINZ BDE files into a PostgreSQL database',

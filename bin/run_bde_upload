@@ -2,10 +2,9 @@
 
 # Script to run the linz_bde_uploader perl script, rotating log files
 
-SCRIPTDIR=$(dirname $(readlink -f $0))
-cd $SCRIPTDIR
+LOGDIR=$1
+shift
 
-LOGDIR=/var/log/linz-bde-uploader
 SCRIPTLOG=linz_bde_loader.log
 RUNLOG=linz_bde_loader_run.log
 LAST=11
