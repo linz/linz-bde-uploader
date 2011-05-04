@@ -22,7 +22,6 @@ use inc::MyBuilder;
 my $requires = {
     'LINZ::Config'   => 0,
     'LINZ::Bde'      => 0,
-    'File::Which'    => 0,
     'DBD::Pg'        => 0,
     'Date::Calc'     => 0,
 };
