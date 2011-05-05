@@ -4,6 +4,8 @@
 
 LOGDIR=$1
 shift
+CFGPATH=$2
+shift
 
 SCRIPTLOG=linz_bde_loader.log
 RUNLOG=linz_bde_loader_run.log
@@ -22,4 +24,4 @@ done
 mv $LOGDIR/$SCRIPTLOG $SCRIPTLOG.1 >/dev/null 2>&1
 mv $LOGDIR/$RUNLOG $RUNLOG.1 >/dev/null 2>&1
 
-linz_bde_uploader -verbose -listing $LOGDIR/$SCRIPTLOG $@ >$LOGDIR/$RUNLOG 2>&1
+linz_bde_uploader -config-path $CFGPATH -verbose -listing $LOGDIR/$SCRIPTLOG $@ >$LOGDIR/$RUNLOG 2>&1
