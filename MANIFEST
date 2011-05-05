@@ -22,9 +22,7 @@ sql/lds_layer_tables.sql
 sql/patch_management.sql
 sql/patches.sql
 sql/README.table_version
-sql/run_lds_post_tasks.sql
 sql/table_version_functions.sql
 sql/table_version_tables.sql
-sql/test_versioning.sql
 sql/version_bde_tables.sql
 META.yml
