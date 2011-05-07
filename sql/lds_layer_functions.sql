@@ -1019,7 +1019,7 @@ BEGIN
         row_number() OVER (PARTITION BY GDN.code, NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
         NOD.id AS nod_id,
         GEO.geodetic_code,
-        GDN.code as geodetic_network,
+        GDN.code as control_network,
         MKN.name AS current_mark_name, 
         MRK.desc AS description, 
         RTRIM(mrk.type) AS mark_type,
@@ -1058,7 +1058,7 @@ BEGIN
     DELETE FROM
         tmp_geodetic_network_marks
     WHERE
-        row_number NOT IN (SELECT MIN(row_number) FROM tmp_geodetic_network_marks GROUP BY nod_id, geodetic_network);
+        row_number NOT IN (SELECT MIN(row_number) FROM tmp_geodetic_network_marks GROUP BY nod_id, control_network);
 
     PERFORM bde_control.bde_WriteUploadLog(
         p_upload,
@@ -1071,7 +1071,7 @@ BEGIN
             id,
             nod_id,
             geodetic_code,
-            geodetic_network,
+            control_network,
             current_mark_name,
             description,
             mark_type,
@@ -1088,7 +1088,7 @@ BEGIN
             COALESCE(ORG.id, nextval('lds.geodetic_network_marks_id_seq')) AS id,
             TMP.nod_id,
             TMP.geodetic_code,
-            TMP.geodetic_network,
+            TMP.control_network,
             TMP.current_mark_name,
             TMP.description,
             TMP.mark_type,
@@ -1102,19 +1102,19 @@ BEGIN
             TMP.shape
         FROM
             tmp_geodetic_network_marks AS TMP
-            LEFT JOIN %2% AS ORG ON (ORG.nod_id = TMP.nod_id AND ORG.geodetic_network = TMP.geodetic_network)
+            LEFT JOIN %2% AS ORG ON (ORG.nod_id = TMP.nod_id AND ORG.control_network = TMP.control_network)
         WHERE
             TMP.cos_id_official = 109
         ORDER BY
             TMP.nod_id,
-            TMP.geodetic_network
+            TMP.control_network
     $sql$;
     
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
             nod_id,
             geodetic_code,
-            geodetic_network,
+            control_network,
             current_mark_name,
             description,
             mark_type,
@@ -1130,7 +1130,7 @@ BEGIN
         SELECT
             nod_id,
             geodetic_code,
-            geodetic_network,
+            control_network,
             current_mark_name,
             description,
             mark_type,
@@ -1148,7 +1148,7 @@ BEGIN
             cos_id_official = 109
         ORDER BY
             nod_id,
-            geodetic_network
+            control_network
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1345,6 +1345,31 @@ BEGIN
     PERFORM bde_control.bde_WriteUploadLog(
         p_upload,
         '3',
+        'Started creating temp table tmp_parcel_geoms'
+    );
+    
+    -- Some Landonline parcel polygons have rings that self-intersect, typically
+    -- banana polygons. So here we use the buffer 0 trick to build a polygon
+    -- that is structurally identical but follows OGC topology rules.
+    CREATE TEMP TABLE tmp_parcel_geoms AS
+    SELECT
+        PAR.id as par_id,
+        CASE WHEN ST_IsValid(PAR.shape) THEN
+            PAR.shape
+        ELSE 
+            ST_Buffer(PAR.shape, 0)
+        END AS shape
+    FROM
+        crs_parcel PAR
+    WHERE
+        PAR.status = 'CURR';
+        
+    ALTER TABLE tmp_parcel_geoms ADD PRIMARY KEY(par_id);
+    ANALYSE tmp_parcel_geoms;
+    
+    PERFORM bde_control.bde_WriteUploadLog(
+        p_upload,
+        '3',
         'Started creating temp table tmp_current_parcels'
     );
 
@@ -1366,14 +1391,15 @@ BEGIN
         string_agg(DISTINCT TTL.title_no, ', ' ORDER BY TTL.title_no ASC) AS titles,
         COALESCE(PAR.total_area, PAR.area) AS survey_area,
         CASE WHEN WDR.name = 'chathams' THEN
-            CAST(ST_Area(ST_Transform(PAR.shape, 3793)) AS NUMERIC(20, 4))
+            CAST(ST_Area(ST_Transform(GEOM.shape, 3793)) AS NUMERIC(20, 4))
         ELSE
-            CAST(ST_Area(ST_Transform(PAR.shape, 2193)) AS NUMERIC(20, 4))
+            CAST(ST_Area(ST_Transform(GEOM.shape, 2193)) AS NUMERIC(20, 4))
         END AS calc_area,
-        PAR.shape
+        GEOM.shape
     FROM
         tmp_world_regions WDR,
         crs_parcel PAR
+        JOIN tmp_parcel_geoms GEOM ON PAR.id = GEOM.par_id
         JOIN crs_locality LOC ON PAR.ldt_loc_id = LOC.id
         LEFT JOIN tmp_parcel_titles TTL ON PAR.id = TTL.par_id
         LEFT JOIN tmp_par_stat_action PSA ON PAR.id = PSA.par_id
@@ -1836,7 +1862,9 @@ BEGIN
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
         -- are order so all null shapes row are at the end of input list.
-        ST_Multi(ST_Collect(PAR.shape ORDER BY PAR.shape ASC)) AS shape
+        -- We also want to ensure the newly constructed polygon has valid OGC 
+        -- Topology use the buffer 0 trick
+        ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
     FROM
         titles TTL
         JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
@@ -1844,14 +1872,13 @@ BEGIN
         LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
         LEFT JOIN (
             SELECT
-                id,
+                par_id,
                 (ST_Dump(shape)).geom AS shape  
             FROM
-                crs_parcel 
+                tmp_parcel_geoms
             WHERE
-                status = 'CURR' AND 
                 ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON LGP.par_id = PAR.id 
+        ) PAR ON LGP.par_id = PAR.par_id 
         LEFT JOIN crs_sys_code ETTT ON ETT.type = ETTT.code AND ETTT.scg_code = 'ETTT'
     GROUP BY
         TTL.id,
@@ -2023,25 +2050,28 @@ BEGIN
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
         -- are order so all null shapes row are at the end of input list.
-        ST_Multi(ST_Collect(PAR.shape ORDER BY PAR.shape ASC)) AS shape
+        -- We also want to ensure the newly constructed polygon has valid OGC 
+        -- Topology use the buffer 0 trick
+        ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
     FROM
         title_owner_parcels TOP
         LEFT JOIN (
             SELECT
-                id,
+                par_id,
                 (ST_Dump(shape)).geom AS shape  
             FROM
-                crs_parcel 
+                tmp_parcel_geoms 
             WHERE
-                status = 'CURR' AND 
                 ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON TOP.par_id = PAR.id
+        ) PAR ON TOP.par_id = PAR.par_id
         LEFT JOIN parcel_part_ownership PART ON TOP.par_id = PART.par_id
     GROUP BY
         TOP.owner,
         TOP.title_no,
         TOP.title_status,
         TOP.land_district;
+    
+    DROP TABLE IF EXISTS tmp_parcel_geoms;
     
     PERFORM bde_control.bde_WriteUploadLog(
         p_upload,

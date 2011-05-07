@@ -71,7 +71,7 @@ CREATE TABLE geodetic_network_marks (
     id INTEGER NOT NULL,
     nod_id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
-    geodetic_network VARCHAR(4) NOT NULL,
+    control_network VARCHAR(4) NOT NULL,
     current_mark_name TEXT,
     description TEXT,
     mark_type VARCHAR(4),
@@ -90,7 +90,7 @@ ALTER TABLE geodetic_network_marks_id_seq OWNER TO bde_dba;
 ALTER TABLE geodetic_network_marks ALTER COLUMN id SET DEFAULT nextval('geodetic_network_marks_id_seq');
 
 ALTER TABLE geodetic_network_marks ADD PRIMARY KEY (id);
-CREATE UNIQUE INDEX idx_geo_net_mrk_nod_net ON geodetic_network_marks (nod_id, geodetic_network);
+CREATE UNIQUE INDEX idx_geo_net_mrk_nod_net ON geodetic_network_marks (nod_id, control_network);
 CREATE INDEX shx_geo_net_shape ON geodetic_network_marks USING gist (shape);
 
 ALTER TABLE geodetic_network_marks OWNER TO bde_dba;
