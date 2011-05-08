@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -69,7 +69,7 @@ BEGIN
     IF v_neg THEN
        v_result := '-';
     END IF;
-    v_result := v_result || v_deg || '�' || to_char(v_min, 'FM09D') || '''' ||
+    v_result := v_result || v_deg || '°' || to_char(v_min, 'FM09D') || '''' ||
         to_char(v_value, 'FM09D' || repeat('0', p_decimal_places) ) ||
         COALESCE('" ' || v_hem, '"');
     RETURN v_result;
