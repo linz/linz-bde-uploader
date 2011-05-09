@@ -628,7 +628,7 @@ BEGIN
         GEO.geodetic_code, 
         MKN.name AS current_mark_name, 
         MRK.desc AS description, 
-        RTRIM(mrk.type) AS mark_type,
+        SCOM.char_value AS mark_type,
         SCOB.char_value AS beacon_type,
         SCOC.char_value AS mark_condition,
         CAST(COR.display AS INTEGER) AS "order",
@@ -653,6 +653,7 @@ BEGIN
         JOIN crs_cord_order COR ON COO.cor_id = COR.id
         LEFT JOIN crs_mrk_phys_state MPSM ON MPSM.mrk_id = MRK.id AND MPSM.type = 'MARK' AND MPSM.status = 'CURR'
         LEFT JOIN crs_mrk_phys_state MPSB ON MPSB.mrk_id = MRK.id and MPSB.type = 'BCON' and MPSB.status = 'CURR'
+        LEFT JOIN crs_sys_code SCOM ON RTRIM(mrk.type) = SCOM.code AND SCOM.scg_code = 'MRKT'
         LEFT JOIN crs_sys_code SCOC ON MPSM.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
         LEFT JOIN crs_sys_code SCOB ON MRK.beacon_type = SCOB.code AND SCOB.scg_code = 'MRKE'
     WHERE
@@ -784,7 +785,7 @@ BEGIN
         GEO.geodetic_code,
         MKN.name AS current_mark_name,
         MRK.desc AS description,
-        RTRIM(mrk.type) AS mark_type,
+        SCOM.char_value AS mark_type,
         SCOB.char_value AS beacon_type,
         SCOC.char_value AS mark_condition,
         COR.display AS "order",
@@ -812,7 +813,8 @@ BEGIN
         JOIN crs_coordinate_tpe COT ON COT.id = COS.cot_id
         JOIN crs_cord_order COR ON COO.cor_id = COR.id
         LEFT JOIN crs_mrk_phys_state MPSM ON MPSM.mrk_id = MRK.id AND MPSM.type = 'MARK' AND MPSM.status = 'CURR'
-        LEFT JOIN crs_mrk_phys_state MPSB ON MPSB.mrk_id = MRK.id and MPSB.type = 'BCON' and MPSB.status = 'CURR' 
+        LEFT JOIN crs_mrk_phys_state MPSB ON MPSB.mrk_id = MRK.id and MPSB.type = 'BCON' and MPSB.status = 'CURR'
+        LEFT JOIN crs_sys_code SCOM ON RTRIM(mrk.type) = SCOM.code AND SCOM.scg_code = 'MRKT'
         LEFT JOIN crs_sys_code SCOC ON MPSM.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
         LEFT JOIN crs_sys_code SCOB ON MRK.beacon_type = SCOB.code AND SCOB.scg_code = 'MRKE'
     WHERE
@@ -1022,7 +1024,7 @@ BEGIN
         GDN.code as control_network,
         MKN.name AS current_mark_name, 
         MRK.desc AS description, 
-        RTRIM(mrk.type) AS mark_type,
+        SCOM.char_value AS mark_type,
         SCOB.char_value AS beacon_type,
         SCOC.char_value AS mark_condition,
         CAST(COR.display AS INTEGER) AS "order",
@@ -1049,6 +1051,7 @@ BEGIN
         JOIN crs_cord_order COR ON COO.cor_id = COR.id
         LEFT JOIN crs_mrk_phys_state MPSM ON MPSM.mrk_id = MRK.id AND MPSM.type = 'MARK' AND MPSM.status = 'CURR'
         LEFT JOIN crs_mrk_phys_state MPSB ON MPSB.mrk_id = MRK.id and MPSB.type = 'BCON' and MPSB.status = 'CURR'
+        LEFT JOIN crs_sys_code SCOM ON RTRIM(mrk.type) = SCOM.code AND SCOM.scg_code = 'MRKT'
         LEFT JOIN crs_sys_code SCOC ON MPSM.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
         LEFT JOIN crs_sys_code SCOB ON MRK.beacon_type = SCOB.code AND SCOB.scg_code = 'MRKE'
     WHERE
@@ -2965,7 +2968,7 @@ BEGIN
                 GEO.name AS geodetic_code, 
                 MKN.name AS current_mark_name,
                 MRK.desc AS description, 
-                RTRIM(mrk.type) AS mark_type,
+                SCOM.char_value AS mark_type,
                 SCOC.char_value AS mark_condition,
                 CAST(COR.display AS INTEGER) AS "order",
                 CNE.error AS nominal_accuracy,
@@ -2982,6 +2985,7 @@ BEGIN
                 LEFT JOIN crs_mrk_phys_state MPS ON MPS.mrk_id = MRK.id AND MPS.type = 'MARK' AND MPS.status = 'CURR'
                 LEFT JOIN tmp_survey_plans SUR ON MPS.wrk_id = SUR.wrk_id
                 LEFT JOIN crs_sys_code SCOC ON MPS.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
+                LEFT JOIN crs_sys_code SCOM ON RTRIM(mrk.type) = SCOM.code AND SCOM.scg_code = 'MRKT'
             WHERE
                 COO.cor_id < 1908 AND
                 NOD.cos_id_official = 109 AND
