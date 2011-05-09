@@ -232,7 +232,7 @@ sub sendMessageType
        print "Log file not sent - no SMTP server\n",
           "To: $to\n",
           "Subject: ",$subject,"\n\n",
-  	$text;
+    $text;
        return;
     }
   
@@ -258,10 +258,10 @@ sub help
     my $sections = 'Syntax';
     require Pod::Usage;
     Pod::Usage::pod2usage({
-		-verbose=>$level,
-		-sections=>$sections,
-		-exitval=>'NOEXIT' 
-	});
+        -verbose=>$level,
+        -sections=>$sections,
+        -exitval=>'NOEXIT' 
+    });
     exit;
 }
 __END__
@@ -304,7 +304,7 @@ Options:
 
 =item -rebuild or -r
 
-=item -before yyyymmdd
+=item -before or -b yyyymmdd
 
 =item -dry-run or -d 
 
@@ -318,7 +318,7 @@ Options:
 
 =item -listing_file or -l I<listing_file>
 
-=item -keep-files
+=item -keep-files or -k
 
 =item -verbose or -v
 
