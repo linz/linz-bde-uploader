@@ -662,8 +662,11 @@ sub ApplyUpdates
 
     eval
     {
-        $self->ApplyPostUploadFunctions;
-        $self->FinishJob;
+        if( !$dry_run )
+        {
+            $self->ApplyPostUploadFunctions;
+            $self->FinishJob;
+        }
     };
     $self->set_error($@);
     $self->send_error();
