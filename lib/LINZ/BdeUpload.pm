@@ -123,7 +123,7 @@ sub _read_config
     $self->{config_file} = $config_file;
     $self->{tables}=[];
 
-    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file\n"); 
+    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!\n"); 
     my $table;
     my $errors = [];
     my %tables = ();
@@ -506,13 +506,24 @@ sub tmp
     $self->{tmp} = $tmp;
     return $tmp;
 }
+
 sub writeLog
 {
     my($self,$type,@messages) = @_;
+    my $status = 1;
     my $db = $self->db;
     return 0 if ! $db || ! $db->jobCreated;
-    $db->writeLog($type,@messages);
-    return 1;
+    # might not be able to log message if database transaction is in a
+    # rollback state
+    eval
+    {
+        $db->writeLog($type,@messages);
+    };
+    if ($@)
+    {
+        $status = 0;
+    }
+    return $status;
 }
 
 sub writeMessages
@@ -785,12 +796,12 @@ sub ApplyDatasetUpdates
     
     foreach my $dataset ( sort {$a->name cmp $b->name} $uploadset->datasets )
     {
-        $self->CheckTimeout;
-        my $is_level_0 = $dataset->is_level_0;
-        my $load_type  = "level " . $is_level_0 ? "0" : "5";
+        my $load_type  = "level " . $dataset->level;
+        my $is_level_0_ds = $dataset->level == '0';
         
+        $self->CheckTimeout;      
         my $timeout;
-        if ( $is_level_0 )
+        if ( $is_level_0_ds )
         {
             $timeout = $self->cfg->max_level0_runtime_hours;
         }
@@ -821,7 +832,7 @@ sub ApplyDatasetUpdates
                 if(! $tablestate->{$tablename})
                 {
                     push(@loadtables,$table); 
-                    $need_change_table = 1 if table->is_l5table && !$table->level5_is_full;
+                    $need_change_table = 1 if !$is_level_0_ds && !$table->level5_is_full;
                 }
                 # tablestate accumulates failed uploads.  This will
                 # be cleared if the table is successfully uploaded.
@@ -866,7 +877,7 @@ sub ApplyDatasetUpdates
         $db->dropWorkingCopy($change_table_name) if $change_table_name;
         $self->db->endDataset($dataset->name);
         
-        if ( $is_level_0 )
+        if ( $is_level_0_ds )
         {
             if( $self->cfg->skip_postupload_tasks )
             {
@@ -886,10 +897,10 @@ sub ApplyDatasetUpdates
         next if $state eq '' || $state eq '|';
         my @dsnames = split(/\|/,substr($state,1));
         my $dsname0 = shift(@dsnames);
-        $self->error("Failed to load incremental update for ",$tablename,
+        $self->error("Failed to load update for ",$tablename,
             " from ", $dsname0) 
             if $dsname0; 
-        $self->error("Incremental updates of $tablename from ",join(", ",@dsnames),
+        $self->error("Updates of $tablename from ",join(", ",@dsnames),
             " where bypassed due to previous error for that table\n")
             if @dsnames;
     }
@@ -917,6 +928,10 @@ sub FinishJob
     my $self = shift;
     $self->{messages} = $self->db->getLogMessages;
     $self->db->finishJob;
+    if ( $self->{dbupdated} && $self->cfg->maintain_db )
+    {
+        $self->db->maintain;
+    }
     $self->{jobfinished} = 1;
     $self->{dbupdated} = 0;
 }
@@ -1034,7 +1049,7 @@ sub UploadTable
         }
         else
         {
-            $db->applyLevel5Update($tablename,$bdedate,$details, 1)
+            $db->applyLevel5Update($tablename,$bdedate,$details, $self->cfg->fail_if_inconsistent_data(1))
                 || $self->die_error("Cannot apply level ",$dataset->level, 
                     " update for ",$tablename," in ",$dataset->name);
         }

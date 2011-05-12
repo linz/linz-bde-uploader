@@ -16,7 +16,7 @@
 ################################################################################
 
 PACKAGE=linz-bde-uploader
-CFGPATH=/etc/$PACKAGE
+CFGPATH=/etc/$PACKAGE/linz_bde_uploader.conf
 LOGDIR=/var/log/$PACKAGE
 SCRIPTLOG=$PACKAGE.log
 RUNLOG=$PACKAGE_run.log
