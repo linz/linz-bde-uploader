@@ -22,8 +22,11 @@ DECLARE
    v_msg       TEXT;
    v_rev_table TEXT;
 BEGIN
-    PERFORM table_version.ver_create_revision('Initial revisioning for BDE/LDS tables');
+	GRANT USAGE ON SCHEMA table_version TO bde_user;
+	GRANT USAGE ON SCHEMA table_version TO bde_admin;
 
+    PERFORM table_version.ver_create_revision('Initial revisioning for BDE/LDS tables');
+    
     FOR v_schema, v_table IN 
         SELECT
             NSP.nspname,
