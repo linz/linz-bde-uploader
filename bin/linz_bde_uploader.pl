@@ -50,6 +50,7 @@ my $showhelp = 0;         # Show help
 my $override_locks = 0;   # Clear existing locks
 my $listing_file = '';
 my $enddate = '';         # Only use files before this date
+my $maintain_db = 0;      # run database maintain after run.
 
 GetOptions (
     "help|h" => \$showhelp,
@@ -67,6 +68,7 @@ GetOptions (
     "override-locks|o" => \$override_locks,
     "keep-files|k" => \$keep_files,
     "before|b=s" => \$enddate,
+	"maintain-database|m" => \$maintain_db,
     "listing_file|l=s" => \$listing_file,
     "verbose|v" => \$verbose,
     )
@@ -101,7 +103,8 @@ if( $rebuild && ! $apply_level0 )
 my $of;
 if($listing_file)
 {
-    open($of, ">", $listing_file);
+    open($of, ">", $listing_file) ||
+		die "Can't not write to listing file $listing_file: $!\n";
     select($of);
 };
 
@@ -122,6 +125,7 @@ eval
         skip_postupload_tasks => $skip_postupload,
         keep_files => $keep_files,
         end_date => $enddate,
+		maintain_db => $maintain_db,
         select_tables => join(' ',@ARGV),
     };
 
@@ -306,6 +310,8 @@ Options:
 
 =item -before or -b yyyymmdd
 
+=item -maintain-database or -m
+
 =item -dry-run or -d 
 
 =item -full-timeout or -t I<timeout>
@@ -377,6 +383,11 @@ Just list the updates that will be applied - don't actually make any changes.
 
 Only use BDE files from before the specified date (entered as a string
 yyyymmdd or yyyymmddhhmmss).  Used for testing or restoring to a previous date.
+
+=item -maintain-database or -m
+
+After a job has been successfully run and the database has been updated, the
+database will be garbage collected and analysed
 
 =item -full-timeout or -t I<timeout>
 

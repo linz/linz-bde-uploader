@@ -78,6 +78,7 @@ with the following series of scripts:
 
     psql -d bde_db sql/bde_roles.sql
     psql -d bde_db sql/bde_schema.sql
+    psql -d bde_db sql/bde_schema_index.sql
     psql -d bde_db sql/bde_functions.sql
     psql -d bde_db sql/table_version_tables.sql
     psql -d bde_db sql/table_version_functions.sql
@@ -126,8 +127,8 @@ Key parameters to change in the linz_bde_uploader.conf config are:
     in each with the naming convention of YYYYMMDDhhmmss for each dataset
 
     tmp_base_dir: This temp processing directory for uncompressing and
-    pre-processing BDE datafile. This directory should have at 10GB of free space
-    for large tables
+    pre-processing BDE datafile. This directory should have at 15GB of free
+    space for large tables such as crs_adj_obs_change
 
     include_tables: A list of table to load for the run. These table must exist
     in the in the file as defined by bde_tables_config (tables.conf by defualt)

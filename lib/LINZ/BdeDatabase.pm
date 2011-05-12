@@ -158,6 +158,24 @@ The C<lastUploadStats> returns a hash reference with the fields
 Sets the application name for the SQL session. Returns true if this was
 successful
 
+=item $id = $db->uploadId
+
+Returns the id for the upload. If a job is not currently active this method will
+create a new upload id.
+
+=item $status = $db->jobCreated
+
+Will return true if a job upload for this database has been created
+
+=item $db->finishJob
+
+If a job has been created, then the finish SQL is run and the database upload
+job is cleaned up.
+
+=item $db->maintian
+
+Will run garbage collection and analyse on the BDE database.
+
 =item $success = $db->beginTable($table_name)
 
 Starts a load for a table. If the table transaction option is set the cfg then a
@@ -344,7 +362,7 @@ sub DESTROY
 
 sub uploadId
 {
-    my( $self) = @_;
+    my($self) = @_;
     if(! $self->jobCreated )
     {
         if( ! $self->{_allowConcurrent} && ! $self->{_overrideLocks} && $self->anyUploadIsActive )
@@ -360,8 +378,15 @@ sub uploadId
 
 sub jobCreated
 {
-    my( $self) = @_;
+    my($self) = @_;
     return defined($self->{uploadId});
+}
+
+sub maintian
+{
+    my($self) = @_;
+    $self->_dbh->do("VACUUM ANALYSE") ||
+        die "Cannot vacuum database\n", $self->_dbh->errstr,"\n";
 }
 
 sub finishJob
