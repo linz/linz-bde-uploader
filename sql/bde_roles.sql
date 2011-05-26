@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -33,12 +33,6 @@ IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'bde_user') THEN
     CREATE ROLE bde_user
         NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
     ALTER ROLE bde_user SET search_path=bde, public;
-END IF;
-
-IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'test') THEN
-    CREATE ROLE test
-        NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
-    ALTER ROLE test SET search_path=bde, public;
 END IF;
 
 END;

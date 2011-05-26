@@ -1,3 +1,4 @@
+#!usr/bin/perl
 ################################################################################
 #
 # $Id$
@@ -13,19 +14,19 @@
 #
 ################################################################################
 # Script to upload BDE files to the postgres database.  Reads options from
-# config/linz_bde_loader.cfg
+# linz_bde_loader.conf located in the configuration directory
 ################################################################################
 use strict;  
 
-use vars qw/$Version/;
-$Version = '$Id$';
+# TODO need to update this from git describe
+our $VERSION = '1.0.0';
 
 use FindBin;
 use lib $FindBin::Bin;
 use Getopt::Long;
 use Net::SMTP;
 
-use BdeUpload;
+use LINZ::BdeUpload;
 use LINZ::Config;
 
 @ARGV || help(0);
@@ -49,6 +50,7 @@ my $showhelp = 0;         # Show help
 my $override_locks = 0;   # Clear existing locks
 my $listing_file = '';
 my $enddate = '';         # Only use files before this date
+my $maintain_db = 0;      # run database maintain after run.
 
 GetOptions (
     "help|h" => \$showhelp,
@@ -66,6 +68,7 @@ GetOptions (
     "override-locks|o" => \$override_locks,
     "keep-files|k" => \$keep_files,
     "before|b=s" => \$enddate,
+	"maintain-database|m" => \$maintain_db,
     "listing_file|l=s" => \$listing_file,
     "verbose|v" => \$verbose,
     )
@@ -100,7 +103,8 @@ if( $rebuild && ! $apply_level0 )
 my $of;
 if($listing_file)
 {
-    open($of, ">", $listing_file);
+    open($of, ">", $listing_file) ||
+		die "Can't not write to listing file $listing_file: $!\n";
     select($of);
 };
 
@@ -121,12 +125,13 @@ eval
         skip_postupload_tasks => $skip_postupload,
         keep_files => $keep_files,
         end_date => $enddate,
+		maintain_db => $maintain_db,
         select_tables => join(' ',@ARGV),
     };
 
     my $cfg = new LINZ::Config($options);
 
-    my $upload = new BdeUpload($cfg);
+    my $upload = new LINZ::BdeUpload($cfg);
 
     eval
     {
@@ -231,7 +236,7 @@ sub sendMessageType
        print "Log file not sent - no SMTP server\n",
           "To: $to\n",
           "Subject: ",$subject,"\n\n",
-  	$text;
+    $text;
        return;
     }
   
@@ -254,9 +259,13 @@ sub help
 {
     my($full) = @_;
     my $level = $full ? 2 : 99;
-    my $sections = ["Syntax"];
+    my $sections = 'Syntax';
     require Pod::Usage;
-    Pod::Usage::pod2usage({ -verbose=>$level, -sections=>$sections });
+    Pod::Usage::pod2usage({
+        -verbose=>$level,
+        -sections=>$sections,
+        -exitval=>'NOEXIT' 
+    });
     exit;
 }
 __END__
@@ -299,7 +308,9 @@ Options:
 
 =item -rebuild or -r
 
-=item -before yyyymmdd
+=item -before or -b yyyymmdd
+
+=item -maintain-database or -m
 
 =item -dry-run or -d 
 
@@ -313,7 +324,7 @@ Options:
 
 =item -listing_file or -l I<listing_file>
 
-=item -keep-files
+=item -keep-files or -k
 
 =item -verbose or -v
 
@@ -333,7 +344,8 @@ linz_bde_uploader.pl script is located.
 
 =item -config-extension or -x  I<cfgext>
 
-Extra configuration extension.  Overrides selected configuration items with values from bde.cfg.I<cfgext> 
+Extra configuration extension.  Overrides selected configuration items with
+values from bde.cfg.I<cfgext> 
 
 =item -purge or -p
 
@@ -371,6 +383,11 @@ Just list the updates that will be applied - don't actually make any changes.
 
 Only use BDE files from before the specified date (entered as a string
 yyyymmdd or yyyymmddhhmmss).  Used for testing or restoring to a previous date.
+
+=item -maintain-database or -m
+
+After a job has been successfully run and the database has been updated, the
+database will be garbage collected and analysed
 
 =item -full-timeout or -t I<timeout>
 
