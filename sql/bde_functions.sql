@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -17,24 +17,24 @@ BEGIN;
 
 SET search_path = bde, public;
 
---
--- Name: bde_get_app_specific
---
-
 DO $$
 DECLARE
-    v_pcid TEXT;
+   v_pcid    TEXT;
+   v_schema  TEXT = 'bde';
 BEGIN
     FOR v_pcid IN 
-        SELECT proname || '(' || pg_get_function_identity_arguments(oid) || ')'
+        SELECT v_schema || '.' || proname || '(' || pg_get_function_identity_arguments(oid) || ')'
         FROM pg_proc 
-        WHERE pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = 'bde')
-        AND proname ILIKE E'bde\\_%'
+        WHERE pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = v_schema)
     LOOP
         EXECUTE 'DROP FUNCTION ' || v_pcid;
     END LOOP;
-END
+END;
 $$;
+
+--
+-- Name: bde_get_app_specific
+--
 
 CREATE OR REPLACE FUNCTION bde_get_app_specific(p_par_id INTEGER, p_context VARCHAR, p_long CHAR) RETURNS text
     AS $$
@@ -617,157 +617,81 @@ CREATE OR REPLACE FUNCTION bde_write_appellation(
     p_maori_name VARCHAR,
     p_other_app TEXT
 )
-RETURNS text
+RETURNS TEXT
     AS $$
 DECLARE
     v_part               VARCHAR(5);
-    v_part_length        INTEGER;
     v_share              VARCHAR(9);
-    v_share_length       INTEGER;
     v_block              VARCHAR(7);
-    v_block_length       INTEGER;
-    v_app_too_long       TEXT;
     v_output             TEXT;
-    v_total_length       INTEGER;
-    v_max_length         INTEGER;
 BEGIN
     v_part          := ' Part';
-    v_part_length   := 5;
     v_share         := ' share of';
-    v_share_length  := 9;
     v_block         := ' Block';
-    v_block_length  := 6;
-    v_app_too_long  := 'Appellation Too Long';
     v_output        := '';
-    v_total_length  := 0;
-    v_max_length    := v_max_length;
 
     IF ( p_part_indicator = 'PART' ) THEN
-        v_total_length := v_total_length + v_part_length;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || v_part;
     END IF;
 
     IF ( p_lgd_part = 'PART' ) THEN
-        v_total_length := v_total_length + v_part_length;
-        IF ( v_total_length >= v_max_length ) THEN
-             RETURN v_app_too_long;
-        END IF;
         v_output := v_output || v_part;
     END IF;
 
     IF ( p_share <> '1/1' ) THEN
-        v_total_length := v_total_length + char_length(p_share) + v_share_length;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || p_share::TEXT || v_share;
     END IF;
 
     IF ( char_length(p_maori_name) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_maori_name) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_maori_name;
     END IF;
 
     IF ( char_length(p_maori_parcel) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_maori_parcel) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_maori_parcel;
     END IF;
 
     IF ( char_length(p_maori_name) > 0 ) OR ( char_length(p_maori_parcel) > 0 ) THEN
-        v_total_length := v_total_length + v_block_length;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || v_block;
     END IF;
 
     IF ( char_length(p_other_app) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_other_app) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_other_app;
     END IF;
 
     IF ( char_length(p_parcel_type) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_parcel_type) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_parcel_type;
     END IF;
 
     IF ( char_length(p_parcel_value) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_parcel_value) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_parcel_value;
     END IF;
 
     IF ( char_length(p_2_parcel_type) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_2_parcel_type) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-             RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_2_parcel_type;
     END IF;
 
     IF ( char_length(p_2_parcel_value) > 0 ) THEN
-        v_total_length := v_total_length + char_length(p_2_parcel_value) + 1;
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || ' ' || p_2_parcel_value;
     END IF;
 
     IF ( char_length(p_block_number) > 0 ) THEN
-        v_total_length := v_total_length + v_block_length + 1 + char_length(p_block_number);
-        IF ( v_total_length >= v_max_length ) THEN
-            RETURN v_app_too_long;
-        END IF;
         v_output := v_output || v_block || ' ' || p_block_number;
     END IF;
 
     IF ( p_sub_type_pos = 'PRFX' ) THEN
         IF ( char_length(p_sub_type) > 0 ) THEN
-            v_total_length := v_total_length + char_length(p_sub_type) + 1;
-            IF ( v_total_length >= v_max_length ) THEN
-                RETURN v_app_too_long;
-            END IF;
             v_output := v_output || ' ' || p_sub_type;
         END IF;
 
         IF ( char_length(p_app_val) > 0 ) THEN
-            v_total_length := v_total_length + char_length(p_app_val) + 1;
-            IF ( v_total_length >= v_max_length ) THEN
-                RETURN v_app_too_long;
-            END IF;
             v_output := v_output || ' ' || p_app_val;
         END IF;
     ELSE
         IF ( char_length(p_app_val) > 0 ) THEN
-            v_total_length := v_total_length + char_length(p_app_val) + 1;
-            IF ( v_total_length >= v_max_length ) THEN
-                RETURN lvc_appe_too_long;
-            END IF;
             v_output := v_output || ' ' || p_app_val;
         END IF;
 
         IF ( char_length(p_sub_type) > 0 ) THEN
-            v_total_length := v_total_length + char_length(p_sub_type) + 1;
-            IF ( v_total_length >= v_max_length ) THEN
-                RETURN v_app_too_long;
-            END IF;
             v_output := v_output || ' ' || p_sub_type;
         END IF;
     END IF;
@@ -1065,6 +989,7 @@ DO $$
 DECLARE
     v_comment TEXT;
     v_pcid    TEXT;
+    v_schema  TEXT = 'bde';
 BEGIN
     FOR v_comment, v_pcid IN
         SELECT
@@ -1073,7 +998,7 @@ BEGIN
         FROM
             pg_proc
         WHERE
-            pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = 'bde')  AND
+            pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = v_schema)  AND
             proname NOT ILIKE '_createVersionComment'
     LOOP
         IF v_comment IS NULL THEN
@@ -1082,11 +1007,11 @@ BEGIN
             v_comment := E'\n\n' || v_comment;
         END IF;
        
-        v_comment := 'Version: ' ||  '$Id$' || E'\n' ||
-                     'Installed: ' || to_char(current_timestamp,'YYYY-MM-DD HH:MI') ||
-                    v_comment;
+        v_comment := '$Id$'
+                    || E'\n' || 'Installed: ' ||
+                    to_char(current_timestamp,'YYYY-MM-DD HH:MI') || v_comment;
        
-        EXECUTE 'COMMENT ON FUNCTION ' || v_pcid || ' IS '
+        EXECUTE 'COMMENT ON FUNCTION ' || v_schema || '.' || v_pcid || ' IS '
             || quote_literal( v_comment );
     END LOOP;
 END

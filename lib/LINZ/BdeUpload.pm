@@ -123,7 +123,7 @@ sub _read_config
     $self->{config_file} = $config_file;
     $self->{tables}=[];
 
-    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file\n"); 
+    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!\n"); 
     my $table;
     my $errors = [];
     my %tables = ();
@@ -343,9 +343,9 @@ sub print
 
 # ###################################################################
 
-package BdeUpload;
+package LINZ::BdeUpload;
 
-use BdeDatabase;
+use LINZ::BdeDatabase;
 use LINZ::Bde;
 
 use IO::Handle;
@@ -446,7 +446,7 @@ sub new
     
     # Set up the repository and the database
 
-    $self->{db} = new BdeDatabase( $cfg );
+    $self->{db} = new LINZ::BdeDatabase( $cfg );
     $self->{db}->setApplication($cfg->application_name);
 
     $self->{repository} = new LINZ::BdeRepository( $cfg->bde_repository );
@@ -506,13 +506,24 @@ sub tmp
     $self->{tmp} = $tmp;
     return $tmp;
 }
+
 sub writeLog
 {
     my($self,$type,@messages) = @_;
+    my $status = 1;
     my $db = $self->db;
     return 0 if ! $db || ! $db->jobCreated;
-    $db->writeLog($type,@messages);
-    return 1;
+    # might not be able to log message if database transaction is in a
+    # rollback state
+    eval
+    {
+        $db->writeLog($type,@messages);
+    };
+    if ($@)
+    {
+        $status = 0;
+    }
+    return $status;
 }
 
 sub writeMessages
@@ -633,56 +644,40 @@ sub ApplyUpdates
 
     eval
     {
-
-        my $l0updates;
+        my $updates = new BdeUploadSet();
 
         if( $self->cfg->apply_level0(0) )
         {
-            $l0updates = $self->GetLevel0Updates; 
-            if( $dry_run )
-            {
-                print "Level 0 updates\n";
-                $l0updates->print
-            }
-            elsif(! $l0updates->empty )
-            {
-                my $timeout = $self->cfg->max_level0_runtime_hours;
-                $self->SetTimeout($timeout,"Level 0 updates have timed out\n");
-                $self->ApplyLevel0Updates($l0updates);
-            }
-        }
-    
-        # Apply level 5 updates
-    
+            $self->GetLevel0Updates($updates); 
+        }   
         if( $self->cfg->apply_level5(0) )
         {
-            # If this is not a dry run, then base level 5 updates
-            # on actual state - don't assume that level 0 updates
-            # all successfully applied.
-            $l0updates = undef if ! $dry_run;
-            my $l5updates = $self->GetLevel5Updates($l0updates);
-
-            if( $dry_run )
-            {
-                print "Level 5 updates\n";
-                $l5updates->print
-            }
-            elsif(! $l5updates->empty )
-            {
-                my $timeout = $self->cfg->max_level5_runtime_hours;
-                $self->SetTimeout($timeout,"Level 5 updates have timed out\n");
-                $self->ApplyLevel5Updates($l5updates);
-            }
+            $self->GetLevel5Updates($updates);
         }
-
+        
+        # Apply updates
+        
+        if( $dry_run )
+        {
+            print "Dataset updates\n";
+            $updates->print;
+        }
+        elsif(! $updates->empty )
+        {
+            $self->ApplyDatasetUpdates($updates);
+        }
     };
     $self->set_error($@);
     $self->send_error();
+    
 
     eval
     {
-        $self->ApplyPostUploadFunctions;
-        $self->FinishJob;
+        if( !$dry_run )
+        {
+            $self->ApplyPostUploadFunctions;
+            $self->FinishJob;
+        }
     };
     $self->set_error($@);
     $self->send_error();
@@ -691,7 +686,7 @@ sub ApplyUpdates
 
 sub GetLevel0Updates
 {
-    my($self) = @_;
+    my($self, $updates) = @_;
 
     my $db = $self->db;
 
@@ -703,8 +698,6 @@ sub GetLevel0Updates
     $self->die_error("No level 0 uploads available") if ! @datasets;
 
     my $dataset = $datasets[-1];
-
-    my $uploadset = new BdeUploadSet();
 
     my $rebuild = $self->cfg->rebuild(0);
     
@@ -723,9 +716,9 @@ sub GetLevel0Updates
     foreach my $t ( $self->tables->level0_tables )
     {
         my $lastl0 = $db->lastUploadStats($t->name)->{last_level0_dataset};
-        $uploadset->add($dataset,$t) if $rebuild || $lastl0 lt $dataset->name;
+        $updates->add($dataset,$t) if $rebuild || $lastl0 lt $dataset->name;
     }
-    return $uploadset;
+    return $updates;
 }
 
 sub GetLevel5Updates
@@ -737,8 +730,8 @@ sub GetLevel5Updates
     my $enddate = $self->cfg->end_date('');
 
     my $l5repository = $self->repository->level5;
-
-    my $uploadset = new  BdeUploadSet();
+    
+    my $rebuild = $self->cfg->rebuild(0);
     
     my %complete_datasets;
     my $l5_tableset = $self->tables->level5_subset;
@@ -746,7 +739,7 @@ sub GetLevel5Updates
     foreach my $t ($l5_tableset->tables )
     {
         my $lastl5;
-        if ($l0updates)
+        if ($l0updates && $rebuild)
         {
             my $ds = $l0updates->last_dataset_for($t);
             $lastl5 = $ds->name if $ds;
@@ -778,89 +771,10 @@ sub GetLevel5Updates
                 ) if ! $avail;
             }
             last if $require_all && ! $complete_datasets{$d};
-            $uploadset->add($d,$t);
+            $l0updates->add($d,$t);
         }
     }
-
-    return $uploadset;
-}
-
-sub ApplyLevel0Updates
-{
-    my($self,$uploadset) = @_;
-
-    my $dataset = $uploadset->datasets->[0];
-    return if ! $dataset;
-
-    $self->CheckTimeout;
-
-    $self->info("I","Applying ",$dataset->name," level 0 update (job ",
-        $self->db->uploadId,")\n");
-
-    $self->db->beginDataset($dataset->name);
-
-    my %loaded;
-    foreach my $table ( $uploadset->tables($dataset) )
-    {
-        $loaded{$table->name} = 0;
-    }
-    
-    my $count = 0;
-    my $error = 0;
-    eval
-    {
-        foreach my $table ($uploadset->tables($dataset))
-        {
-            $self->CheckTimeout;
-
-            my $tablename = $table->name;
-            eval
-            {
-                $self->UploadTable($dataset,$table);
-                $loaded{$tablename} = 1;
-                $count++;
-            };
-            $self->set_error($@);
-            if( $self->error_message )
-            {
-                my $error = 1;
-                $self->send_error("Failed to load level 0 update for ",$tablename,
-                    " from ",$dataset->name,"\n");
-                last if $self->db->datasetInTransaction;
-            }
-        }
-    };
-    $self->set_error($@);
-    $self->send_error();
-
-    # Record any unreported table errors.
-    foreach my $tablename (keys %loaded)
-    {
-        next if $loaded{$tablename};
-        $error = 1;
-        $self->error("Failed to load level 0 update for ",$tablename,
-            " from ", $dataset->name);
-    }
-    
-    if ( $error && $self->db->datasetInTransaction )
-    {
-        $self->writeDatasetLogMessages($self->db->getDatasetMessages);
-        $self->db->rollBackDataset;
-        $self->error("Failed to load level 0 update for " . $dataset->name .
-            ". The transaction has been rolled back");
-        return;
-    }
-
-    $self->db->endDataset($dataset->name);
-    
-    if( $self->cfg->skip_postupload_tasks )
-    {
-        $self->warning("Post level0 upload tasks have not been run by user choice\n");
-    }
-    else
-    {
-        $self->ApplyPostLevel0Functions;
-    }
+    return $l0updates;
 }
 
 sub ApplyPostLevel0Functions
@@ -870,7 +784,7 @@ sub ApplyPostLevel0Functions
     $self->{dbl0updated} = 1;
 }
 
-sub ApplyLevel5Updates
+sub ApplyDatasetUpdates
 {
     my($self,$uploadset) = @_;
 
@@ -878,18 +792,26 @@ sub ApplyLevel5Updates
     my $changetable = $self->{changetable};
 
     # Record status of each table
-    # 0 = Ok to load
-    # 1 = Load has failed
-    # 2 = Load has failed and subsequent missing loads reported.
-
     my $tablestate = {};
-
-    my $count = 0;
-    foreach my $dataset ($uploadset->datasets)
+    
+    foreach my $dataset ( sort {$a->name cmp $b->name} $uploadset->datasets )
     {
-        $self->CheckTimeout;
+        my $load_type  = "level " . $dataset->level;
+        my $is_level_0_ds = $dataset->level == '0';
+        
+        $self->CheckTimeout;      
+        my $timeout;
+        if ( $is_level_0_ds )
+        {
+            $timeout = $self->cfg->max_level0_runtime_hours;
+        }
+        else
+        {
+            $timeout = $self->cfg->max_level5_runtime_hours;
+        }
+        $self->SetTimeout($timeout,"$load_type updates have timed out\n");
 
-        $self->info("I","Applying ",$dataset->name," incremental update (job ",
+        $self->info("I","Applying ",$dataset->name," $load_type update (job ",
             $self->db->uploadId,")\n");
 
         $self->db->beginDataset($dataset->name);
@@ -905,10 +827,12 @@ sub ApplyLevel5Updates
             foreach my $table ($uploadset->tables($dataset))
             {
                 my $tablename = $table->name;
+                # add tables that have a clean state into the @loadtables array
+                # for processing
                 if(! $tablestate->{$tablename})
                 {
                     push(@loadtables,$table); 
-                    $need_change_table = 1 if ! $table->level5_is_full;
+                    $need_change_table = 1 if !$is_level_0_ds && !$table->level5_is_full;
                 }
                 # tablestate accumulates failed uploads.  This will
                 # be cleared if the table is successfully uploaded.
@@ -925,14 +849,13 @@ sub ApplyLevel5Updates
                 eval
                 {
                     $self->UploadTable($dataset,$table);
-                    $count++;
                     $tablestate->{$tablename} = '';
                 };
                 $self->set_error($@);
                 if( $self->error_message)
                 {
                     $error = 1;
-                    $self->send_error("Failed to load incremental update for ",$tablename,
+                    $self->send_error("Failed to load $load_type update for ",$tablename,
                         " from ",$dataset->name,"\n");
                     $tablestate->{$tablename} = '|';
                     last if $self->db->datasetInTransaction;
@@ -946,16 +869,27 @@ sub ApplyLevel5Updates
         {
             $self->writeDatasetLogMessages($self->db->getDatasetMessages);
             $self->db->rollBackDataset;
-            $self->error("Failed to load level 5 update for " . $dataset->name .
+            $self->error("Failed to load $load_type update for " . $dataset->name .
                 ". The transaction has been rolled back");
             last;
         }
-        else
+
+        $db->dropWorkingCopy($change_table_name) if $change_table_name;
+        $self->db->endDataset($dataset->name);
+        
+        if ( $is_level_0_ds )
         {
-            $db->dropWorkingCopy($change_table_name) if $change_table_name;
-            $self->db->endDataset($dataset->name);
+            if( $self->cfg->skip_postupload_tasks )
+            {
+                $self->warning("Post level0 upload tasks have not been run by user choice\n");
+            }
+            else
+            {
+                $self->ApplyPostLevel0Functions;
+            }
         }
     }
+    
     # Record any unreported table errors.
     foreach my $tablename (keys %$tablestate )
     {
@@ -963,14 +897,15 @@ sub ApplyLevel5Updates
         next if $state eq '' || $state eq '|';
         my @dsnames = split(/\|/,substr($state,1));
         my $dsname0 = shift(@dsnames);
-        $self->error("Failed to load incremental update for ",$tablename,
+        $self->error("Failed to load update for ",$tablename,
             " from ", $dsname0) 
             if $dsname0; 
-        $self->error("Incremental updates of $tablename from ",join(", ",@dsnames),
+        $self->error("Updates of $tablename from ",join(", ",@dsnames),
             " where bypassed due to previous error for that table\n")
             if @dsnames;
     }
-
+    
+    return 1;
 }
 
 sub ApplyPostUploadFunctions
@@ -993,6 +928,10 @@ sub FinishJob
     my $self = shift;
     $self->{messages} = $self->db->getLogMessages;
     $self->db->finishJob;
+    if ( $self->{dbupdated} && $self->cfg->maintain_db )
+    {
+        $self->db->maintain;
+    }
     $self->{jobfinished} = 1;
     $self->{dbupdated} = 0;
 }
@@ -1110,7 +1049,7 @@ sub UploadTable
         }
         else
         {
-            $db->applyLevel5Update($tablename,$bdedate,$details, 1)
+            $db->applyLevel5Update($tablename,$bdedate,$details, $self->cfg->fail_if_inconsistent_data(1))
                 || $self->die_error("Cannot apply level ",$dataset->level, 
                     " update for ",$tablename," in ",$dataset->name);
         }
@@ -1237,7 +1176,7 @@ __END__
 
 =head1 NAME
 
-BdeUpload - A module to manage the a BDE upload job.
+LINZ::BdeUpload - A module to manage the a BDE upload job.
 
 =head1 Synopsis
 
@@ -1249,7 +1188,7 @@ uploaded.
 
 =over
 
-=item $upload = new BdeUpload($cfg);
+=item $upload = new LINZ::BdeUpload($cfg);
 
 =item $upload->SetTimeout
 
@@ -1429,7 +1368,7 @@ Writes an entry into the log for the upload.  The type should be one of 'E'=erro
 
 =back
 
-=head1 Classes used by BdeUpload
+=head1 Classes used by LINZ::BdeUpload
 
 =head2 BdeUploadTableDef
 

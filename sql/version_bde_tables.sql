@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -14,23 +14,52 @@
 --------------------------------------------------------------------------------
 -- Creates system tables required for table versioning support
 --------------------------------------------------------------------------------
-BEGIN;
 
-SELECT table_version.ver_create_revision('Initial revisioning for BDE tables');
+DO $$
+DECLARE
+   v_schema    NAME;
+   v_table     NAME;
+   v_msg       TEXT;
+   v_rev_table TEXT;
+BEGIN
+	GRANT USAGE ON SCHEMA table_version TO bde_user;
+	GRANT USAGE ON SCHEMA table_version TO bde_admin;
 
-SELECT
-    'Enable versioning on table ' || CLS.relname,
-    'OK: ' || table_version.ver_enable_versioning(NSP.nspname, CLS.relname)
-FROM
-    pg_catalog.pg_class CLS
-    JOIN pg_catalog.pg_namespace NSP ON NSP.oid = CLS.relnamespace
-WHERE
-    NSP.nspname = 'bde' AND
-    CLS.relkind = 'r'
-ORDER BY
-    NSP.nspname,
-    CLS.relname;
+    PERFORM table_version.ver_create_revision('Initial revisioning for BDE/LDS tables');
+    
+    FOR v_schema, v_table IN 
+        SELECT
+            NSP.nspname,
+            CLS.relname
+        FROM
+            pg_class CLS,
+            pg_namespace NSP
+        WHERE
+            CLS.relnamespace = NSP.oid AND
+            NSP.nspname IN ('lds', 'bde') AND
+            CLS.relkind = 'r'
+        ORDER BY
+            1, 2
+    LOOP
+        v_msg := 'Versioning table ' ||  v_schema || '.' || v_table;
+        PERFORM bde_control.bde_WriteUploadLog(1,'2',v_msg);
+        RAISE NOTICE '%', v_msg;
+        
+        BEGIN
+            PERFORM table_version.ver_enable_versioning(v_schema, v_table);
+        EXCEPTION
+            WHEN others THEN
+                RAISE EXCEPTION 'Error versioning %.%. ERROR: %', v_schema, v_table, SQLERRM;
+        END;
+        
+        SELECT table_version.ver_get_version_table_full(v_schema, v_table)
+        INTO   v_rev_table;
+        
+        EXECUTE 'GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE ' || v_rev_table || ' TO bde_admin';
+        EXECUTE 'GRANT SELECT ON TABLE ' || v_rev_table || ' TO bde_user';
+    END LOOP;
+    
+    PERFORM table_version.ver_complete_revision();
+END
+$$;
 
-SELECT table_version.ver_complete_revision();
-
-COMMIT;

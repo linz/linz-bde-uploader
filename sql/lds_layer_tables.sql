@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -42,7 +42,7 @@ CREATE TABLE geodetic_marks (
     geodetic_code CHAR(4) NOT NULL,
     current_mark_name TEXT,
     description TEXT,
-    mark_type VARCHAR(4),
+    mark_type TEXT,
     beacon_type TEXT,
     mark_condition TEXT,
     "order" INTEGER NOT NULL,
@@ -63,6 +63,43 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE geodetic_marks TO bde_admin;
 GRANT SELECT ON TABLE geodetic_marks TO bde_user;
 
 --------------------------------------------------------------------------------
+-- LDS table geodetic_network_marks
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS geodetic_network_marks CASCADE;
+
+CREATE TABLE geodetic_network_marks (
+    id INTEGER NOT NULL,
+    nod_id INTEGER NOT NULL,
+    geodetic_code CHAR(4) NOT NULL,
+    control_network VARCHAR(4) NOT NULL,
+    current_mark_name TEXT,
+    description TEXT,
+    mark_type TEXT,
+    beacon_type TEXT,
+    mark_condition TEXT,
+    "order" INTEGER NOT NULL,
+    land_district VARCHAR(100),
+    latitude NUMERIC(22,12) NOT NULL,
+    longitude NUMERIC(22,12) NOT NULL,
+    ellipsoidal_height NUMERIC(22,12) NULL
+);
+PERFORM AddGeometryColumn('geodetic_network_marks', 'shape', 4167, 'POINT', 2);
+
+CREATE SEQUENCE geodetic_network_marks_id_seq;
+ALTER TABLE geodetic_network_marks_id_seq OWNER TO bde_dba;
+ALTER TABLE geodetic_network_marks ALTER COLUMN id SET DEFAULT nextval('geodetic_network_marks_id_seq');
+
+ALTER TABLE geodetic_network_marks ADD PRIMARY KEY (id);
+CREATE UNIQUE INDEX idx_geo_net_mrk_nod_net ON geodetic_network_marks (nod_id, control_network);
+CREATE INDEX shx_geo_net_shape ON geodetic_network_marks USING gist (shape);
+
+ALTER TABLE geodetic_network_marks OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE geodetic_network_marks FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE geodetic_network_marks TO bde_admin;
+GRANT SELECT ON TABLE geodetic_network_marks TO bde_user;
+
+--------------------------------------------------------------------------------
 -- LDS table geodetic_vertical_marks
 --------------------------------------------------------------------------------
 DROP TABLE IF EXISTS geodetic_vertical_marks CASCADE;
@@ -73,7 +110,7 @@ CREATE TABLE geodetic_vertical_marks(
     geodetic_code CHAR(4) NOT NULL,
     current_mark_name TEXT,
     description TEXT,
-    mark_type VARCHAR(4),
+    mark_type TEXT,
     beacon_type TEXT,
     mark_condition TEXT,
     "order" CHAR(2) NOT NULL,
@@ -82,6 +119,8 @@ CREATE TABLE geodetic_vertical_marks(
     coordinate_system VARCHAR(100) NOT NULL
 );
 PERFORM AddGeometryColumn('geodetic_vertical_marks', 'shape', 4167, 'POINT', 2);
+
+ALTER TABLE geodetic_vertical_marks ADD UNIQUE (nod_id, coordinate_system);
 
 CREATE SEQUENCE geodetic_vertical_marks_id_seq;
 ALTER TABLE geodetic_vertical_marks_id_seq OWNER TO bde_dba;
@@ -106,7 +145,7 @@ CREATE TABLE geodetic_antarctic_marks (
     geodetic_code CHAR(4) NOT NULL,
     current_mark_name TEXT,
     description TEXT,
-    mark_type VARCHAR(4),
+    mark_type TEXT,
     beacon_type TEXT,
     mark_condition TEXT,
     "order" INTEGER NOT NULL,
@@ -136,7 +175,7 @@ CREATE TABLE geodetic_antarctic_vertical_marks(
     geodetic_code CHAR(4) NOT NULL,
     current_mark_name TEXT,
     description TEXT,
-    mark_type VARCHAR(4),
+    mark_type TEXT,
     beacon_type TEXT,
     mark_condition TEXT,
     "order" CHAR(2) NOT NULL,
@@ -144,6 +183,8 @@ CREATE TABLE geodetic_antarctic_vertical_marks(
     coordinate_system VARCHAR(100) NOT NULL
 );
 PERFORM AddGeometryColumn('geodetic_antarctic_vertical_marks', 'shape', 4764, 'POINT', 2);
+
+ALTER TABLE geodetic_antarctic_vertical_marks ADD UNIQUE (nod_id, coordinate_system);
 
 CREATE SEQUENCE geodetic_antarctic_vertical_marks_id_seq;
 ALTER TABLE geodetic_antarctic_vertical_marks_id_seq OWNER TO bde_dba;
@@ -369,7 +410,7 @@ CREATE TABLE titles (
     guarantee_status TEXT NOT NULL,
     estate_description TEXT,
     number_owners INT8 NOT NULL,
-    part_share BOOLEAN NOT NULL
+    spatial_extents_shared BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('titles', 'shape', 4167, 'MULTIPOLYGON', 2);
 
@@ -397,7 +438,7 @@ CREATE TABLE titles_plus (
     guarantee_status TEXT NOT NULL,
     estate_description TEXT,
     owners TEXT,
-    part_share BOOLEAN NOT NULL
+    spatial_extents_shared BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('titles_plus', 'shape', 4167, 'MULTIPOLYGON', 2);
 
@@ -421,9 +462,11 @@ CREATE TABLE title_owners (
     title_no VARCHAR(20) NOT NULL,
     title_status VARCHAR(4) NOT NULL, 
     land_district VARCHAR(100) NOT NULL,
-    share character(100) NOT NULL
+    part_ownership BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('title_owners', 'shape', 4167, 'MULTIPOLYGON', 2);
+
+ALTER TABLE title_owners ADD UNIQUE (owner, title_no);
 
 CREATE SEQUENCE title_owners_id_seq;
 ALTER TABLE title_owners_id_seq OWNER TO bde_dba;
@@ -446,7 +489,7 @@ DROP TABLE IF EXISTS road_centre_line CASCADE;
 CREATE TABLE road_centre_line (
     id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    location VARCHAR(100)
+    asp_location VARCHAR(100)
 );
 PERFORM AddGeometryColumn('road_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
 
@@ -468,7 +511,7 @@ CREATE TABLE road_centre_line_subsection (
     id INTEGER NOT NULL,
     road_id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    location VARCHAR(100),
+    asp_location VARCHAR(100),
     parcel_derived BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('road_centre_line_subsection', 'shape', 4167, 'LINESTRING', 2);
@@ -509,10 +552,10 @@ DROP TABLE IF EXISTS street_address CASCADE;
 
 CREATE TABLE street_address (
     id INTEGER NOT NULL,
-    address_string VARCHAR(126) NOT NULL,
+    address TEXT NOT NULL,
     house_number VARCHAR(25) NOT NULL,
     road_name VARCHAR(100) NOT NULL,
-    location VARCHAR(100)
+    asp_location VARCHAR(100)
 );
 PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
 
@@ -605,9 +648,10 @@ CREATE TABLE survey_observations (
     id INTEGER NOT NULL,
     nod_id_start INTEGER NOT NULL,
     nod_id_end INTEGER NOT NULL,
-    value NUMERIC(22,12) NOT NULL,
     obs_type TEXT NOT NULL,
-    surveyed_class TEXT,
+    value NUMERIC(22,12) NOT NULL,
+    value_label TEXT NOT NULL,
+    surveyed_type TEXT,
     coordinate_system TEXT NOT NULL,
     ref_datetime TIMESTAMP NOT NULL,
     survey_reference TEXT
@@ -633,14 +677,17 @@ CREATE TABLE survey_arc_observations (
     id INTEGER NOT NULL,
     nod_id_start INTEGER NOT NULL,
     nod_id_end INTEGER NOT NULL,
-    chord_bearing NUMERIC(22,12),
+    chord_bearing NUMERIC(22,12) NOT NULL,
     arc_length NUMERIC(22,12),
     arc_radius NUMERIC(22,12),
     arc_direction VARCHAR(4),
-    surveyed_class TEXT,
+    surveyed_type TEXT,
     coordinate_system TEXT NOT NULL,
     ref_datetime TIMESTAMP NOT NULL,
-    survey_reference TEXT NOT NULL
+    survey_reference TEXT NOT NULL,
+    chord_bearing_label TEXT NOT NULL,
+    arc_length_label TEXT,
+    arc_radius_label TEXT
 );
 PERFORM AddGeometryColumn('survey_arc_observations', 'shape', 4167, 'LINESTRING', 2);
 
@@ -661,9 +708,11 @@ DROP TABLE IF EXISTS parcel_vectors CASCADE;
 DROP TABLE IF EXISTS parcel_vectors CASCADE;
 CREATE TABLE parcel_vectors (
     id INTEGER NOT NULL,
+    type TEXT NOT NULL,
     bearing NUMERIC(22,12),
     distance NUMERIC(22,12),
-    type TEXT NOT NULL
+    bearing_label TEXT,
+    distance_label TEXT
 );
 PERFORM AddGeometryColumn('parcel_vectors', 'shape', 4167, 'LINESTRING', 2);
 
@@ -687,9 +736,10 @@ CREATE TABLE survey_network_marks (
     geodetic_code CHAR(4),
     current_mark_name TEXT,
     description TEXT,
-    mark_type VARCHAR(4),
+    mark_type TEXT,
     mark_condition TEXT,
     "order" INTEGER NOT NULL,
+    nominal_accuracy NUMERIC(4,2),
     last_survey TEXT
 );
 PERFORM AddGeometryColumn('survey_network_marks', 'shape', 4167, 'POINT', 2);
@@ -713,7 +763,7 @@ CREATE TABLE survey_bdy_marks (
     id INTEGER NOT NULL,
     name TEXT,
     "order" INTEGER NOT NULL,
-    nominal_accuracy NUMERIC(12,4) NOT NULL,
+    nominal_accuracy NUMERIC(4,2),
     date_last_adjusted TIMESTAMP
 );
 PERFORM AddGeometryColumn('survey_bdy_marks', 'shape', 4167, 'POINT', 2);
@@ -737,7 +787,7 @@ CREATE TABLE survey_non_bdy_marks (
     id INTEGER NOT NULL,
     name TEXT,
     "order" INTEGER NOT NULL,
-    nominal_accuracy NUMERIC(12,4) NOT NULL,
+    nominal_accuracy NUMERIC(4,2),
     date_last_adjusted TIMESTAMP
 );
 PERFORM AddGeometryColumn('survey_non_bdy_marks', 'shape', 4167, 'POINT', 2);

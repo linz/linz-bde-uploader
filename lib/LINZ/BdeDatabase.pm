@@ -16,7 +16,7 @@
 use strict;
 use DBI;
 
-=head1 BdeDatabase
+=head1 LINZ::BdeDatabase
 
 Interface between the BdeUpload process and a database
 
@@ -26,7 +26,7 @@ Version: $Id$
 
 =over
 
-=item $db = new BdeDatabase($cfg)
+=item $db = new LINZ::BdeDatabase($cfg)
 
 Creates a new BdeDatabase object, which provides a database connection
 and a set of functions for accessing the BDE functions in the database.
@@ -158,6 +158,24 @@ The C<lastUploadStats> returns a hash reference with the fields
 Sets the application name for the SQL session. Returns true if this was
 successful
 
+=item $id = $db->uploadId
+
+Returns the id for the upload. If a job is not currently active this method will
+create a new upload id.
+
+=item $status = $db->jobCreated
+
+Will return true if a job upload for this database has been created
+
+=item $db->finishJob
+
+If a job has been created, then the finish SQL is run and the database upload
+job is cleaned up.
+
+=item $db->maintian
+
+Will run garbage collection and analyse on the BDE database.
+
 =item $success = $db->beginTable($table_name)
 
 Starts a load for a table. If the table transaction option is set the cfg then a
@@ -211,7 +229,7 @@ of E (error), W (warning), I (information), 1, 2, 3 (more verbose messages)
 
 =cut
 
-package BdeDatabase;
+package LINZ::BdeDatabase;
 
 use fields qw{_connection _user _pwd _dbh _pg_server_version _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _last_log_id _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
 
@@ -344,7 +362,7 @@ sub DESTROY
 
 sub uploadId
 {
-    my( $self) = @_;
+    my($self) = @_;
     if(! $self->jobCreated )
     {
         if( ! $self->{_allowConcurrent} && ! $self->{_overrideLocks} && $self->anyUploadIsActive )
@@ -360,8 +378,15 @@ sub uploadId
 
 sub jobCreated
 {
-    my( $self) = @_;
+    my($self) = @_;
     return defined($self->{uploadId});
+}
+
+sub maintian
+{
+    my($self) = @_;
+    $self->_dbh->do("VACUUM ANALYSE") ||
+        die "Cannot vacuum database\n", $self->_dbh->errstr,"\n";
 }
 
 sub finishJob
