@@ -1,7 +1,7 @@
 Source: linz-bde-uploader
-Section: Miscellaneous
+Section: misc
 Priority: optional
-Build-Depends: debhelper (>= 8)
+Build-Depends: debhelper (>= 7)
 Build-Depends-Indep: perl (>= 5.8),
  libmodule-build-perl
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
@@ -23,7 +23,7 @@ Depends: ${misc:Depends}, ${perl:Depends},
  postgresql-client-9.0,
  postgresql-plperl-9.0,
  postgresql-contrib-9.0,
- postgis-1.5.2
+ postgresql-9.0-postgis (>= 1.5)
 Recommends:
 Description: Programme for loading LINZ BDE files into a PostgreSQL
  database. linz_bde_loader has the ability to load full and incremental

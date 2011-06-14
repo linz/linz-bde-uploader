@@ -1339,8 +1339,8 @@ BEGIN
     );
     
     INSERT INTO tmp_world_regions (id, name, shape) VALUES
-    ( 1, 'chathams',   'SRID=4167;POLYGON((183 -43.5,184 -43.5,184 -44.5,183 -44.5,183 -43.5))' ),
-    ( 2, 'nz',         'SRID=4167;POLYGON((166 -34,179 -34,179 -47.5,166 -47.5,166 -34))' );
+    ( 1, 'chathams',   'SRID=4167;POLYGON((182 -43,185 -43,185 -45,182 -45,182 -43))' ),
+    ( 2, 'nz',         'SRID=4167;POLYGON((166 -34,179 -34,179 -48,166 -48,166 -34))' );
     
     CREATE INDEX tmp_world_regions_shpx ON tmp_world_regions USING gist (shape);
     ANALYSE tmp_world_regions;
