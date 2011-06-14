@@ -19,7 +19,7 @@ PACKAGE=linz-bde-uploader
 CFGPATH=/etc/$PACKAGE/linz_bde_uploader.conf
 LOGDIR=/var/log/$PACKAGE
 SCRIPTLOG=$PACKAGE.log
-RUNLOG=$PACKAGE_run.log
+RUNLOG=${PACKAGE}_run.log
 
 die()
 {
@@ -40,7 +40,6 @@ fi
 LAST=11
 for i in {10..1}
 do
-    echo $i
     rm -f $LOGDIR/$SCRIPTLOG.$LAST >/dev/null 2>&1
     rm -f $LOGDIR/$RUNLOG.$LAST >/dev/null 2>&1
     mv $LOGDIR/$SCRIPTLOG.$i $SCRIPTLOG.$LAST >/dev/null 2>&1
