@@ -200,6 +200,9 @@ CREATE UNIQUE INDEX idx_map_aud_id ON crs_map_grid USING btree (audit_id);
 -- crs_mark
 -------------------------------------------------------------------------------
 CREATE INDEX fk_mrk_nod ON crs_mark USING btree (nod_id);
+-- Currently crs_mark.audit_id can not be made unique due to production
+-- having bad data and not having a unique constraint applied
+CREATE INDEX idx_mrk_aud_id ON crs_mark USING btree (audit_id);
 
 -------------------------------------------------------------------------------
 -- crs_mark_name
