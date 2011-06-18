@@ -234,7 +234,7 @@ CREATE INDEX fk_jtl_tkl ON crs_job_task_list USING btree (tkl_id);
 CREATE INDEX fk_jtl_usr ON crs_job_task_list USING btree (usr_id);
 CREATE INDEX idx_jtl_date_comp ON crs_job_task_list USING btree (date_completed);
 CREATE INDEX idx_crs_jtl_stat ON crs_job_task_list USING btree (status, usr_id);
-CREATE INDEX idx_jtl_audit_id ON crs_job_task_list USING btree (audit_id);
+CREATE UNIQUE INDEX idx_jtl_audit_id ON crs_job_task_list USING btree (audit_id);
 
 */
 
@@ -295,6 +295,8 @@ CREATE INDEX fk_mark_wrk ON crs_mark USING btree (wrk_id_created);
 CREATE INDEX fk_mrk_mrk_dist ON crs_mark USING btree (mrk_id_dist);
 CREATE INDEX fk_mrk_mrk_rep ON crs_mark USING btree (mrk_id_repl);
 CREATE INDEX fk_mrk_nod ON crs_mark USING btree (nod_id);
+-- Currently crs_mark.audit_id can not be made unique due to production
+-- having bad data and not having a unique constraint applied
 CREATE INDEX idx_mrk_aud_id ON crs_mark USING btree (audit_id);
 
 -------------------------------------------------------------------------------
@@ -794,7 +796,7 @@ CREATE INDEX fk_tin_pro ON crs_ttl_inst USING btree (pro_id);
 CREATE INDEX fk_tin_tin ON crs_ttl_inst USING btree (tin_id_parent);
 CREATE INDEX fk_tin_trt ON crs_ttl_inst USING btree (trt_grp, trt_type);
 CREATE INDEX fk_tin_usr ON crs_ttl_inst USING btree (usr_id_approve);
-CREATE INDEX idx_tin_aud_id ON crs_ttl_inst USING btree (audit_id);
+CREATE UNIQUE INDEX idx_tin_aud_id ON crs_ttl_inst USING btree (audit_id);
 
 -------------------------------------------------------------------------------
 -- crs_ttl_inst_title
