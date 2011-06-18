@@ -172,7 +172,7 @@ Will return true if a job upload for this database has been created
 If a job has been created, then the finish SQL is run and the database upload
 job is cleaned up.
 
-=item $db->maintian
+=item $db->maintain
 
 Will run garbage collection and analyse on the BDE database.
 
@@ -382,7 +382,7 @@ sub jobCreated
     return defined($self->{uploadId});
 }
 
-sub maintian
+sub maintain
 {
     my($self) = @_;
     $self->_dbh->do("VACUUM ANALYSE") ||
