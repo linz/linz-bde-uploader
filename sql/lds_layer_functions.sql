@@ -1218,7 +1218,8 @@ BEGIN
                     'crs_sys_code',
                     'crs_title',
                     'crs_title_estate',
-                    'crs_topology_class'
+                    'crs_topology_class',
+                    'crs_work'
                 ],
                 'any affected'
             )
