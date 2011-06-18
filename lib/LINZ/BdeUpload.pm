@@ -451,6 +451,10 @@ sub new
 
     $self->{repository} = new LINZ::BdeRepository( $cfg->bde_repository );
 
+    # create an upload in the database
+    
+    $self->{db}->uploadId;
+    
     # Check for the base scratch directory - create it if it doesn't exist
     
     my $scratch = $cfg->tmp_base_dir;
