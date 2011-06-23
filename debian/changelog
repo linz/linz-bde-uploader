@@ -1,3 +1,12 @@
+linz-bde-uploader (1.0.1-1) UNRELEASED; urgency=low
+
+  * Added runtime to email output
+  * Fixed run_bde_upload logging
+  * Fixed issue with logging before database connection is made
+  * Refactor handling of incremental data application. 
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 22 Jun 2011 15:28:00 +1200
+
 linz-bde-uploader (1.0.0-1) UNRELEASED; urgency=low
 
   * Initial release.

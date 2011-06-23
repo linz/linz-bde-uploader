@@ -42,13 +42,13 @@ for i in {10..1}
 do
     rm -f $LOGDIR/$SCRIPTLOG.$LAST >/dev/null 2>&1
     rm -f $LOGDIR/$RUNLOG.$LAST >/dev/null 2>&1
-    mv $LOGDIR/$SCRIPTLOG.$i $SCRIPTLOG.$LAST >/dev/null 2>&1
-    mv $LOGDIR/$RUNLOG.$i $RUNLOG.$LAST >/dev/null 2>&1
+    mv $LOGDIR/$SCRIPTLOG.$i $LOGDIR/$SCRIPTLOG.$LAST >/dev/null 2>&1
+    mv $LOGDIR/$RUNLOG.$i $LOGDIR/$RUNLOG.$LAST >/dev/null 2>&1
     LAST=$i
 done
 
-mv $LOGDIR/$SCRIPTLOG $SCRIPTLOG.1 >/dev/null 2>&1
-mv $LOGDIR/$RUNLOG $RUNLOG.1 >/dev/null 2>&1
+mv $LOGDIR/$SCRIPTLOG $LOGDIR/$SCRIPTLOG.1 >/dev/null 2>&1
+mv $LOGDIR/$RUNLOG $LOGDIR/$RUNLOG.1 >/dev/null 2>&1
 
 linz_bde_uploader -config-path $CFGPATH -verbose -listing $LOGDIR/$SCRIPTLOG $@ >$LOGDIR/$RUNLOG 2>&1
 rc=$?
