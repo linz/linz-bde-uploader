@@ -68,7 +68,7 @@ GetOptions (
     "override-locks|o" => \$override_locks,
     "keep-files|k" => \$keep_files,
     "before|b=s" => \$enddate,
-	"maintain-database|m" => \$maintain_db,
+    "maintain-database|m" => \$maintain_db,
     "listing_file|l=s" => \$listing_file,
     "verbose|v" => \$verbose,
     )
@@ -104,7 +104,7 @@ my $of;
 if($listing_file)
 {
     open($of, ">", $listing_file) ||
-		die "Can't not write to listing file $listing_file: $!\n";
+        die "Can't not write to listing file $listing_file: $!\n";
     select($of);
 };
 
@@ -125,7 +125,7 @@ eval
         skip_postupload_tasks => $skip_postupload,
         keep_files => $keep_files,
         end_date => $enddate,
-		maintain_db => $maintain_db,
+        maintain_db => $maintain_db,
         select_tables => join(' ',@ARGV),
     };
 
@@ -135,9 +135,9 @@ eval
 
     eval
     {
-
+    
         $upload->PurgeOldJobs if $do_purge && ! $dry_run;
-
+    
         $upload->ApplyUpdates($dry_run);
     };
 
@@ -187,7 +187,7 @@ sub sendMessages
     foreach my $mt (split(' ',$cfg->email_message_types) )
     {
         $mt =~ /^(\w+)\:(\w+)(?:\-(\w+))?/ || next;
-
+        
         my ($type,$levels,$exclude) = ($1,$2,$3);
         next if ! $levels;
         next if $logtypes !~ /[$levels]/i;
@@ -224,16 +224,16 @@ sub sendMessageType
     my $to = $cfg->get($msgtype."address");
     my $subject = $cfg->get($msgtype."subject","linz_bde_uploader log");
     my $text = $cfg->get($msgtype."template","{log:EWIT}");
-  
+     
     $text =~ s/\{log\:(\w+)\}/messageText($messages,$1)/eig;
-	$text =~ s/\{\_runtime_duration\}/runtime_duration()/eg;
-  
+    $text =~ s/\{\_runtime_duration\}/runtime_duration()/eg;
+    
     my $smtp = Net::SMTP->new($smtpserver) if $smtpserver ne 'none';
     if (!$smtp)
     {
        print "Unable to connect to smtp server $smtpserver\n\n" 
           if $smtpserver ne 'none';
-  
+    
        print "Log file not sent - no SMTP server\n",
           "To: $to\n",
           "Subject: ",$subject,"\n\n",
@@ -244,46 +244,46 @@ sub sendMessageType
   
     my @to = map { s/^\s+//;s/\s+$//; $_ } split(/\;/, $to );
     if( $smtp )
-	{
-       $smtp->mail($fromuser);
-       $smtp->to(@to,{SkipBad=>1});
-       $smtp->data(); 
-       $smtp->datasend("To: $to\n");
-       $smtp->datasend("From: $from\n");
-       $smtp->datasend("Subject: $subject\n");
-	   $smtp->datasend("\n");
-       $smtp->datasend($text);
-       $smtp->dataend();
-       $smtp->quit();
+    {
+        $smtp->mail($fromuser);
+        $smtp->to(@to,{SkipBad=>1});
+        $smtp->data(); 
+        $smtp->datasend("To: $to\n");
+        $smtp->datasend("From: $from\n");
+        $smtp->datasend("Subject: $subject\n");
+        $smtp->datasend("\n");
+        $smtp->datasend($text);
+        $smtp->dataend();
+        $smtp->quit();
     }
 }
 
 sub runtime_duration
 {
-	my $duration = time() - $^T;
-	my $str;
-	my $day;
-	my $hour;
-	my $min;
-	my $sec;
-	{
-		use integer;
-		$min   = $duration / 60;
-		$sec   = $duration % 60;
-		$hour  = $min      / 60;
-		$min   = $min      % 60;
-		$day   = $hour     / 24;
-		$hour  = $hour     % 24;
-	}
-	
-	if ($day) {
-		$str = sprintf("%dd:%02d:%02d:%02d",$day, $hour, $min, $sec);
-	}
-	else
-	{
-		$str = sprintf("%02d:%02d:%02d", $hour, $min, $sec);
-	}
-	return $str;
+    my $duration = time() - $^T;
+    my $str;
+    my $day;
+    my $hour;
+    my $min;
+    my $sec;
+    {
+        use integer;
+        $min   = $duration / 60;
+        $sec   = $duration % 60;
+        $hour  = $min      / 60;
+        $min   = $min      % 60;
+        $day   = $hour     / 24;
+        $hour  = $hour     % 24;
+    }
+    
+    if ($day) {
+        $str = sprintf("%dd:%02d:%02d:%02d",$day, $hour, $min, $sec);
+    }
+    else
+    {
+        $str = sprintf("%02d:%02d:%02d", $hour, $min, $sec);
+    }
+    return $str;
 }
 
 sub help
