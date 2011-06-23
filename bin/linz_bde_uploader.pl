@@ -19,7 +19,7 @@
 use strict;  
 
 # TODO need to update this from git describe
-our $VERSION = '1.0.0';
+our $VERSION = '1.0.1';
 
 use FindBin;
 use lib $FindBin::Bin;
@@ -226,6 +226,7 @@ sub sendMessageType
     my $text = $cfg->get($msgtype."template","{log:EWIT}");
   
     $text =~ s/\{log\:(\w+)\}/messageText($messages,$1)/eig;
+	$text =~ s/\{\_runtime_duration\}/runtime_duration()/eg;
   
     my $smtp = Net::SMTP->new($smtpserver) if $smtpserver ne 'none';
     if (!$smtp)
@@ -242,18 +243,48 @@ sub sendMessageType
   
   
     my @to = map { s/^\s+//;s/\s+$//; $_ } split(/\;/, $to );
-    if( $smtp ) {
+    if( $smtp )
+	{
        $smtp->mail($fromuser);
        $smtp->to(@to,{SkipBad=>1});
        $smtp->data(); 
        $smtp->datasend("To: $to\n");
        $smtp->datasend("From: $from\n");
        $smtp->datasend("Subject: $subject\n");
+	   $smtp->datasend("\n");
        $smtp->datasend($text);
        $smtp->dataend();
        $smtp->quit();
-       }
-} 
+    }
+}
+
+sub runtime_duration
+{
+	my $duration = time() - $^T;
+	my $str;
+	my $day;
+	my $hour;
+	my $min;
+	my $sec;
+	{
+		use integer;
+		$min   = $duration / 60;
+		$sec   = $duration % 60;
+		$hour  = $min      / 60;
+		$min   = $min      % 60;
+		$day   = $hour     / 24;
+		$hour  = $hour     % 24;
+	}
+	
+	if ($day) {
+		$str = sprintf("%dd:%02d:%02d:%02d",$day, $hour, $min, $sec);
+	}
+	else
+	{
+		$str = sprintf("%02d:%02d:%02d", $hour, $min, $sec);
+	}
+	return $str;
+}
 
 sub help
 {
