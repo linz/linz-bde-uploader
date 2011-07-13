@@ -1,6 +1,5 @@
 bin/linz_bde_uploader.pl
 bin/run_bde_upload.bat
-bin/run_bde_upload
 Build.PL
 conf/linz_bde_uploader.conf
 conf/tables.conf

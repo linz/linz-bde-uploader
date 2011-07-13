@@ -1,3 +1,9 @@
+linz-bde-uploader (1.0.2-1) UNRELEASED; urgency=low
+
+  * Added new logging system based on log4perl. This removes all logging to db.
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 14 Jul 2011 12:06:50 +1200
+
 linz-bde-uploader (1.0.1-1) UNRELEASED; urgency=low
 
   * Added runtime to email output

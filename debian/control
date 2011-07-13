@@ -12,6 +12,11 @@ Vcs-Browser: https://github.com/linz/linz_bde_uploader
 Package: linz-bde-uploader
 Architecture: all
 Depends: ${misc:Depends}, ${perl:Depends},
+ liblog-log4perl-perl,
+ liblog-dispatch-perl,
+ libdate-manip-perl,
+ liblog-dispatch-filerotate-perl,
+ libmail-sender-perl,
  libdate-calc-perl,
  libdbd-pg-perl,
  liblinz-utils-perl,

@@ -116,7 +116,7 @@ CREATE OR REPLACE FUNCTION _patches.apply_patch(
     p_patch_sql  TEXT
 )
 RETURNS
-    BOOLEAN AS 
+    BOOLEAN AS
 $$
     SELECT _patches.apply_patch($1, ARRAY[$2])
 $$
