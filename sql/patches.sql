@@ -18,3 +18,7 @@
 --------------------------------------------------------------------------------
 SET client_min_messages TO WARNING;
 
+SELECT _patches.apply_patch(
+    '1.0.2 - Implement New Logging System',
+    'DROP TABLE bde_control.upload_log'
+);

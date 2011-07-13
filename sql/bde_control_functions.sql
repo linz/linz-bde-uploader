@@ -33,10 +33,6 @@ SET SEARCH_PATH TO bde_control;
 -- Where we have key column discrepancies between inc data and table do we want
 -- to abort as currently, or alert and process as much as possible.
 
--- ** Note: if aborting then should use raise BDE:E:message to ensure clean up
--- still happens.  Also may be good to continue checking to get all messages
--- relating to update rather than just first failure (eg delete, update, insert)
-
 SET client_min_messages TO WARNING;
 BEGIN;
 
@@ -259,9 +255,6 @@ BEGIN
         AND status <> 'A';
     END IF;
 
-    DELETE FROM bde_control.upload_log
-    WHERE upl_id NOT IN (SELECT id FROM bde_control.upload);
-
     DELETE FROM bde_control.upload_stats
     WHERE upl_id NOT IN (SELECT id FROM bde_control.upload);
 
@@ -321,8 +314,8 @@ BEGIN
     EXECUTE 'CREATE TABLE ' || v_tmp_schema ||
         '._options ( option name primary key, value text )';
     
+    PERFORM _bde_CreateEventLog(v_upload);
     PERFORM bde_SetOption(v_upload,'_dataset','(undefined dataset)');
-    PERFORM bde_WriteUploadLog(v_upload,'I','Job ' || v_upload || ' created');
     
     RETURN v_upload;
 END
@@ -335,37 +328,39 @@ ALTER FUNCTION bde_CreateUpload(NAME) OWNER TO bde_dba;
 -- param id is the job to finish
 -- success is non zero for true, zero if there is an error
 
-CREATE OR REPLACE FUNCTION bde_FinishUpload( p_upload INTEGER )
+CREATE OR REPLACE FUNCTION bde_FinishUpload(
+    p_upload INTEGER,
+    p_error BOOLEAN
+)
     RETURNS void
 AS
 $body$
 DECLARE
     v_result CHAR(1);
 BEGIN
-    v_result := CASE WHEN (
-        SELECT count(*)
-        FROM bde_control.upload_log
-        WHERE type='E' AND upl_id=p_upload ) > 0
-    THEN
-        'E'
-    ELSE
-        'C'
-    END;
+    v_result := CASE WHEN p_error
+        THEN
+            'E'
+        ELSE
+            'C'
+        END;
     
     UPDATE
         bde_control.upload
     SET 
         end_time = clock_timestamp(),
-    status = v_result
+        status = v_result
     WHERE
         id = p_upload;
-    PERFORM bde_WriteUploadLog(p_upload,'I','Job ' || p_upload || ' finished');
+    
+    DROP TABLE IF EXISTS _bde_events;
+    
     PERFORM _bde_ReleaseLocks(p_upload);
 END
 $body$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION bde_FinishUpload(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_FinishUpload(INTEGER, BOOLEAN) OWNER TO bde_dba;
 
 -- Function to refresh the lock on an upload.  Ideally this will be
 -- called periodically during processing to ensure that it does not 
@@ -404,7 +399,6 @@ $body$
 BEGIN
 
     -- Change the status of the upload to not be active
-    -- Note in the log if this hasn't already been done.
 
     IF ( SELECT status FROM bde_control.upload WHERE id=p_upload )
         NOT IN ('E','C')
@@ -413,9 +407,7 @@ BEGIN
         SET status = 'E'
         WHERE id = p_upload;
   
-        PERFORM bde_WriteUploadLog(
-            p_upload,'E','Expired lock deleted automatically'
-        );
+        RAISE INFO 'Expired lock deleted automatically';
     END IF;
 
     -- Release the lock ids on any tables locked by this upload
@@ -579,8 +571,8 @@ BEGIN
     v_locked := _bde_LockTable( p_upload, p_bde_table );
     IF v_locked = 0 AND p_force_lock <> 0 THEN
         v_lockOwner = _bde_UnlockTable( p_upload, p_bde_table );
-        PERFORM bde_WriteUploadLog( upload,'W','Overriding lock held by ' ||
-            v_lockOwner || ' for table ' || p_bde_table );
+        RAISE WARNING 'Overriding lock held by % for table %',
+            v_lockOwner, p_bde_table;
         v_locked := _bde_LockTable( p_upload, p_bde_table );
     END IF;
 
@@ -749,9 +741,8 @@ BEGIN
             WHEN OTHERS THEN
                 IF v_remaining > 0 THEN
                     IF not v_failed THEN
-                        PERFORM bde_WriteUploadLog(p_upload,'1',
-                            'Waiting up to ' || v_remaining || ' seconds ' ||
-                            'for lock on ' || p_bde_table);
+                        RAISE DEBUG 'Waiting up to % seconds for lock on %',
+                            v_remaining, p_bde_table;
                         v_failed := true;
                     END IF;
                     PERFORM pg_sleep(1);
@@ -778,8 +769,7 @@ BEGIN
         EXIT;
     END LOOP;
     IF v_failed THEN
-        PERFORM bde_WriteUploadLog(p_upload,'1',
-            'Lock on ' || p_bde_table || ' acquired ');
+        RAISE DEBUG 'Lock on  acquired', p_bde_table;
     END IF;
 END
 $body$
@@ -974,33 +964,7 @@ $$
 
 ALTER FUNCTION bde_WriteLogFile(character, text) OWNER TO bde_dba;
 
--- Function to write to the log file for the upload
-
-CREATE OR REPLACE FUNCTION bde_WriteUploadLog(
-    p_upload INTEGER,
-    p_message_type CHAR(1),
-    p_message_text TEXT
-)
-RETURNS
-    INTEGER
-AS $$
-DECLARE
-    v_log_id INTEGER;
-BEGIN
-    PERFORM bde_control.bde_WriteLogFile(p_message_type, p_message_text);
-
-    INSERT INTO bde_control.upload_log(upl_id, type, message)
-    VALUES (p_upload, p_message_type, COALESCE(p_message_text,'(Null message)'))
-    RETURNING id INTO v_log_id;
-
-    RETURN v_log_id;
-END;
-$$
-    LANGUAGE plpgsql;
-
-ALTER FUNCTION bde_WriteUploadLog(INTEGER, CHAR(1), TEXT) OWNER TO bde_dba;
-
--- Function to write a timestamp for an event to a log.
+-- Function to write a timestamp for an event to the log.
 -- Entering a timestamp at the start and end of the event will
 -- define a duration for the event
 
@@ -1009,13 +973,44 @@ CREATE OR REPLACE FUNCTION bde_TimestampEvent(
     p_event TEXT
 )
 RETURNS INTEGER
-AS
-$body$
-    SELECT bde_WriteUploadLog($1,'T',lower($2));
-$body$
-LANGUAGE SQL;
+AS $$
+DECLARE
+    v_upload_id INTEGER;
+BEGIN
+    INSERT INTO _bde_events (upl_id, event)
+    VALUES (p_upload, lower(p_event))
+    RETURNING upl_id
+    INTO v_upload_id;
+    
+    RETURN v_upload_id;
+END;
+$$ LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_TimestampEvent(INTEGER, TEXT) OWNER TO bde_dba;
+
+CREATE OR REPLACE FUNCTION _bde_CreateEventLog(
+    p_upload INTEGER
+)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+    v_table_oid REGCLASS;
+BEGIN
+    v_table_oid := bde_TempTableOid('_bde_events');
+    IF v_table_oid IS NULL THEN
+        CREATE TEMP TABLE _bde_events
+        (
+            upl_id INTEGER,
+            event TEXT NOT NULL,
+            event_time TIMESTAMP NOT NULL DEFAULT clock_timestamp()
+        );
+    END IF;
+    
+    RETURN v_table_oid IS NOT NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER FUNCTION _bde_CreateEventLog(INTEGER) OWNER TO bde_dba;
 
 -- Function to return the duration of an event
 
@@ -1024,15 +1019,20 @@ CREATE OR REPLACE FUNCTION bde_EventDuration
     p_upload INTEGER,
     p_event TEXT
 )
-RETURNS interval
-AS
-$body$
-   SELECT max(message_time)-min(message_time) 
-            FROM bde_control.upload_log
-            WHERE upl_id = $1
-            AND message = lower($2);
-$body$
-LANGUAGE sql;
+RETURNS INTERVAL
+AS $$
+DECLARE
+    v_duration INTERVAL;
+BEGIN
+    SELECT max(event_time) - min(event_time)
+    INTO   v_duration
+    FROM   _bde_events
+    WHERE  upl_id = $1
+    AND    event = lower($2);
+
+    RETURN v_duration;
+END;
+$$ LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_EventDuration(INTEGER, TEXT) OWNER TO bde_dba;
 
@@ -1115,9 +1115,8 @@ BEGIN
         bde_EventDuration(p_upload, p_dataset || ' ' || p_bde_table )
         );
     
-    PERFORM bde_WriteUploadLog(p_upload,'1','Table ' || p_bde_table ||
-        ' completed: ' || p_nins || ' insertions, ' || p_nupd || 
-        ' updates, ' || p_ndel || ' deletions');
+    RAISE INFO 'Table % completed: % insertions, % updates, % deletions',
+        p_bde_table, p_nins, p_nupd, p_ndel;
     RETURN 1; 
 END
 $body$
@@ -1468,53 +1467,33 @@ DECLARE
     v_columns text;
     v_sql text;
 BEGIN
-
     -- A good time to ensure that the lock doesn't get revoked
     PERFORM _bde_RefreshLock(p_upload);
  
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        '2',
-        'Loading file ' || p_datafile || ' into table ' || p_table_name
-    );
+    RAISE DEBUG 'Loading file % into table %', p_datafile, p_table_name;
+    
     v_temptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
     IF v_temptable IS NULL THEN
-        PERFORM bde_WriteUploadLog(
-            p_upload,
-            'E',
-            'Cannot load file ' || p_datafile || ' into table ' ||
-            p_table_name || ' as working copy of table does not exist'
-        );
-        RETURN 0;
+        RAISE EXCEPTION 'Cannot load file % into table % as working copy of table does not exist',
+            p_datafile, p_table_name;
     END IF;
  
     v_columns := _bde_QuoteColumnNames(p_columns);
  
     v_sql := 'LOCK TABLE ' || v_temptable || ' IN ACCESS EXCLUSIVE MODE';
-    -- RAISE INFO 'SQL: %', v_sql;
     EXECUTE v_sql;
     
     v_sql := 'COPY ' || v_temptable || '(' || v_columns || ') FROM ' ||
         quote_literal(p_datafile) || ' WITH DELIMITER ''|'' NULL AS ''''';
-    -- RAISE INFO 'SQL: %', v_sql;
+    RAISE DEBUG 'SQL: %', v_sql;
     EXECUTE v_sql;
     
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        '2',
-        'Loaded file ' || p_datafile || ' into working table ' || p_table_name
-    );
     RETURN 1;
-    
 EXCEPTION
     WHEN others THEN
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        'E',
-        'Error encountered loading file ' || p_datafile || ' into table ' ||
-        p_table_name || E'\nSQL: ' || v_sql || E'\nError: ' || SQLERRM
-    );
-    RETURN 0;
+    RAISE EXCEPTION
+        'Error encountered loading file % into table %. SQL: %. Error: %',
+        p_datafile, p_table_name, v_sql, SQLERRM;
 END
 $body$
 LANGUAGE plpgsql;
@@ -1678,12 +1657,8 @@ BEGIN
     AND    TBL.table_name = p_table_name;
     
     IF NOT bde_control.bde_TableKeyIsValid(v_bde_table, v_key_column) THEN
-        PERFORM bde_WriteUploadLog(
-            p_upload,
-            'W',
-            'Table ' || p_table_name || ' listed key ' || v_key_column
-            || ' is not valid'
-        );
+        RAISE WARNING 'Table % key  % is invalid',
+            p_table_name, v_key_column;
         v_key_column := NULL;
     END IF;
     
@@ -1705,8 +1680,7 @@ CREATE OR REPLACE FUNCTION bde_ApplyLevel5Update (
     p_fail_if_inconsistent BOOLEAN DEFAULT TRUE
     )
 RETURNS INTEGER
-AS
-$body$
+AS $$
 DECLARE
     v_msg                  TEXT;
     v_dataset              VARCHAR(14);
@@ -1738,17 +1712,11 @@ BEGIN
     v_key_column := _bde_GetValidIncrementKey( p_upload, p_table_name );
     IF v_key_column IS NULL THEN
         RAISE EXCEPTION
-            'BDE:E:Cannot apply level 5 update % into table % as no valid key column is defined',
+            'Cannot apply level 5 update % into table % as no valid key column is defined',
             v_dataset, p_table_name;
     END IF;
     
     v_dataset := bde_GetOption(p_upload,'_dataset');
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        '2',
-        'Applying level 5 update ' || v_dataset ||
-        ' into table ' || p_table_name
-    );
     
     -- Get the tables we need
     
@@ -1758,7 +1726,7 @@ BEGIN
     
     IF v_tmptable IS NULL OR v_bdetable IS NULL OR v_changetable IS NULL THEN
         RAISE EXCEPTION
-            'BDE:E:Cannot apply level 5 update % into table % as one of the scratch, bde, or L5 change table doesn''t exist',
+            'Cannot apply level 5 update % into table % as one of the scratch, bde, or L5 change table doesn''t exist',
             v_dataset, p_table_name;
     END IF;
     
@@ -1766,7 +1734,7 @@ BEGIN
     
     IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
         RAISE EXCEPTION
-            'BDE:E:Cannot apply level 5 update % into table % as have not acquired a lock for this table',
+            'Cannot apply level 5 update % into table % as have not acquired a lock for this table',
             v_dataset, p_table_name;
     END IF;
     
@@ -1790,12 +1758,8 @@ BEGIN
         END LOOP;
     EXCEPTION
         WHEN others THEN
-            PERFORM bde_WriteUploadLog(
-                p_upload,
-                'I',
-                'Failed to add primary key to working table for ' ||
-                p_table_name
-            );
+            RAISE WARNING 'Failed to add primary key to working table for %',
+                p_table_name;
     END;
     
     EXECUTE 'ANALYZE ' || v_tmptable;
@@ -1871,13 +1835,9 @@ BEGIN
             v_bdetable, v_tmptable, v_key_column
         );
         IF v_rcount > 0 THEN
-            PERFORM bde_WriteUploadLog(
-                p_upload,
-                'W',
-                '' || v_rcount ||
-                ' rows have been identified, that do not have a incremental ' ||
-                ' action for ' || p_table_name
-            );
+            RAISE WARNING
+                '% rows have been identified that do not have a incremental action for %',
+                v_rcount, p_table_name;
         END IF;
         
         v_task := 'Creating incremental row update actions';
@@ -1893,13 +1853,9 @@ BEGIN
         SELECT count(*) INTO v_nuniqf FROM _tmp_inc_actions WHERE action = 'X';
         
         IF v_nuniqf > 0 THEN
-            PERFORM bde_WriteUploadLog(
-                p_upload,
-                '2',
-                '' || v_nuniqf ||
-                ' updates changed to delete/insert in ' || p_table_name ||
-                ' to avoid potential uniqueness constraint errors'
-            );
+            RAISE INFO
+                '% updates changed to delete/insert in % to avoid potential uniqueness constraint errors',
+                v_nuniqf, p_table_name;
         END IF;
         
         v_task := 'Applying incremental row updates';
@@ -1921,9 +1877,7 @@ BEGIN
         
         DROP TABLE IF EXISTS _tmp_inc_actions;
     ELSE
-        PERFORM bde_WriteUploadLog(
-            p_upload, 'I', 'There are no changes to apply for ' || p_table_name
-        );
+        RAISE INFO 'There are no changes to apply for %', p_table_name;
     END IF;
     
     -- Record the update that has been applied
@@ -1955,34 +1909,15 @@ BEGIN
     
 EXCEPTION
     WHEN others THEN
-    v_errmsg = SQLERRM;
-    
-    -- Exception raised deliberately to abort process but ensure clean up
-    -- Messages starts BDE:x: where x is level
-    
-    IF substring(v_errmsg for 4) = 'BDE:' THEN
-        PERFORM bde_WriteUploadLog( p_upload, substring(v_errmsg from 5 for 1),
-            substring(v_errmsg from 7));
-    
-    -- "Unexpected" exception
-    ELSE
-        PERFORM bde_WriteUploadLog(p_upload,'E',
-            'Level 5 update of table ' || p_table_name || 
-            ' from dataset ' || v_dataset || 
-            ' failed in ' || v_task || E'\nError: ' || SQLERRM );
+        v_errmsg := 'Level 5 update of table ' || p_table_name ||
+            ' from dataset ' || v_dataset || ' failed in ' || v_task ||
+            'Error:' || SQLERRM;
         IF v_sql <> '' THEN
-            PERFORM bde_WriteUploadLog(p_upload,'2',
-                'Last sql constructed: ' || v_sql );
+            v_errmsg := v_errmsg || '. Last sql constructed: ' || v_sql;
         END IF;
-    END IF;
-    EXECUTE 'DROP TABLE ' || v_tmptable;
-    DROP TABLE IF EXISTS _tmp_inc_change;
-    DROP TABLE IF EXISTS _tmp_inc_actions;
-    RETURN 0;
-END
-
-$body$
-LANGUAGE plpgsql
+    RAISE EXCEPTION '%', v_errmsg;
+END;
+$$ LANGUAGE plpgsql
 SET search_path FROM CURRENT;
 
 ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
@@ -1999,8 +1934,7 @@ CREATE OR REPLACE FUNCTION bde_ApplyLevel0Update (
     p_incremental BOOLEAN
     )
 RETURNS INTEGER
-AS
-$body$
+AS $$
 DECLARE
     v_bde_schema  NAME;
     v_tmp_schema  NAME;
@@ -2022,8 +1956,6 @@ BEGIN
     PERFORM _bde_RefreshLock(p_upload);
     
     v_dataset := bde_GetOption(p_upload,'_dataset');
-    PERFORM bde_WriteUploadLog(p_upload,'2','Applying level 0 update ' ||
-        v_dataset || ' into table ' || p_table_name );
     
     -- Get the tables we need
     
@@ -2034,18 +1966,17 @@ BEGIN
     v_tmptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
     
     IF v_tmptable IS NULL OR v_bdetable IS NULL THEN
-        PERFORM bde_WriteUploadLog(p_upload,'E','Cannot apply level 0 update' ||
-        v_dataset || ' into table ' || p_table_name ||
-        ' as either the scratch or the bde table doesn''t exist');
-        RETURN 0;
+        RAISE EXCEPTION
+            'Cannot apply level 0 update % into table % as either the scratch or the bde table doesn''t exist',
+            v_dataset, p_table_name;
     END IF;
     
     -- Check that we have a lock for this table
     
     IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
-        PERFORM bde_WriteUploadLog(p_upload,'E','Cannot apply level 0 update' ||
-        v_dataset || ' into table ' || p_table_name ||
-        ' as have not acquired a lock for this table');
+        RAISE EXCEPTION
+            'Cannot apply level 0 update % into table % as have not acquired a lock for this table',
+            v_dataset, p_table_name;
         RETURN 0;
     END IF;
     
@@ -2078,7 +2009,7 @@ BEGIN
     
     v_task := 'Analyzing temp table';
     
-    PERFORM bde_WriteUploadLog(p_upload,'2','Analyzing ' || v_tmptable );
+    RAISE INFO 'Analyzing %', v_tmptable;
     EXECUTE 'ANALYZE ' || v_tmptable;
     
     IF p_incremental THEN
@@ -2097,6 +2028,18 @@ BEGIN
             );
         
         IF v_nins <> 0 OR v_nupd <> 0 OR v_ndel <> 0 THEN
+            IF v_nins <> 0 THEN
+                RAISE WARNING 'level 0 incremental applied % inserts for % in %',
+                    v_nins, p_table_name, v_dataset; 
+            END IF;
+            IF v_nupd <> 0 THEN
+                RAISE WARNING 'level 0 incremental applied % updates for % in %',
+                    v_nupd, p_table_name, v_dataset; 
+            END IF;
+            IF v_ndel <> 0 THEN
+                RAISE WARNING 'level 0 incremental applied % deletes for % in %',
+                    v_ndel, p_table_name, v_dataset; 
+            END IF;
             PERFORM bde_CheckTableCount(p_upload, p_table_name);
         END IF;
 
@@ -2120,17 +2063,15 @@ BEGIN
         
         v_task := 'Dropping the current version of the table';
         
-        PERFORM bde_WriteUploadLog(p_upload,'2','Dropping ' || v_bdetable );
+        RAISE INFO 'Dropping %', v_bdetable;
         PERFORM _bde_GetExclusiveLock(p_upload,v_bdetable);
         v_sql := 'DROP TABLE ' || v_bdetable || ' CASCADE';
-        -- RAISE INFO 'SQL: %',v_sql;
+        RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
         
         v_task := 'Renaming the new version to replace the current version';
-        PERFORM bde_WriteUploadLog(p_upload,'2','Moving ' || v_tmptable ||
-            ' into ' || v_bde_schema || ' schema');
+        RAISE DEBUG 'Moving % into % schema', v_tmptable, v_bde_schema;
         v_sql := 'ALTER TABLE ' || v_tmptable || ' SET SCHEMA ' || v_bde_schema;
-        -- RAISE INFO 'SQL: %',v_sql;
         EXECUTE v_sql;
         
         -- Restore the dependent objects
@@ -2161,18 +2102,11 @@ BEGIN
 
 EXCEPTION
     WHEN others THEN
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        'E',
-        'Level 0 update of table ' || p_table_name || ' from dataset ' ||
-        v_dataset || ' failed in ' || v_task  || E'\nError: ' || SQLERRM
-    );
-    
-    DROP TABLE IF EXISTS table_diff;
-    RETURN 0;
+        RAISE EXCEPTION
+            'Level 0 update of table % from dataset % failed in %. Error: %',
+            p_table_name, v_dataset, v_task, SQLERRM;
 END
-$body$
-LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
@@ -2194,9 +2128,7 @@ BEGIN
     number_deletes := 0;
     number_updates := 0;
     
-    PERFORM bde_WriteUploadLog(
-        p_upload,'3','Generating difference data for ' || p_original_table
-    );
+    RAISE INFO 'Generating difference data for %', p_original_table;
     
     CREATE TEMP TABLE table_diff AS
     SELECT
@@ -2210,11 +2142,7 @@ BEGIN
         T.action,
         T.id;
     
-    PERFORM bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Completed generating difference data for ' || p_original_table
-    );
+    RAISE INFO 'Completed generating difference data for %', p_original_table;
     
     ALTER TABLE table_diff ADD PRIMARY KEY (id);
     ANALYSE table_diff;
@@ -2222,29 +2150,25 @@ BEGIN
     IF EXISTS (SELECT * FROM table_diff LIMIT 1) THEN
         SELECT count(*) INTO v_nuniqf FROM table_diff WHERE action='X';
         
-        PERFORM bde_WriteUploadLog(p_upload,'3','Deleting from ' ||
-             p_original_table || ' using difference data' );
+        RAISE INFO 'Deleting from % using difference data', p_original_table;
         
         number_deletes := _bde_ApplyIncDelete(
             p_original_table, 'table_diff', p_key_column
         );
         
-        PERFORM bde_WriteUploadLog(p_upload,'3','Updating ' || p_original_table
-            || ' using difference data' );
+        RAISE INFO 'Updating % using difference data', p_original_table;
         
         number_updates :=  _bde_ApplyIncUpdate(
             p_original_table, 'table_diff', p_new_table, p_key_column
         );
         
-        PERFORM bde_WriteUploadLog(p_upload,'3','Inserting into ' ||
-            p_original_table || ' using difference data' );
+        RAISE INFO 'Inserting into % using difference data', p_original_table;
         
         number_inserts := _bde_ApplyIncInsert(
             p_original_table, 'table_diff', p_new_table, p_key_column
         );
         
-        PERFORM bde_WriteUploadLog(p_upload,'3','Finished updating ' ||
-            p_original_table  ||  ' using difference data' );
+        RAISE INFO 'Finished updating % using difference data', p_original_table;
 
         number_deletes := number_deletes - v_nuniqf;
         number_inserts := number_inserts - v_nuniqf;
@@ -2322,12 +2246,8 @@ BEGIN
     IF v_status AND v_tol_warn IS NOT NULL THEN
         v_expected := CAST((v_current_count * v_tol_warn) AS BIGINT);
         IF v_new_count < v_expected THEN
-            PERFORM bde_WriteUploadLog(
-                p_upload,
-                'W',
-                v_table || ' has ' || v_new_count || ' rows, when at least ' ||
-                v_expected || ' are expected'
-            );
+            RAISE WARNING '% has % rows, when at least % are expected',
+                v_table, v_new_count, v_expected;
         END IF;
     END IF;
     
@@ -2859,17 +2779,13 @@ BEGIN
     FOR v_sql IN select * from unnest(p_sqlarray)
     LOOP
         BEGIN
-            PERFORM bde_WriteUploadLog(p_upload,'2','Executing ' || v_sql );
+            RAISE DEBUG 'SQL: %', v_sql;
             EXECUTE v_sql;
         EXCEPTION
             WHEN others THEN
                 v_result := 0;
-                PERFORM bde_WriteUploadLog(
-                    p_upload,
-                    'E',
-                    'Error in task ' ||  p_task || E'\n' || SQLERRM || E'\n' ||
-                    'SQL: ' || v_sql
-                );
+                RAISE EXCEPTION 'Error in task %. ERROR: %. SQL: ',
+                    p_task, SQLERRM, v_sql;
         END;
     END LOOP;
     RETURN v_result;
@@ -2903,9 +2819,8 @@ BEGIN
         FROM   pg_constraint
         WHERE  conrelid = p_bdetable
     LOOP
-        PERFORM bde_WriteUploadLog(p_upload,'2','Adding constraint ' || v_sql );
+        RAISE INFO 'Adding constraint %', v_sql;
         v_sql := 'ALTER TABLE ' || p_tmptable || ' ADD CONSTRAINT ' || v_sql;
-        -- RAISE INFO 'SQL: %',v_sql;
         EXECUTE v_sql;
         v_sql := '';
     END LOOP;
@@ -2924,8 +2839,7 @@ BEGIN
             v_sql,E'(^.*\\sON\\s).*?(\\sUSING\\s.*$)',E'\\1' ||
             p_tmptable::text || E'\\2'
         );
-        PERFORM bde_WriteUploadLog(p_upload,'2','Creating index ' || v_sql );
-        -- RAISE INFO 'SQL: %',v_sql;
+        RAISE INFO 'Creating index %', v_sql;
         EXECUTE v_sql;
         v_sql := '';
     END LOOP;
@@ -2976,7 +2890,7 @@ BEGIN
             AND attisdropped IS FALSE 
             AND attnum > 0 AND attstattarget > 0
     LOOP
-        PERFORM bde_WriteUploadLog(p_upload,'2','Setting col stats ' || v_sql );
+        RAISE DEBUG 'Setting col stats %', v_sql;
         EXECUTE v_sql;
         v_sql := '';
     END LOOP;
@@ -3020,21 +2934,14 @@ BEGIN
             proargtypes[0] = v_intid AND
             prorettype = v_intid
     LOOP
-        PERFORM bde_WriteUploadLog(
-            p_upload,'I','Running ' ||  p_description || ' task ' || v_procname
-        );
+        RAISE DEBUG 'Running % task %', p_description, v_procname;
         BEGIN
             EXECUTE 'SELECT ' || v_bdeSchema || '.' || v_procname || '(' ||
                 p_upload || ')';
             v_nproc := v_nproc + 1;
         EXCEPTION
         WHEN others THEN
-            PERFORM bde_WriteUploadLog(
-                 p_upload,
-                 'E',
-                 p_description || ' task ' || v_procname || ' failed: ' ||
-                 SQLERRM
-            );
+            RAISE EXCEPTION '% task % failed: %', p_description, v_procname, SQLERRM;
         END;
     END LOOP;
     RETURN v_nproc;
@@ -3072,63 +2979,6 @@ $body$
 LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION bde_GetLogMessages
-(
-    p_upload INTEGER
-)
-RETURNS TABLE
-(
-    type bde_control.upload_log.type%TYPE,
-    message_time bde_control.upload_log.message_time%TYPE,
-    message bde_control.upload_log.message%TYPE
-)
-AS
-$body$
-    SELECT type,message_time,message
-    FROM bde_control.upload_log
-    WHERE upl_id = $1
-    AND type != 'T'
-    ORDER BY message_time,id;
-$body$
-LANGUAGE sql;
-
-ALTER FUNCTION bde_GetLogMessages(INTEGER) OWNER TO bde_dba;
-
-
-CREATE OR REPLACE FUNCTION bde_GetLogMessagesSince
-(
-    p_upload INTEGER,
-    p_log_id INTEGER
-)
-RETURNS TABLE
-(
-    type bde_control.upload_log.type%TYPE,
-    message_time bde_control.upload_log.message_time%TYPE,
-    message bde_control.upload_log.message%TYPE
-)
-AS
-$body$
-    SELECT type,message_time,message
-    FROM bde_control.upload_log
-    WHERE upl_id = $1
-    AND type != 'T'
-    AND id > $2
-    ORDER BY message_time,id;
-$body$
-LANGUAGE sql;
-
-ALTER FUNCTION bde_GetLogMessagesSince(INTEGER, INTEGER) OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION bde_GetLastLogId()
-RETURNS INTEGER
-AS
-$body$
-    SELECT max(id) FROM bde_control.upload_log;
-$body$
-LANGUAGE sql;
-
-ALTER FUNCTION bde_GetLastLogId() OWNER TO bde_dba;
 
 -- Function bde_TablesAffected
 --

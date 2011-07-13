@@ -1,4 +1,4 @@
-﻿--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -69,7 +69,7 @@ BEGIN
     IF v_neg THEN
        v_result := '-';
     END IF;
-    v_result := v_result || v_deg || '°' || to_char(v_min, 'FM09D') || '''' ||
+    v_result := v_result || v_deg || '�' || to_char(v_min, 'FM09D') || '''' ||
         to_char(v_value, 'FM09D' || repeat('0', p_decimal_places) ) ||
         COALESCE('" ' || v_hem, '"');
     RETURN v_result;
@@ -97,22 +97,14 @@ BEGIN
         '(undefined dataset)'
     );
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload_id,
-        'I',
-        'Maintaining simplified layers for dataset ' || v_dataset
-    );
+    RAISE INFO 'Maintaining simplified layers for dataset %', v_dataset;
     
     PERFORM LDS.LDS_MaintainSimplifiedGeodeticLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedElectoralLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedParcelLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedSurveyLayers(p_upload_id);
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload_id,
-        '1',
-        'Finished maintaining simplified layers ' || v_dataset
-    );
+    RAISE INFO 'Finished maintaining simplified layers %', v_dataset;
     
     RETURN 1;
 END;
@@ -159,11 +151,8 @@ DECLARE
     v_temp_copy      REGCLASS;
 BEGIN
     IF LDS.LDS_TableHasData(p_table) THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload,
-            '3',
-            'Started creating new version of table ' || p_table  || ' for differencing'
-        );
+        RAISE INFO 'Started creating new version of table % for differencing',
+            p_table;
         
         SELECT LDS.LDS_CreateTempCopy(p_table)
         INTO   v_temp_copy;
@@ -178,22 +167,15 @@ BEGIN
         
         EXECUTE 'ANALYSE ' || v_temp_copy;
 
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload,
-            '3',
-            'Finished creating new version of table ' || p_table ||
-            ' for differencing. ' || v_count || ' rows were created'
-        );
+        RAISE INFO
+            'Finished creating new version of table % for differencing. % rows were created',
+            p_table, v_count;
         
         PERFORM LDS.LDS_ApplyTableDifferences(p_upload, p_table, v_temp_copy, v_key_column);
         
         EXECUTE 'DROP TABLE ' || v_temp_copy;
     ELSE
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload,
-            '3',
-            'Started creating new version of table ' || p_table
-        );
+        RAISE INFO 'Started creating new version of table %', p_table;
         
         SELECT LDS.LDS_GetTableContrainstsAndIndexes(p_table)
         INTO   v_indexes;
@@ -215,12 +197,8 @@ BEGIN
         
         EXECUTE 'ANALYSE ' || p_table;
         
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload,
-            '3',
-            'Finished creating new version of table ' || p_table  ||
-            '. ' ||  v_count || ' rows were created'
-        );
+        RAISE INFO 'Finished creating new version of table %. % rows were created',
+            p_table, v_count;
     END IF;
     
     RETURN TRUE;
@@ -426,12 +404,8 @@ BEGIN
             p_upload, p_table, p_temp_copy, p_key_column
         );
     
-    PERFORM bde_control.bde_WriteUploadLog(p_upload,'1',
-        'Finished updating ' || p_table  || ' '
-        || v_ndel || ' deletes, '
-        || v_nins || ' inserts and '
-        || v_nupd || ' updates'
-    );
+    RAISE INFO 'Finished updating %. % deletes, % inserts and % updates',
+        p_table, v_ndel, v_nins, v_nupd;
     
     RETURN TRUE;
 END;
@@ -510,17 +484,14 @@ CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedGeodeticLayers(
 RETURNS
     INTEGER AS $$
 DECLARE
+    v_message          TEXT;
     v_bad_code_count   BIGINT;
     v_bad_code_string  TEXT;
     v_table            REGCLASS;
     v_data_diff_sql    TEXT;
     v_data_insert_sql  TEXT;
 BEGIN
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Starting maintenance on geodetic simplified layers'
-    );
+    RAISE INFO 'Starting maintenance on geodetic simplified layers';
     
     IF (
         NOT (
@@ -551,12 +522,8 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'geodetic_network_marks')
     )
     THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload, 
-            '1',
-            'Maintain geodetic simplified layers has been skipped as no ' ||
-            'relating tables were affected by the upload'
-        );
+        RAISE INFO
+            'Maintain geodetic simplified layers has been skipped as no relating tables were affected by the upload';
         RETURN 1;
     END IF;
     
@@ -585,14 +552,11 @@ BEGIN
         (LENGTH(geodetic_code) <> 4 OR LENGTH(trim(both ' ' FROM geodetic_code)) <> 4);
 
     IF (v_bad_code_count > 0) THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload, 
-            'W',
-            'The following malformed geodetic codes have been detected: ' ||
-            v_bad_code_string || '. Any of these codes that are still ' ||
-            'malformed after white space has been trimmed will be removed ' ||
-            'from the geodetic layers.'
-        );
+        v_message := 'The following malformed geodetic codes have been ' ||
+            'detected: ' || v_bad_code_string || '. Any of these codes that ' ||
+            'are still malformed after white space has been trimmed will ' ||
+            'be removed from the geodetic layers.';
+        RAISE WARNING '%';
         
         UPDATE
             tmp_geo_nodes
@@ -614,11 +578,7 @@ BEGIN
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'geodetic_marks');
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp tables for ' || v_table
-    );
+    RAISE DEBUG 'Started creating temp tables for %', v_table;
 
     -- The windowing partition will prioritise the commissioned, non-replaced marks for each node.
     CREATE TEMP TABLE tmp_geodetic_marks AS
@@ -665,11 +625,7 @@ BEGIN
     WHERE
         row_number NOT IN (SELECT MIN(row_number) FROM tmp_geodetic_marks GROUP BY geodetic_code);
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp tables for ' || v_table
-    );
+    RAISE DEBUG 'Finished creating temp tables for %', v_table;
     
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
@@ -771,11 +727,7 @@ BEGIN
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'geodetic_vertical_marks');
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp tables for ' || v_table
-    );
+    RAISE DEBUG 'Started creating temp tables for %', v_table;
     
     -- The windowing partition will prioritise the commissioned, non-replaced marks for each node.
     CREATE TEMP TABLE tmp_geodetic_vertical_mark AS
@@ -828,11 +780,7 @@ BEGIN
     WHERE
         row_number NOT IN (SELECT MIN(row_number) FROM tmp_geodetic_vertical_mark GROUP BY coordinate_system, nod_id);
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp tables for ' || v_table
-    );
+    RAISE DEBUG 'Finished creating temp tables for %', v_table;
     
     v_data_diff_sql := $sql$
         INSERT INTO %1% (
@@ -1010,11 +958,7 @@ BEGIN
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'geodetic_network_marks');
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp tables for ' || v_table
-    );
+    RAISE INFO 'Started creating temp tables for %', v_table;
     
     CREATE TEMP TABLE tmp_geodetic_network_marks AS
     SELECT
@@ -1063,11 +1007,7 @@ BEGIN
     WHERE
         row_number NOT IN (SELECT MIN(row_number) FROM tmp_geodetic_network_marks GROUP BY nod_id, control_network);
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp tables for ' || v_table
-    );
+    RAISE DEBUG 'Finished creating temp tables for %', v_table;
     
     v_data_diff_sql := $sql$
         INSERT INTO %1% (
@@ -1164,11 +1104,7 @@ BEGIN
     DROP TABLE IF EXISTS tmp_geodetic_network_marks;
     DROP TABLE IF EXISTS tmp_geo_nodes;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Finished maintenance on geodetic simplified layers'
-    );
+    RAISE INFO 'Finished maintenance on geodetic simplified layers';
     
     RETURN 1;
     
@@ -1192,11 +1128,8 @@ DECLARE
     v_data_diff_sql    TEXT;
     v_data_insert_sql  TEXT;
 BEGIN
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Starting maintenance on cadastral parcel and title simplified layers'
-    );
+    RAISE INFO
+        'Starting maintenance on cadastral parcel and title simplified layers';
 
     IF (
         NOT (
@@ -1236,21 +1169,13 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'title_owners')
     )
     THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload, 
-            '1',
-            'Maintain cadastral parcel simplified layers has been skipped as no ' ||
-            'relating tables were affected by the upload'
-        );
+        RAISE INFO
+            'Maintain cadastral parcel simplified layers has been skipped as no relating tables were affected by the upload';
         RETURN 1;
     END IF;
 
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_excluded_titles'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_excluded_titles';
 
     CREATE TEMP TABLE tmp_excluded_titles AS
     SELECT
@@ -1277,11 +1202,7 @@ BEGIN
     ALTER TABLE tmp_excluded_titles ADD PRIMARY KEY (title_no);
     ANALYSE tmp_excluded_titles;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_parcel_titles'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_parcel_titles';
 
     CREATE TEMP TABLE tmp_parcel_titles AS
     SELECT
@@ -1305,11 +1226,7 @@ BEGIN
     ALTER TABLE tmp_parcel_titles ADD PRIMARY KEY (par_id, title_no);
     ANALYSE tmp_parcel_titles;
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_par_stat_action'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_par_stat_action';
     
     CREATE TEMP TABLE tmp_par_stat_action AS
     SELECT
@@ -1346,11 +1263,7 @@ BEGIN
     CREATE INDEX tmp_world_regions_shpx ON tmp_world_regions USING gist (shape);
     ANALYSE tmp_world_regions;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_parcel_geoms'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_parcel_geoms';
     
     -- Some Landonline parcel polygons have rings that self-intersect, typically
     -- banana polygons. So here we use the buffer 0 trick to build a polygon
@@ -1371,11 +1284,7 @@ BEGIN
     ALTER TABLE tmp_parcel_geoms ADD PRIMARY KEY(par_id);
     ANALYSE tmp_parcel_geoms;
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_current_parcels'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_current_parcels';
 
     CREATE TEMP TABLE tmp_current_parcels AS
     SELECT
@@ -1417,11 +1326,7 @@ BEGIN
     ORDER BY
         PAR.id;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp table tmp_current_parcels'
-    );
+    RAISE DEBUG 'Finished creating temp table tmp_current_parcels';
     
     DROP TABLE IF EXISTS tmp_world_regions;
     
@@ -1761,11 +1666,7 @@ BEGIN
     DROP TABLE IF EXISTS tmp_par_stat_action;
     DROP TABLE IF EXISTS tmp_current_parcels;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_titles'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_titles';
     
     CREATE TEMP TABLE tmp_titles AS
     WITH titles (
@@ -1898,11 +1799,7 @@ BEGIN
 
     DROP TABLE IF EXISTS tmp_parcel_titles;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp table tmp_titles'
-    );
+    RAISE DEBUG 'Finished creating temp table tmp_titles';
     
     ----------------------------------------------------------------------------
     -- titles layer
@@ -1991,11 +1888,7 @@ BEGIN
 
     DROP TABLE IF EXISTS tmp_titles;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_title_owners'
-    );
+    RAISE DEBUG 'Started creating temp table tmp_title_owners';
 
     CREATE TEMP TABLE tmp_title_owners AS
     WITH title_owner_parcels (
@@ -2077,11 +1970,7 @@ BEGIN
     
     DROP TABLE IF EXISTS tmp_parcel_geoms;
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating temp table tmp_title_owners'
-    );
+    RAISE DEBUG 'Finished creating temp table tmp_title_owners';
 
     ----------------------------------------------------------------------------
     -- title_owners layer
@@ -2141,11 +2030,7 @@ BEGIN
     DROP TABLE IF EXISTS tmp_title_owners;
     DROP TABLE IF EXISTS tmp_excluded_titles;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Finished maintenance on cadastral parcel simplified layers'
-    );
+    RAISE INFO 'Finished maintenance on cadastral parcel simplified layers';
     
     RETURN 1;
     
@@ -2167,11 +2052,7 @@ DECLARE
     v_data_diff_sql    TEXT;
     v_data_insert_sql  TEXT;
 BEGIN
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Starting maintenance on electoral simplified layers'
-    );
+    RAISE INFO 'Starting maintenance on electoral simplified layers';
 
     IF (
         NOT (
@@ -2192,12 +2073,8 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'road_centre_line_subsection')
     )
     THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload, 
-            '1',
-            'Maintain electoral simplified layers has been skipped as no ' ||
-            'relating tables were affected by the upload'
-        );
+        RAISE INFO
+            'Maintain electoral simplified layers has been skipped as no relating tables were affected by the upload';
         RETURN 1;
     END IF;
 
@@ -2356,11 +2233,7 @@ BEGIN
         v_data_insert_sql
     );
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Finished maintenance on electoral simplified layers'
-    );
+    RAISE INFO 'Finished maintenance on electoral simplified layers';
     
     RETURN 1;
     
@@ -2382,11 +2255,7 @@ DECLARE
     v_data_diff_sql    TEXT;
     v_data_insert_sql  TEXT;
 BEGIN
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Starting maintenance on cadastral survey simplified layers'
-    );
+    RAISE INFO 'Starting maintenance on cadastral survey simplified layers';
 
     IF (
         NOT (
@@ -2434,12 +2303,8 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'survey_non_bdy_marks')
     )
     THEN
-        PERFORM bde_control.bde_WriteUploadLog(
-            p_upload, 
-            '1',
-            'Maintain cadastral survey simplified layers has been skipped as no ' ||
-            'relating tables were affected by the upload'
-        );
+        RAISE INFO
+            'Maintain cadastral survey simplified layers has been skipped as no relating tables were affected by the upload';
         RETURN 1;
     END IF;
 
@@ -2739,18 +2604,14 @@ BEGIN
         v_data_insert_sql,
         v_data_insert_sql
     );
-
+    
     ----------------------------------------------------------------------------
     -- parcel_vectors layer
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'parcel_vectors');
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating temp table tmp_parcel_vectors'
-    );
-
+    RAISE DEBUG 'Started creating temp table tmp_parcel_vectors';
+    
     CREATE TEMP TABLE tmp_parcel_vectors AS
     SELECT
         OBN.vct_id
@@ -2775,11 +2636,7 @@ BEGIN
     ANALYSE tmp_parcel_vectors;
 
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating table tmp_parcel_vector_detail'
-    );
+    RAISE DEBUG 'Started creating table tmp_parcel_vector_detail';
 
     CREATE TEMP TABLE tmp_parcel_vector_detail AS
     WITH latest_vector (row_number, id, type, bearing, distance, shape) AS (
@@ -2814,11 +2671,7 @@ BEGIN
     WHERE
         row_number = 1;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started inserting vector rows into table tmp_parcel_vector_detail'
-    );
+    RAISE DEBUG 'Started inserting vector rows into table tmp_parcel_vector_detail';
     
     INSERT INTO tmp_parcel_vector_detail(
         id,
@@ -2868,11 +2721,7 @@ BEGIN
         LVT.row_number = 1 AND
         PVD.id IS NULL;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating table tmp_parcel_vector_detail'
-    );
+    RAISE DEBUG 'Finished creating table tmp_parcel_vector_detail';
     
     v_data_insert_sql := $sql$
         INSERT INTO %1%(
@@ -3020,11 +2869,7 @@ BEGIN
 
     -- Temp tables required for survey_bdy_marks and survey_non_bdy_marks
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating table tmp_bdy_nodes'
-    );
+    RAISE DEBUG 'Started creating table tmp_bdy_nodes';
     
     CREATE TEMP TABLE tmp_bdy_nodes AS
     WITH bdy_nodes (nod_id_start, nod_id_end) AS (
@@ -3052,11 +2897,7 @@ BEGIN
     FROM
         bdy_nodes;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating table tmp_node_last_adjusted'
-    );
+    RAISE DEBUG 'Started creating table tmp_node_last_adjusted';
 
     CREATE TEMP TABLE tmp_node_last_adjusted AS
     SELECT
@@ -3074,11 +2915,7 @@ BEGIN
     GROUP BY
         NOD.id;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Started creating table tmp_cadastral_marks'
-    );
+    RAISE DEBUG 'Started creating table tmp_cadastral_marks';
 
     CREATE TEMP TABLE tmp_cadastral_marks AS
     WITH t (
@@ -3130,11 +2967,7 @@ BEGIN
     WHERE
         row_number = 1;
 
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload,
-        '3',
-        'Finished creating table tmp_cadastral_marks'
-    );
+    RAISE DEBUG 'Finished creating table tmp_cadastral_marks';
     
     ----------------------------------------------------------------------------
     -- survey_bdy_marks layer
@@ -3204,11 +3037,7 @@ BEGIN
         v_data_insert_sql
     );
     
-    PERFORM bde_control.bde_WriteUploadLog(
-        p_upload, 
-        '2',
-        'Finished maintenance on cadastral survey simplified layers'
-    );
+    RAISE INFO 'Finished maintenance on cadastral survey simplified layers';
     
     PERFORM LDS.LDS_DropSurveyPlansTable(p_upload);
     

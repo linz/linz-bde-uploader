@@ -20,10 +20,14 @@ use Config;
 use inc::MyBuilder;
 
 my $requires = {
-    'LINZ::Config'   => 0,
-    'LINZ::Bde'      => 0,
-    'DBD::Pg'        => 0,
-    'Date::Calc'     => 0,
+    'Log::Log4perl'                    => 0,
+    'Log::Dispatch'                    => 0,
+    'Log::Dispatch::FileRotate'        => 0,
+    'Log::Dispatch::Email::MailSender' => 0,
+    'LINZ::Config'                     => 0,
+    'LINZ::Bde'                        => 0,
+    'DBD::Pg'                          => 0,
+    'Date::Calc'                       => 0,
 };
 
 my $build =  inc::MyBuilder->new(

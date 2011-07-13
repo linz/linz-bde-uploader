@@ -19,13 +19,14 @@
 use strict;  
 
 # TODO need to update this from git describe
-our $VERSION = '1.0.1';
+our $VERSION = '1.0.2';
 
 use FindBin;
 use lib $FindBin::Bin;
 use Getopt::Long;
-use Net::SMTP;
-
+use Log::Log4perl qw(:easy :levels get_logger);
+use Log::Log4perl::Layout;
+  
 use LINZ::BdeUpload;
 use LINZ::Config;
 
@@ -51,6 +52,7 @@ my $override_locks = 0;   # Clear existing locks
 my $listing_file = '';
 my $enddate = '';         # Only use files before this date
 my $maintain_db = 0;      # run database maintain after run.
+my $logger;
 
 GetOptions (
     "help|h" => \$showhelp,
@@ -100,14 +102,6 @@ if( $rebuild && ! $apply_level0 )
     $apply_level5 = 1;
 }
 
-my $of;
-if($listing_file)
-{
-    open($of, ">", $listing_file) ||
-        die "Can't not write to listing file $listing_file: $!\n";
-    select($of);
-};
-
 eval
 {
     my $options = 
@@ -130,133 +124,57 @@ eval
     };
 
     my $cfg = new LINZ::Config($options);
-
-    my $upload = new LINZ::BdeUpload($cfg);
-
-    eval
-    {
     
-        $upload->PurgeOldJobs if $do_purge && ! $dry_run;
-    
-        $upload->ApplyUpdates($dry_run);
-    };
-
-    $upload->error($@) if $@;
-
-    if( ! $dry_run )
+    # turn off config logging if doing a dry run.
+    my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
+    if ($dry_run)
     {
-        my $messages = [];
+        Log::Log4perl->easy_init($INFO);
+        $logger = get_logger("");
+    }
+    else
+    {
+        my $log_config = $cfg->log_settings;
+        Log::Log4perl->init(\$log_config);
+        $logger = get_logger("");
         
-        eval
+        if($listing_file)
         {
-            $messages= $upload->GetMessages;
-            sendMessages($cfg,$messages);
-        };
-        my $error = $@;
-        push(@$messages,{message_time=>'',type=>'E',message=>$error}) if $error;
-    
-        if($verbose || $error)
-        {
-            print "\nUpload messages\n";
-            foreach my $m (@$messages)
-            {
-                print join("\t",$m->{message_time},$m->{type},$m->{message}),"\n";
-            }
+            my $file_appender = Log::Log4perl::Appender->new(
+                "Log::Dispatch::FileRotate",
+                name      => "listing_file_log",
+                filename  => $listing_file,
+                mode      => "append",
+                min_level => 'debug',
+            );
+            $file_appender->layout($layout);
+            $logger->add_appender( $file_appender );
+            DEBUG("File logging turned on");
+            #Log::Log4perl::Logger::reset_all_output_methods();
         }
     }
+    
+    if($verbose || $dry_run)
+    {
+        my $stdout_appender = Log::Log4perl::Appender->new(
+            "Log::Log4perl::Appender::Screen",
+            name      => "verbose_screen_log",
+        );
+        $stdout_appender->layout($layout);
+        $logger->add_appender($stdout_appender);
+    }
+    
+    my $upload = new LINZ::BdeUpload($cfg);
+    $upload->PurgeOldJobs if $do_purge && ! $dry_run;
+    $upload->ApplyUpdates($dry_run);
 };
-
 if( $@ )
 {
-    # Error not trapped by normal messaging or not sent
-
-    print $@;
-
+    LOGDIE("$@");
 };
 
-close($of) if $of;
-
-
-sub sendMessages 
-{
-    my ($cfg,$messages) = @_;
-  
-    my $logtypes = join('',map {$_->{type}} @$messages);
-  
-    my $msgtype;
-    foreach my $mt (split(' ',$cfg->email_message_types) )
-    {
-        $mt =~ /^(\w+)\:(\w+)(?:\-(\w+))?/ || next;
-        
-        my ($type,$levels,$exclude) = ($1,$2,$3);
-        next if ! $levels;
-        next if $logtypes !~ /[$levels]/i;
-        next if $exclude && $logtypes =~ /[$exclude]/i;
-        sendMessageType($cfg,$type,$messages);
-    }
-}
-
-
-sub messageText
-{
-    my( $messages, $options ) = @_;
-    my $showtimes = $options =~ /T/i;
-
-    my $text = '';
-    foreach my $m (@$messages)
-    {
-        next if $m->{type} !~ /[$options]/i;
-        $text .= $m->{message_time}."\t".$m->{type}."\t" if $showtimes;
-        $text .= $m->{message}."\n";
-    }
-    return $text;
-}
-
-sub sendMessageType
-{
-    my( $cfg, $msgtype, $messages ) = @_;
-
-    $msgtype .= '_email_';
-
-    my $smtpserver = $cfg->smtpserver;
-    my $fromuser = $cfg->smtpsender;
-    my $from = $cfg->smtpsendername." <$fromuser>";
-    my $to = $cfg->get($msgtype."address");
-    my $subject = $cfg->get($msgtype."subject","linz_bde_uploader log");
-    my $text = $cfg->get($msgtype."template","{log:EWIT}");
-     
-    $text =~ s/\{log\:(\w+)\}/messageText($messages,$1)/eig;
-    $text =~ s/\{\_runtime_duration\}/runtime_duration()/eg;
-    
-    my $smtp = Net::SMTP->new($smtpserver) if $smtpserver ne 'none';
-    if (!$smtp)
-    {
-       print "Unable to connect to smtp server $smtpserver\n\n" 
-          if $smtpserver ne 'none';
-    
-       print "Log file not sent - no SMTP server\n",
-          "To: $to\n",
-          "Subject: ",$subject,"\n\n",
-    $text;
-       return;
-    }
-  
-  
-    my @to = map { s/^\s+//;s/\s+$//; $_ } split(/\;/, $to );
-    if( $smtp )
-    {
-        $smtp->mail($fromuser);
-        $smtp->to(@to,{SkipBad=>1});
-        $smtp->data(); 
-        $smtp->datasend("To: $to\n");
-        $smtp->datasend("From: $from\n");
-        $smtp->datasend("Subject: $subject\n");
-        $smtp->datasend("\n");
-        $smtp->datasend($text);
-        $smtp->dataend();
-        $smtp->quit();
-    }
-}
+INFO("Duration of job: ". runtime_duration());
+exit;
 
 sub runtime_duration
 {
@@ -440,11 +358,8 @@ Choose not to run any postupload tasks defined for the schema.
 
 =item -listing_file or -l I<listing_file>
 
-Specifies a file for reporting.  Most reporting is written to the database and
-sent as email notifications as defined in the configuration.  
-If the verbose option is specified, or if the
-email server is unavailable, then this may be sent to the standard output
-file.  The I<listing_file> can be used in place of standard output.
+Specifies a file for logging. This is in addition to other log appenders set in
+the config file.
 
 =item -keep-files or -k
 
@@ -453,8 +368,7 @@ for debugging use.
 
 =item -verbose or -v
 
-Specifies that messages will be sent to standard output (or the report file)
-as well as to the database.
-
+Specifies that messages will be sent to standard output (as well as any other
+log appenders set in the config)
 
 =back

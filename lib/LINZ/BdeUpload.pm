@@ -13,6 +13,8 @@
 #
 ################################################################################
 use strict;
+use Log::Log4perl qw(:easy);
+
 package BdeUploadTableDef;
 
 use fields qw{ table id key_column row_tol_error row_tol_warning levels files columns level5_is_full };
@@ -107,8 +109,8 @@ sub new
 sub _report_config_error
 {
     my($self,@message) = @_;
-    die "Error reading BDE upload dataset configuration from ",
-        $self->{config_file},"\n",@message;
+    LOGDIE("Error reading BDE upload dataset configuration from ",
+        $self->{config_file}, "\n", @message)
 }
 
 sub _config_error
@@ -123,7 +125,7 @@ sub _read_config
     $self->{config_file} = $config_file;
     $self->{tables}=[];
 
-    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!\n"); 
+    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!"); 
     my $table;
     my $errors = [];
     my %tables = ();
@@ -165,7 +167,7 @@ sub _read_config
                 }
             }
             $table->set_levels('C') if $name eq 'l5_change_table';
-            $self->_config_error($errors,$in,"No files defined for table $name\n")
+            $self->_config_error($errors,$in,"No files defined for table $name")
                 if ! @values;
             $table->add_files(@values);
             push(@{$self->{tables}},$table);
@@ -348,6 +350,8 @@ package LINZ::BdeUpload;
 use LINZ::BdeDatabase;
 use LINZ::Bde;
 
+use Log::Log4perl qw(:easy);
+
 use IO::Handle;
 use File::Path;
 use File::Spec;
@@ -355,7 +359,7 @@ use Date::Calc;
 
 use fields qw{ cfg db repository tables tmp_base tmp fid 
                timeout timeout_message dbl0updated dbupdated error_message 
-               keepfiles changetable jobfinished messages};
+               keepfiles changetable jobfinished};
 
 our $tmp_prefix='tmp_bde_upload_';
 
@@ -369,6 +373,7 @@ sub set_error
     my $self = shift(@_);
     my $msg = join('',@_);
     return if ! $msg;
+    $self->db->set_error if $self->db;
     $self->{error_message} = $msg if ! $self->error_message;
     return $msg;
 }
@@ -378,7 +383,7 @@ sub die_error
     my($self,@message) = @_;
     my $msg = $self->set_error(@message);
     return if ! $msg;
-    die $msg,"\n";
+    LOGDIE $msg;
 }
 
 sub error_message
@@ -397,13 +402,14 @@ sub send_error
 {
     my($self,@prefix) = @_;
     my $error = $self->clear_error;
-    $self->error(@prefix,$error) if $error;
+    push @prefix, $error;
+    ERROR(join ' ', @prefix) if $error;
 }
 
 sub propogate_error
 {
     my($self) = @_;
-    die "Propogating ...\n" if $self->error_message;
+    LOGDIE("Propogating ...") if $self->error_message;
 }
 
 sub new
@@ -425,7 +431,7 @@ sub new
         $tables = $tables->subset(@requested);
         foreach my $t (@requested )
         {
-            $self->warning("No definition is available for requested table $t")
+            WARN("No definition is available for requested table $t")
                 if ! $tables->table($t);
         }
     }
@@ -450,11 +456,7 @@ sub new
     $self->{db}->setApplication($cfg->application_name);
 
     $self->{repository} = new LINZ::BdeRepository( $cfg->bde_repository );
-
-    # create an upload in the database
-    
-    $self->{db}->uploadId;
-    
+   
     # Check for the base scratch directory - create it if it doesn't exist
     
     my $scratch = $cfg->tmp_base_dir;
@@ -473,7 +475,6 @@ sub new
     $self->{dbl0updated} = 0;
     $self->{timeout} = 0;
     $self->{jobfinished} = 0;
-    $self->{messages} = [];
     $self->{keepfiles} = $cfg->keep_files('') ? 1 : 0;
 
     return $self;
@@ -509,69 +510,6 @@ sub tmp
 
     $self->{tmp} = $tmp;
     return $tmp;
-}
-
-sub writeLog
-{
-    my($self,$type,@messages) = @_;
-    my $status = 1;
-    my $db = $self->db;
-    return 0 if ! $db || ! $db->jobCreated;
-    # might not be able to log message if database transaction is in a
-    # rollback state
-    eval
-    {
-        $db->writeLog($type,@messages);
-    };
-    if ($@)
-    {
-        $status = 0;
-    }
-    return $status;
-}
-
-sub writeMessages
-{
-    my($self,@messages) = @_;
-    print @messages;
-    print "\n" if $messages[-1] !~ /\n$/;
-}
-
-sub writeDatasetLogMessages
-{
-    my($self,$messages) = @_;
-    print "\nDataset upload messages before rollback\n";
-    foreach my $msg (@$messages)
-    {
-        my $text;
-        $text .= $msg->{message_time}."\t".$msg->{type}."\t";
-        $text .= $msg->{message}."\n";
-        print $text;
-    }
-}
-
-sub warning 
-{
-    my($self,@messages) = @_;
-    my $logged = $self->writeLog('W',@messages);
-    $self->writeMessages("Warning: ",@messages)
-        if $self->cfg->verbose || ! $logged;
-}
-
-sub error
-{
-    my($self,@messages) = @_;
-    my $logged = $self->writeLog('E',@messages);
-    $self->writeMessages("Error: ",@messages)
-        if $self->cfg->verbose || ! $logged;
-}
-
-sub info 
-{
-    my($self,$level,@messages) = @_;
-    my $logged = $self->writeLog($level,@messages);
-    $self->writeMessages(@messages)
-        if $self->cfg->verbose || ! $logged;
 }
 
 sub PurgeOldJobs
@@ -627,21 +565,6 @@ sub CheckTimeout
     }
 }
 
-sub GetMessages
-{
-    my($self) = @_;
-    my $messages;
-    if ($self->{jobfinished})
-    {
-        $messages = $self->{messages};
-    }
-    else
-    {
-        $messages = $self->db->getLogMessages;
-    }
-    return wantarray ? @$messages : $messages;
-}
-
 sub ApplyUpdates
 {
     my($self,$dry_run) = @_;
@@ -649,11 +572,11 @@ sub ApplyUpdates
     eval
     {
         my $updates = new BdeUploadSet();
-
+        
         if( $self->cfg->apply_level0(0) )
         {
             $self->GetLevel0Updates($updates); 
-        }   
+        }
         if( $self->cfg->apply_level5(0) )
         {
             $self->GetLevel5Updates($updates);
@@ -666,15 +589,22 @@ sub ApplyUpdates
             print "Dataset updates\n";
             $updates->print;
         }
-        elsif(! $updates->empty )
+        else
         {
-            $self->ApplyDatasetUpdates($updates);
+            if (! $updates->empty)
+            {
+                $self->ApplyDatasetUpdates($updates);
+            }
+            else
+            {
+                INFO("No dataset updates to apply");
+            }
         }
     };
     $self->set_error($@);
     $self->send_error();
     
-
+    
     eval
     {
         if( !$dry_run )
@@ -685,7 +615,6 @@ sub ApplyUpdates
     };
     $self->set_error($@);
     $self->send_error();
-
 }
 
 sub GetLevel0Updates
@@ -699,8 +628,11 @@ sub GetLevel0Updates
     my @datasets = $self->repository->level0->datasets;
     if( $enddate ) { @datasets = grep {$_->name lt $enddate} @datasets; }
 
-    $self->die_error("No level 0 uploads available") if ! @datasets;
-
+    if (! @datasets)
+    {
+        $self->die_error("No level 0 uploads available");
+    }
+    
     my $dataset = $datasets[-1];
 
     my $rebuild = $self->cfg->rebuild(0);
@@ -753,8 +685,8 @@ sub GetLevel5Updates
 
         if( $lastl5 eq '' )
         {
-            $self->error("Cannot load incremental updates to ".$t->name.
-                " as there is no previous upload\n");
+            ERROR("Cannot load incremental updates to ".$t->name.
+                " as there is no previous upload");
             next;
         }
         my @datasets = $l5repository->after($lastl5)->datasets;
@@ -767,7 +699,7 @@ sub GetLevel5Updates
             {
                 my ($avail, $missing) = $l5_tableset->is_available_in_dataset($d);
                 $complete_datasets{$d} = $avail;
-                $self->warning(
+                WARN(
                     "Level 5 dataset " , $d->name, " is not complete",
                     $require_all ? " and will not be loaded" : "",
                     ". The following files are missing: ",
@@ -813,10 +745,10 @@ sub ApplyDatasetUpdates
         {
             $timeout = $self->cfg->max_level5_runtime_hours;
         }
-        $self->SetTimeout($timeout,"$load_type updates have timed out\n");
+        $self->SetTimeout($timeout,"$load_type updates have timed out");
 
-        $self->info("I","Applying ",$dataset->name," $load_type update (job ",
-            $self->db->uploadId,")\n");
+        INFO("Applying ",$dataset->name," $load_type update (job ",
+            $self->db->uploadId, ")");
 
         $self->db->beginDataset($dataset->name);
         
@@ -859,8 +791,9 @@ sub ApplyDatasetUpdates
                 if( $self->error_message)
                 {
                     $error = 1;
-                    $self->send_error("Failed to load $load_type update for ",$tablename,
-                        " from ",$dataset->name,"\n");
+                    $self->send_error("Failed to load $load_type update for ".
+                        $tablename. " from ".$dataset->name
+                    );
                     $tablestate->{$tablename} = '|';
                     last if $self->db->datasetInTransaction;
                 }
@@ -871,9 +804,8 @@ sub ApplyDatasetUpdates
 
         if ( $error && $self->db->datasetInTransaction )
         {
-            $self->writeDatasetLogMessages($self->db->getDatasetMessages);
             $self->db->rollBackDataset;
-            $self->error("Failed to load $load_type update for " . $dataset->name .
+            ERROR("Failed to load $load_type update for " . $dataset->name .
                 ". The transaction has been rolled back");
             last;
         }
@@ -885,7 +817,7 @@ sub ApplyDatasetUpdates
         {
             if( $self->cfg->skip_postupload_tasks )
             {
-                $self->warning("Post level0 upload tasks have not been run by user choice\n");
+                WARN("Post level0 upload tasks have not been run by user choice");
             }
             else
             {
@@ -901,11 +833,11 @@ sub ApplyDatasetUpdates
         next if $state eq '' || $state eq '|';
         my @dsnames = split(/\|/,substr($state,1));
         my $dsname0 = shift(@dsnames);
-        $self->error("Failed to load update for ",$tablename,
+        ERROR("Failed to load update for ",$tablename,
             " from ", $dsname0) 
             if $dsname0; 
-        $self->error("Updates of $tablename from ",join(", ",@dsnames),
-            " where bypassed due to previous error for that table\n")
+        ERROR("Updates of $tablename from ",join(", ",@dsnames),
+            " where bypassed due to previous error for that table")
             if @dsnames;
     }
     
@@ -919,7 +851,7 @@ sub ApplyPostUploadFunctions
     if( $self->cfg->skip_postupload_tasks )
     {
          
-        $self->warning("Post upload tasks have not been run by user choice\n");
+        WARN("Post upload tasks have not been run by user choice");
     }
     else
     {
@@ -930,7 +862,6 @@ sub ApplyPostUploadFunctions
 sub FinishJob
 {
     my $self = shift;
-    $self->{messages} = $self->db->getLogMessages;
     $self->db->finishJob;
     if ( $self->{dbupdated} && $self->cfg->maintain_db )
     {
@@ -969,7 +900,7 @@ sub CreateLevel5ChangeTable
     if( $msg )
     {
         $db->dropWorkingCopy($tablename) if ! $temp;
-        $self->die_error("Cannot load change table for dataset ",$dataset->name,"\n",$msg);
+        $self->die_error("Cannot load change table for dataset ",$dataset->name, ': ', $msg);
     }
     return $tablename;
 }
@@ -981,7 +912,7 @@ sub UploadTable
     
     $self->CheckTimeout();
 
-    $self->info('1',"Loading ",$table->name," from dataset ", $dataset->name );
+    INFO("Loading ",$table->name," from dataset ", $dataset->name);
     my ($available,$missing) = $table->is_available_in_dataset($dataset);
     if( !$available ) 
     {
@@ -1045,6 +976,7 @@ sub UploadTable
 
         if( $is_level0 )
         {
+            INFO('Applying level 0 update '. $dataset->name. ' into table '. $tablename);
             my $is_incremental = $self->cfg->apply_level0_inc || $table->level5_is_full;
             $db->applyLevel0Update($tablename,$bdedate,$details, $is_incremental)
                 || $self->die_error("Cannot apply level ",$dataset->level, 
@@ -1053,6 +985,7 @@ sub UploadTable
         }
         else
         {
+            INFO('Applying level 5 update '. $dataset->name. ' into table '. $tablename);
             $db->applyLevel5Update($tablename,$bdedate,$details, $self->cfg->fail_if_inconsistent_data(1))
                 || $self->die_error("Cannot apply level ",$dataset->level, 
                     " update for ",$tablename," in ",$dataset->name);
@@ -1080,7 +1013,7 @@ sub LoadFile
     my $result = '';
     my $reader = $dataset->open($file);
 
-    $self->info('2',"Loading file ",$file," from dataset ",$dataset->name);
+    INFO("Loading file ",$file," from dataset ",$dataset->name);
     eval
     {
         $self->CheckStartDate($dataset,$file,$reader->start_time,$checktime)
@@ -1099,7 +1032,7 @@ sub LoadFile
         $db->uploadDataToTempTable($tablename,$tmpfile,$columns)
             || $self->die_error("Error uploading data from ",$file," in ",$dataset->name," to ",$tablename);
         
-        
+        DEBUG("Loaded file $tmpfile into working table $tablename");
     };
     $self->set_error($@);
 
@@ -1123,7 +1056,7 @@ sub CheckStartDate
     
     if( $starttime !~ $re || $checktime !~ $re )
     {
-        $self->warning("Cannot check start time of $file of ",
+        WARN("Cannot check start time of $file of ",
             $dataset->name," level 5 update");
         return;
     }
@@ -1138,7 +1071,7 @@ sub CheckStartDate
     }
     if( $warntol && $diff > $warntol )
     {
-        $self->warning(
+        WARN(
             "Start time $starttime in $file of dataset ",$dataset->name,
             " differs from previous end time $checktime by more than $warntol hours");
     }
@@ -1158,17 +1091,17 @@ sub BuildTempFile
         );
     foreach my $msg (@{$result->{errors}})
     {
-        $self->error($msg);
+        ERROR($msg);
     }
     foreach my $msg (@{$result->{warnings}})
     {
-        $self->warning($msg);
+        WARN($msg);
     }
     my $nrec;
     my $nerrors;
     unlink($log) if ! $self->{keepfiles};
     $self->die_error("Data file not built") if ! -r $tmpname;
-    $self->info('2',$result->{nrec}," records copied from ",$reader->path,
+    INFO($result->{nrec}," records copied from ",$reader->path,
             " with ",$result->{nerrors}," errors");
     
     return $tmpname;
@@ -1250,8 +1183,6 @@ uploaded.
 
 =item upload_tables
 
-=item verbose
-
 =back
 
 =head2 Upload process
@@ -1313,11 +1244,6 @@ in other uploads from the same level 0 dataset.
 Using this function may require multiple calls, for example to see if 
 all tables are loaded and any are affected.
 
-=item INT bde_control.bde_WriteUploadLog(upload_id INT, type CHAR(1), message TEXT )
-
-Writes an entry into the log for the upload.  The type should be one of 'E'=error, 'W'=warning, 'I'=information, '1', '2', and '3' for more verbose information.
-
-
 =back
 
 =head2 Internal functions
@@ -1335,16 +1261,6 @@ Writes an entry into the log for the upload.  The type should be one of 'E'=erro
 =item $upload->fid
 
 =item $upload->tmp 
-
-=item $upload->writeLog
-
-=item $upload->writeMessages
-
-=item $upload->warning 
-
-=item $upload->error
-
-=item $upload->info 
 
 =item $upload->CheckTimeout
 

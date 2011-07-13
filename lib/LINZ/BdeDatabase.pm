@@ -134,10 +134,6 @@ its id is first required to execute a function.
     tempTableExists 
     tmpSchema
     uploadDataToTempTable 
-    writeUploadLog
-    getLastLogId
-    getLogMessagesSince
-    getLogMessages
 
 
 The functions return either a scalar, or if the function returns a 
@@ -176,6 +172,14 @@ job is cleaned up.
 
 Will run garbage collection and analyse on the BDE database.
 
+=item $db->set_error
+
+Set the database upload in error
+
+=item $db->clear_error
+
+Clears any set database upload error
+
 =item $success = $db->beginTable($table_name)
 
 Starts a load for a table. If the table transaction option is set the cfg then a
@@ -202,28 +206,10 @@ these SQL commands are executed.
 
 Returns true if the database is current in a long database transation.
 
-=item $message = $db->getDatasetMessages()
-
-Gets all log messages that have been written to the database since the dataset
-load was started (i.e beginDataset method was called)
-
-Returns an array reference of hash references with the following fields:
-
-    {
-        'type' => 'E',
-        'message_time' => '2010-04-19 12:50:50.025',
-        'message' => 'This is a error log message'
-    }
-
 =item $message = $db->rollBackDataset()
 
 If the database is in a dataset long transaction then the transaction will be
 rolled back.
-
-=item $db->writeLog(level,@message);
-
-Record messages in the job message log.  Level is a single character, one 
-of E (error), W (warning), I (information), 1, 2, 3 (more verbose messages)
 
 =back
 
@@ -231,7 +217,8 @@ of E (error), W (warning), I (information), 1, 2, 3 (more verbose messages)
 
 package LINZ::BdeDatabase;
 
-use fields qw{_connection _user _pwd _dbh _pg_server_version _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _last_log_id _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
+use Log::Log4perl qw(:easy :levels get_logger);
+use fields qw{_connection _user _pwd _dbh _pg_server_version _error _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
 
 our @sqlFuncs = qw{
     addTable
@@ -263,13 +250,34 @@ our @sqlFuncs = qw{
     tempTableExists 
     tmpSchema
     uploadDataToTempTable 
-    writeUploadLog
-    getLastLogId
-    getLogMessagesSince
-    getLogMessages
     };
 
 our $funcsLoaded = 0;
+
+my %pg_log_message_map = (
+    DEBUG   => 'debug',
+    DEBUG1  => 'debug',
+    DEBUG2  => 'debug',
+    DEBUG3  => 'debug',
+    DEBUG4  => 'debug',
+    DEBUG5  => 'debug',
+    LOG     => 'debug',
+    NOTICE  => 'debug',
+    INFO    => 'info',
+    WARNING => 'warn'
+);
+
+
+my %log_pg_message_map = (
+    $OFF   => 'ERROR',
+    $FATAL => 'ERROR',
+    $ERROR => 'ERROR',
+    $WARN  => 'WARNING',
+    $INFO  => 'INFO',
+    $DEBUG => 'DEBUG',
+    $TRACE => 'DEBUG5',
+    $ALL   => 'DEBUG5',
+);
 
 sub new
 {
@@ -288,7 +296,7 @@ sub new
     $self->{_usedstransaction} = $cfg->use_dataset_transaction(1) ? 1 : 0;
     $self->{_locktimeout} = $cfg->table_exclusive_lock_timeout(60)+0;
     $self->{_allowConcurrent} = $cfg->allow_concurrent_uploads(0);
-    $self->{_last_log_id} = undef;
+    $self->{_error} = 0;
 
     $self->{schema} = $cfg->bde_schema;
 
@@ -306,14 +314,14 @@ sub new
         $self->{_user}, $self->{_pwd}, 
         {
             AutoCommit    =>1,
-            PrintError    =>0,
-            PrintWarn     =>0,
+            PrintError    =>1,
+            PrintWarn     =>1,
             RaiseError    =>1,
             pg_errorlevel =>2,
         }
     )
-       || die "Cannot connect to database\n",DBI->errstr,"\n";
-       
+       || die "Cannot connect to database\n",DBI->errstr;
+    
     my $pg_server_version = $dbh->{'pg_server_version'};
     if ( $pg_server_version =~ /\d/ )
     {
@@ -321,7 +329,7 @@ sub new
     }
     else
     {
-        warn "WARNING: no pg_server_version!  Assuming >= 8.4\n";
+        WARN "WARNING: no pg_server_version!  Assuming >= 8.4";
         $self->{_pg_server_version} = 80400;
     }
     
@@ -338,12 +346,17 @@ sub new
     $dbh->do("set search_path to ".$self->{_dbschema}.", public");
     my $schema2 = $dbh->selectrow_array("SELECT bde_CheckSchemaName(?)",{},
         $self->{_dbschema});
-    die "Invalid schema ",$self->{_dbschema}," specified for upload\n" if ! $schema2;
+    die "Invalid schema ",$self->{_dbschema}," specified for upload\n"
+        if ! $schema2;
 
     $self->{_dbschema} = $schema2;
     $self->{_dbh} = $dbh;
     $self->_setupFunctions() if ! $funcsLoaded;
 
+    my $logger = get_logger();
+    my $pg_msg_level = $log_pg_message_map{$logger->level};
+    $dbh->do("SET client_min_messages = $pg_msg_level") if $pg_msg_level;
+    
     $self->_runSQLBlock($self->{_startSql});
     
     return $self;
@@ -370,6 +383,7 @@ sub uploadId
             die "Cannot create upload job - another job is already active\n";
         }
         $self->{uploadId} = $self->createUpload;
+        INFO('Job ' . $self->{uploadId} . ' created');
         $self->setOption('exclusive_lock_timeout',$self->{_locktimeout});
     }
     $self->{_lastUploadId} = $self->{uploadId};
@@ -385,8 +399,8 @@ sub jobCreated
 sub maintain
 {
     my($self) = @_;
-    $self->_dbh->do("VACUUM ANALYSE") ||
-        die "Cannot vacuum database\n", $self->_dbh->errstr,"\n";
+    $self->_dbh_do("VACUUM ANALYSE") ||
+        ERROR "Cannot vacuum database\n", $self->_dbh->errstr,"\n";
 }
 
 sub finishJob
@@ -394,7 +408,10 @@ sub finishJob
     my ($self) = @_;
     return if ! $self->jobCreated;
     $self->_runFinishSql;
-    $self->finishUpload;
+    $self->finishUpload($self->{_error});
+    my $msg = 'Job ' . $self->{uploadId} . ' finished ' .
+        ($self->{_error} ? 'with errors' : 'successfully');
+    INFO($msg);
     $self->{uploadId} = undef;
 }
 
@@ -404,7 +421,7 @@ sub setApplication
     my $result = 0;
     if ( $self->{_pg_server_version} >= 90000 )
     {
-        my $rv = $self->_dbh->do("SET application_name='$app_name'");
+        my $rv = $self->_dbh_do("SET application_name='$app_name'");
         $result = 1 if (defined $rv);
     }
     return $result;
@@ -434,7 +451,6 @@ sub endTable
 sub beginDataset
 {
     my($self,$name) = @_;
-    $self->{_last_log_id} = $self->getLastLogId;
     if( $self->{_usedstransaction})
     {
         $self->_beginTransaction;
@@ -447,7 +463,6 @@ sub beginDataset
 sub endDataset
 {
     my($self,$name) = @_;
-    $self->{_last_log_id} = undef;
     $self->_runSQLBlock($self->{_endDatasetSql});
     $self->_commitTransaction if $self->{_usedstransaction};
 }
@@ -458,25 +473,28 @@ sub datasetInTransaction
     return $self->{_usedstransaction} && $self->{_intransaction};
 }
 
-sub getDatasetMessages
-{
-    my $self = shift;
-    return if ! defined $self->{_last_log_id};
-    my $messages = $self->getLogMessagesSince($self->{_last_log_id});
-    return $messages;
-}
-
 sub rollBackDataset
 {
     my($self) = @_;
     my $result;
     if ( $self->datasetInTransaction )
     {
-        $self->{_last_log_id} = undef;
         $result = $self->_dbh->rollback;
         $self->{_intransaction} = 0;
     }
     return $result;
+}
+
+sub set_error
+{
+    my $self = shift;
+    $self->{_error} = 1;
+}
+
+sub clear_error
+{
+    my $self = shift;
+    $self->{_error} = 0;
 }
 
 sub schema { return $_[0]->{schema} }
@@ -498,8 +516,14 @@ sub _runSQLBlock
             }
             $cmd =~ s/\{id\}/$id/g;
         }
-        $self->_dbh->do($cmd) ||
-            die "Cannot run SQL command\nSQL: $cmd\n", $self->_dbh->errstr,"\n";
+        eval
+        {
+            $self->_dbh_do($cmd);
+        };
+        if ($@)
+        {
+            die "Cannot run SQL command: $cmd\n", $self->_dbh->errstr;
+        }
     }
 }
 
@@ -533,9 +557,14 @@ sub _runFinishSql
             next if ! $self->tablesAffected($test,$tables);
         }
         $cmd =~ s/\{id\}/$id/g;
-        $self->_dbh->do($cmd)
-            || die "Cannot run finishing SQL\nSQL: $cmd\n",
-                $self->_dbh->errstr,"\n";
+        eval
+        {
+            $self->_dbh_do($cmd);
+        };
+        if ($@)
+        {
+            die "Cannot run finishing SQL: $cmd: ", $self->_dbh->errstr;
+        }
     }
 }
 
@@ -598,12 +627,13 @@ sub _setupFunctions
 sub _executeFunction
 {
     my($self,$name,$sql,$params,$nparam,$returntype) = @_;
-    die "Invalid number of parameters (",join(", ",@$params),") in call to $name\n"
+    die "Invalid number of parameters (",join(", ",@$params),") in call to $name"
         if scalar(@$params) != $nparam;
 
     my $result;
     eval
     {
+        $self->_setDbMessageHandler;
         if( $returntype eq 'RECORD' )
         {
             $result = $self->_dbh->selectrow_hashref($sql,{},@$params);
@@ -625,12 +655,50 @@ sub _executeFunction
         {
             ($result) = $self->_dbh->selectrow_array($sql,{},@$params);
         }
+        $self->_clearDbMessageHandler;
     };
     if( $@ )
-    { 
-        die "Function $name failed: ",$self->_dbh->errstr,"\n"
+    {
+        my $error = $self->_dbh->errstr;
+        die "Database function $name failed: $error";
     }
     return $result; 
+}
+
+sub _setDbMessageHandler
+{
+    my $self = shift;
+    $SIG{__WARN__} = sub { &_dbMessageHandler($self, @_); };
+}
+
+sub _clearDbMessageHandler
+{
+    $SIG{__WARN__} = undef;
+}
+
+sub _dbMessageHandler
+{
+    my $self = shift;
+    my $db_message = shift;
+    $db_message =~ s/\r\n/ /g;
+    $db_message =~ s/\n/ /g;
+    my ($type, $text, $extra) = $db_message
+        =~ /^(\w+)\:(?:\s+0{5}\:)?\s+(.*?)\s*((?:CONTEXT|LOCATION)\:(?:.*))?$/;
+    my $logger = get_logger();
+    my $msg_func = $pg_log_message_map{$type};
+    if ($msg_func)
+    {
+        $logger->$msg_func($text);
+        if ($extra)
+        {
+            my $level = $msg_func eq 'warn' ? $msg_func : 'debug';
+            $logger->$level($extra);
+        }
+    }
+    else
+    {
+        die $db_message;
+    }
 }
 
 sub _beginTransaction
@@ -639,6 +707,16 @@ sub _beginTransaction
     $self->_commitTransaction;
     $self->_dbh->begin_work;
     $self->{_intransaction} = 1;
+}
+
+sub _dbh_do
+{
+    my ($self, $sql) = @_;
+    $self->_setDbMessageHandler;
+    DEBUG("Running: $sql");
+    my $rv = $self->_dbh->do($sql);
+    $self->_clearDbMessageHandler;
+    return $rv;
 }
 
 sub _commitTransaction
@@ -650,14 +728,6 @@ sub _commitTransaction
         $self->_dbh->commit;
         $self->{_intransaction} = 0;
     }
-}
-
-sub writeLog
-{
-    my($self,$level, @message) = @_;
-    my $msgstr = join('',@message);
-    $msgstr =~ s/\n$//;
-    $self->writeUploadLog($level,$msgstr) if $msgstr =~ /\S/;
 }
 
 1;
