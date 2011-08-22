@@ -295,9 +295,7 @@ CREATE INDEX fk_mark_wrk ON crs_mark USING btree (wrk_id_created);
 CREATE INDEX fk_mrk_mrk_dist ON crs_mark USING btree (mrk_id_dist);
 CREATE INDEX fk_mrk_mrk_rep ON crs_mark USING btree (mrk_id_repl);
 CREATE INDEX fk_mrk_nod ON crs_mark USING btree (nod_id);
--- Currently crs_mark.audit_id can not be made unique due to production
--- having bad data and not having a unique constraint applied
-CREATE INDEX idx_mrk_aud_id ON crs_mark USING btree (audit_id);
+CREATE UNIQUE INDEX idx_mrk_aud_id ON crs_mark USING btree (audit_id);
 
 -------------------------------------------------------------------------------
 -- crs_mark_name
