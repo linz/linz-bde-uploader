@@ -200,6 +200,34 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE geodetic_antarctic_vertical_marks 
 GRANT SELECT ON TABLE geodetic_antarctic_vertical_marks TO bde_user;
 
 --------------------------------------------------------------------------------
+-- LDS table survey_protected_marks
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS survey_protected_marks CASCADE;
+
+DROP TABLE IF EXISTS survey_protected_marks CASCADE;
+CREATE TABLE survey_protected_marks (
+    id INTEGER NOT NULL,
+    geodetic_code CHAR(4),
+    current_mark_name TEXT,
+    description TEXT,
+    mark_type TEXT,
+    mark_condition TEXT,
+    "order" INTEGER NOT NULL,
+    last_survey TEXT,
+    last_survey_date DATE
+);
+PERFORM AddGeometryColumn('survey_protected_marks', 'shape', 4167, 'POINT', 2);
+
+ALTER TABLE survey_protected_marks ADD PRIMARY KEY (id);
+CREATE INDEX shx_spm_shape ON survey_protected_marks USING gist (shape);
+
+ALTER TABLE survey_protected_marks OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE survey_protected_marks FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE survey_protected_marks TO bde_admin;
+GRANT SELECT ON TABLE survey_protected_marks TO bde_user;
+
+--------------------------------------------------------------------------------
 -- LDS table primary_parcels
 --------------------------------------------------------------------------------
 DROP TABLE IF EXISTS primary_parcels CASCADE;
@@ -489,7 +517,8 @@ DROP TABLE IF EXISTS road_centre_line CASCADE;
 CREATE TABLE road_centre_line (
     id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    asp_location VARCHAR(100)
+    locality TEXT,
+    territorial_authority TEXT
 );
 PERFORM AddGeometryColumn('road_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
 
@@ -509,11 +538,13 @@ DROP TABLE IF EXISTS road_centre_line_subsection CASCADE;
 
 CREATE TABLE road_centre_line_subsection (
     id INTEGER NOT NULL,
-    road_id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    asp_location VARCHAR(100),
+    other_names TEXT,
+    locality TEXT,
+    territorial_authority TEXT,
     parcel_derived BOOLEAN NOT NULL
 );
+
 PERFORM AddGeometryColumn('road_centre_line_subsection', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE road_centre_line_subsection ADD PRIMARY KEY (id);
@@ -555,7 +586,8 @@ CREATE TABLE street_address (
     address TEXT NOT NULL,
     house_number VARCHAR(25) NOT NULL,
     road_name VARCHAR(100) NOT NULL,
-    asp_location VARCHAR(100)
+    locality TEXT,
+    territorial_authority TEXT
 );
 PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
 
@@ -637,6 +669,50 @@ ALTER TABLE cadastral_adjustments OWNER TO bde_dba;
 REVOKE ALL ON TABLE cadastral_adjustments FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE cadastral_adjustments TO bde_admin;
 GRANT SELECT ON TABLE cadastral_adjustments TO bde_user;
+
+--------------------------------------------------------------------------------
+-- LDS table spi_adjustments
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS spi_adjustments CASCADE;
+
+CREATE TABLE spi_adjustments (
+    id INTEGER NOT NULL,
+    date_adjusted TIMESTAMP NOT NULL,
+    survey_reference TEXT,
+    adjusted_nodes INTEGER NOT NULL
+);
+PERFORM AddGeometryColumn('spi_adjustments', 'shape', 4167, 'GEOMETRY', 2);
+
+ALTER TABLE spi_adjustments ADD PRIMARY KEY (id);
+CREATE INDEX shx_spi_adj_shape ON spi_adjustments USING gist (shape);
+
+ALTER TABLE spi_adjustments OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE spi_adjustments FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE spi_adjustments TO bde_admin;
+GRANT SELECT ON TABLE spi_adjustments TO bde_user;
+
+--------------------------------------------------------------------------------
+-- LDS table waca_adjustments
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS waca_adjustments CASCADE;
+
+CREATE TABLE waca_adjustments (
+    id INTEGER NOT NULL,
+    date_adjusted TIMESTAMP NOT NULL,
+    survey_reference TEXT,
+    adjusted_nodes INTEGER NOT NULL
+);
+PERFORM AddGeometryColumn('waca_adjustments', 'shape', 4167, 'GEOMETRY', 2);
+
+ALTER TABLE waca_adjustments ADD PRIMARY KEY (id);
+CREATE INDEX shx_waca_adj_shape ON waca_adjustments USING gist (shape);
+
+ALTER TABLE waca_adjustments OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE waca_adjustments FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE waca_adjustments TO bde_admin;
+GRANT SELECT ON TABLE waca_adjustments TO bde_user;
 
 --------------------------------------------------------------------------------
 -- LDS table survey_observations

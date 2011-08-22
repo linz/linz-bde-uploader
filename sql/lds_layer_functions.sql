@@ -17,7 +17,7 @@
 SET client_min_messages TO WARNING;
 BEGIN;
 
-SET SEARCH_PATH = lds, bde_control, public;
+SET SEARCH_PATH = lds, bde, bde_control, public;
 
 DO $$
 DECLARE
@@ -413,6 +413,50 @@ $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION LDS_ApplyTableDifferences(INTEGER, REGCLASS, REGCLASS, NAME) OWNER TO bde_dba;
 
+CREATE OR REPLACE FUNCTION LDS_GetProtectedText(
+    p_title_no VARCHAR(20)
+)
+RETURNS
+    TEXT AS 
+$$
+    SELECT
+        'The Proprietors of ' || COALESCE(
+            string_agg(
+                DISTINCT LGD.legal_desc_text, ', ' 
+                ORDER BY LGD.legal_desc_text ASC
+            ),
+            $1
+        )
+    FROM 
+        crs_title_estate ETT
+        LEFT JOIN crs_legal_desc LGD
+        ON ETT.lgd_id = LGD.id 
+        AND LGD.type = 'ETT' 
+        AND LGD.status = 'REGD'
+    WHERE
+        ETT.status = 'REGD' AND
+        ETT.ttl_title_no = $1
+$$ LANGUAGE sql;
+
+ALTER FUNCTION LDS_GetProtectedText(VARCHAR(20)) OWNER TO bde_dba;
+
+CREATE OR REPLACE FUNCTION LDS_GetLandDistict(p_shape GEOMETRY)
+RETURNS
+    TEXT
+AS $$
+    SELECT
+        LOC.name
+    FROM
+        crs_land_district LDT,
+        crs_locality LOC
+    WHERE
+        LDT.loc_id = LOC.id AND
+        LDT.shape && $1
+    ORDER BY
+        ST_Distance(LDT.shape, $1) ASC
+$$ LANGUAGE sql;
+
+ALTER FUNCTION LDS_GetLandDistict(GEOMETRY) OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION LDS_CreateSurveyPlansTable(
     p_upload INTEGER
@@ -443,12 +487,16 @@ BEGIN
             SUR.dataset_series || ' ' || SUR.dataset_id
         ELSE
             SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
-        END AS survey_reference
+        END AS survey_reference,
+        SUR.survey_date,
+        LOC.name AS land_district
     FROM
         crs_survey SUR,
-        crs_work   WRK
+        crs_work   WRK,
+        crs_locality LOC
     WHERE
         WRK.id = SUR.wrk_id AND
+        SUR.ldt_loc_id = LOC.id AND
         WRK.restricted = 'N';
 
     ALTER TABLE tmp_survey_plans ADD PRIMARY KEY (wrk_id);
@@ -499,6 +547,7 @@ BEGIN
                 p_upload,
                 ARRAY[
                     'crs_node',
+                    'crs_node_works',
                     'crs_mark',
                     'crs_mark_name',
                     'crs_coordinate',
@@ -510,7 +559,9 @@ BEGIN
                     'crs_site_locality',
                     'crs_locality',
                     'crs_mrk_phys_state',
-                    'crs_sys_code'
+                    'crs_sys_code',
+                    'crs_survey',
+                    'crs_work'
                 ],
                 'any affected'
             )
@@ -520,6 +571,7 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'geodetic_antarctic_marks')
         AND LDS.LDS_TableHasData('lds', 'geodetic_antarctic_vertical_marks')
         AND LDS.LDS_TableHasData('lds', 'geodetic_network_marks')
+        AND LDS.LDS_TableHasData('lds', 'survey_protected_marks')
     )
     THEN
         RAISE INFO
@@ -1102,6 +1154,153 @@ BEGIN
     );
     
     DROP TABLE IF EXISTS tmp_geodetic_network_marks;
+
+    ----------------------------------------------------------------------------
+    -- survey_protected_marks layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'survey_protected_marks');
+    
+    PERFORM LDS.LDS_CreateSurveyPlansTable(p_upload);
+    
+    CREATE TEMP TABLE tmp_protect_nodes AS
+    SELECT
+        GEO.nod_id as id
+    FROM
+        crs_coordinate COO
+        JOIN tmp_geo_nodes GEO ON COO.nod_id = GEO.nod_id
+    WHERE
+        COO.cor_id < 1908 AND
+        COO.cos_id = 109 AND
+        COO.status = 'AUTH'
+    UNION
+    SELECT
+        COO.nod_id as id
+    FROM 
+        crs_coordinate COO
+        JOIN crs_node NOD ON COO.nod_id = NOD.id
+    WHERE
+        COO.cor_id IN (
+            SELECT
+                COR.id
+            FROM
+                crs_coordinate_tpe COT
+                JOIN crs_coordinate_sys COS ON COT.id = COS.cot_id
+                JOIN crs_cord_order COR ON COS.dtm_id = COR.dtm_id 
+            WHERE
+                COT.dimension = 'HEGT' AND
+                COR.display= '1V'
+        ) AND
+        COO.status = 'AUTH' AND
+        NOD.cos_id_official = 109 AND
+        NOD.status = 'AUTH'
+    UNION
+    SELECT
+        NOD.id
+    FROM
+        crs_node NOD
+    WHERE
+        NOD.status = 'AUTH' AND
+        NOD.cos_id_official = 109 AND
+        NOD.id IN (
+            SELECT nod_id FROM crs_node_works WHERE purpose IN ('PRMA', 'PRBD')
+        );
+    
+    ALTER TABLE tmp_protect_nodes ADD PRIMARY KEY (id);
+    ANALYSE tmp_protect_nodes;
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            geodetic_code, 
+            current_mark_name, 
+            description, 
+            mark_type,
+            mark_condition,
+            "order",
+            last_survey,
+            last_survey_date,
+            shape
+        )
+        WITH t (
+            row_number,
+            id,
+            geodetic_code,
+            current_mark_name,
+            description,
+            mark_type,
+            mark_condition,
+            "order",
+            last_survey,
+            last_survey_date,
+            shape
+        ) AS (
+            SELECT
+                row_number() OVER (PARTITION BY NOD.id ORDER BY MRK.status ASC, MRK.replaced ASC, MRK.id DESC) AS row_number,
+                NOD.id AS id,
+                GEO.name AS geodetic_code, 
+                MKN.name AS current_mark_name,
+                MRK.desc AS description, 
+                SCOM.char_value AS mark_type,
+                SCOC.char_value AS mark_condition,
+                CAST(COR.display AS INTEGER) AS "order",
+                SUR.survey_reference AS last_survey,
+                SUR.survey_date AS last_survey_date,
+                NOD.shape
+            FROM
+                tmp_protect_nodes PRO
+                JOIN crs_node NOD ON PRO.id = NOD.id
+                JOIN crs_coordinate COO ON NOD.cos_id_official = COO.cos_id AND NOD.id = COO.nod_id AND COO.status = 'AUTH'
+                JOIN crs_cord_order COR ON COO.cor_id = COR.id
+                JOIN crs_mark MRK ON MRK.nod_id = NOD.id
+                LEFT JOIN crs_mrk_phys_state MPS ON MPS.mrk_id = MRK.id AND MPS.type = 'MARK' AND MPS.status = 'CURR'
+                LEFT JOIN crs_mark_name MKN ON MRK.id = MKN.mrk_id AND MKN.type = 'CURR'
+                LEFT JOIN crs_mark_name GEO ON MRK.id = GEO.mrk_id AND GEO.type = 'CODE'
+                LEFT JOIN tmp_survey_plans SUR ON MPS.wrk_id = SUR.wrk_id
+                LEFT JOIN crs_sys_code SCOC ON MPS.condition = SCOC.code AND SCOC.scg_code = 'MPSC'
+                LEFT JOIN crs_sys_code SCOM ON RTRIM(mrk.type) = SCOM.code AND SCOM.scg_code = 'MRKT'
+            WHERE
+                MRK.status <> 'PEND' AND
+                MRK.disturbed = 'N' AND
+                (
+                    MPS.condition IS NULL OR 
+                    MPS.condition IN (
+                       'EMPL',
+                       'MKFD',
+                       'NFND',
+                       'NSPE',
+                       'RELB',
+                       'THRT',
+                       'CONV'
+                    )
+                )
+        )
+        SELECT
+            id,
+            geodetic_code,
+            current_mark_name,
+            description,
+            mark_type,
+            mark_condition,
+            "order",
+            last_survey,
+            last_survey_date,
+            shape
+        FROM
+            t
+        WHERE
+            row_number = 1
+        ORDER BY
+            id;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    DROP TABLE IF EXISTS tmp_protect_nodes;
     DROP TABLE IF EXISTS tmp_geo_nodes;
 
     RAISE INFO 'Finished maintenance on geodetic simplified layers';
@@ -1151,6 +1350,7 @@ BEGIN
                     'crs_sys_code',
                     'crs_title',
                     'crs_title_estate',
+                    'crs_ttl_hierarchy',
                     'crs_topology_class',
                     'crs_work'
                 ],
@@ -1186,21 +1386,35 @@ BEGIN
     (
         title_no LIKE 'WNTRAIN%' OR
         title_no = 'WNTESTDATAONLY'
-    ) OR
-    (
-        TTL.protect_start <= CURRENT_DATE AND
-        (
-            TTL.protect_end  >= CURRENT_DATE OR 
-            TTL.protect_end IS NULL
-        )
-    ) OR
-    (
-        TTL.protect_start IS NULL AND
-        TTL.protect_end   >= CURRENT_DATE
     );
-
+    
     ALTER TABLE tmp_excluded_titles ADD PRIMARY KEY (title_no);
     ANALYSE tmp_excluded_titles;
+    
+    CREATE TEMP TABLE tmp_protected_titles AS
+    SELECT
+        TTL.title_no
+    FROM
+        crs_title TTL
+        LEFT JOIN tmp_excluded_titles EXL ON TTL.title_no = EXL.title_no
+    WHERE
+    (
+        (
+            TTL.protect_start <= CURRENT_DATE AND
+            (
+                TTL.protect_end  >= CURRENT_DATE OR 
+                TTL.protect_end IS NULL
+            )
+        ) OR
+        (
+            TTL.protect_start IS NULL AND
+            TTL.protect_end   >= CURRENT_DATE
+        )
+    ) AND
+    EXL.title_no IS NULL;
+
+    ALTER TABLE tmp_protected_titles ADD PRIMARY KEY (title_no);
+    ANALYSE tmp_protected_titles;
 
     RAISE DEBUG 'Started creating temp table tmp_parcel_titles';
 
@@ -1691,22 +1905,34 @@ BEGIN
         TTLG.char_value AS guarantee_status,
         string_agg(
             DISTINCT 
-                CASE PRP.type
-                    WHEN 'CORP' THEN PRP.corporate_name
-                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                CASE WHEN PRO.title_no IS NULL THEN
+                    CASE PRP.type
+                        WHEN 'CORP' THEN PRP.corporate_name
+                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                    END
+                ELSE
+                    LDS_GetProtectedText(PRO.title_no)
                 END,
             ', '
             ORDER BY
-                CASE PRP.type
-                    WHEN 'CORP' THEN PRP.corporate_name
-                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                CASE WHEN PRO.title_no IS NULL THEN
+                    CASE PRP.type
+                        WHEN 'CORP' THEN PRP.corporate_name
+                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                    END
+                ELSE
+                    LDS_GetProtectedText(PRO.title_no)
                 END ASC
         ) AS owners,
         count(
             DISTINCT
-                CASE PRP.type
-                    WHEN 'CORP' THEN PRP.corporate_name
-                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                CASE WHEN PRO.title_no IS NULL THEN
+                    CASE PRP.type
+                        WHEN 'CORP' THEN PRP.corporate_name
+                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                    END
+                ELSE
+                    LDS_GetProtectedText(PRO.title_no)
                 END
         ) AS number_owners,
         TPA.title_no IS NOT NULL AS spatial_extents_shared
@@ -1728,6 +1954,7 @@ BEGIN
         JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
         LEFT JOIN crs_sys_code TTLG ON TTL.guarantee_status = TTLG.code AND TTLG.scg_code = 'TTLG'
         LEFT JOIN crs_sys_code TTLT ON TTL.type = TTLT.code AND TTLT.scg_code = 'TTLT'
+        LEFT JOIN tmp_protected_titles PRO ON TTL.title_no = PRO.title_no
     WHERE
         TTL.status IN ('LIVE', 'PRTC') AND
         TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
@@ -1900,10 +2127,14 @@ BEGIN
     ) AS
     (
         SELECT
-            CASE PRP.type
-                WHEN 'CORP' THEN PRP.corporate_name
-                WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-            END AS owner,
+            CASE WHEN PRO.title_no IS NULL THEN
+                CASE PRP.type
+                    WHEN 'CORP' THEN PRP.corporate_name
+                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
+                END
+            ELSE
+                LDS_GetProtectedText(PRO.title_no)
+            END as owner,
             TTL.title_no,
             TTL.status AS title_status,
             LOC.name AS land_district,
@@ -1915,6 +2146,7 @@ BEGIN
             JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
             LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
             LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
+            LEFT JOIN tmp_protected_titles PRO ON TTL.title_no = PRO.title_no
             JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
         WHERE
             TTL.status IN ('LIVE', 'PRTC') AND
@@ -2029,6 +2261,7 @@ BEGIN
 
     DROP TABLE IF EXISTS tmp_title_owners;
     DROP TABLE IF EXISTS tmp_excluded_titles;
+    DROP TABLE IF EXISTS tmp_protected_titles;
 
     RAISE INFO 'Finished maintenance on cadastral parcel simplified layers';
     
@@ -2054,30 +2287,6 @@ DECLARE
 BEGIN
     RAISE INFO 'Starting maintenance on electoral simplified layers';
 
-    IF (
-        NOT (
-            SELECT bde_control.bde_TablesAffected(
-                p_upload,
-                ARRAY[
-                    'crs_street_address',
-                    'crs_road_name',
-                    'crs_road_ctr_line',
-                    'crs_road_name_asc'
-                ],
-                'any affected'
-            )
-        )
-        AND LDS.LDS_TableHasData('lds', 'road_centre_line')
-        AND LDS.LDS_TableHasData('lds', 'railway_centre_line')
-        AND LDS.LDS_TableHasData('lds', 'street_address')
-        AND LDS.LDS_TableHasData('lds', 'road_centre_line_subsection')
-    )
-    THEN
-        RAISE INFO
-            'Maintain electoral simplified layers has been skipped as no relating tables were affected by the upload';
-        RETURN 1;
-    END IF;
-
     ----------------------------------------------------------------------------
     -- road_centre_line layer
     ----------------------------------------------------------------------------
@@ -2087,27 +2296,33 @@ BEGIN
         INSERT INTO %1% (
             id,
             "name",
-            asp_location,
+            locality,
+            territorial_authority,
             shape
         )
         SELECT
             RNA.id,
-            RNA.name,
-            RNA.location as asp_location,
-            ST_Collect(RCL.shape ORDER BY RCL.shape ASC)
+            COALESCE(STR.name, RNA.name) as name,
+            STR.locality,
+            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
+            ST_Collect(RCL.shape ORDER BY RCL.shape ASC) AS shape
         FROM
-            crs_road_ctr_line RCL,
-            crs_road_name RNA,
-            crs_road_name_asc RNS
+            crs_road_ctr_line AS RCL
+            JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
+            JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
+            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
+            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
         WHERE
-            RCL.id = RNS.rcl_id AND
-            RNA.id = RNS.rna_id AND
-            RNA.status = 'CURR' AND
-            RNA.type = 'ROAD'
+            RCL.status = 'CURR' AND
+            RNA.type = 'ROAD' AND
+            RNA.status = 'CURR'
         GROUP BY
             RNA.id,
-            RNA.name,
-            RNA.location;
+            COALESCE(STR.name, RNA.name),
+            STR.locality
+        ORDER BY
+            RNA.id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2125,32 +2340,68 @@ BEGIN
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
             id,
-            road_id,
             "name",
-            asp_location,
+            other_names,
+            locality,
+            territorial_authority,
             parcel_derived,
             shape
         )
+        WITH road_names(row_number, rcl_id, parcel_derived, name, location, shape) AS (
+            SELECT
+                row_number() OVER (
+                    PARTITION BY RCL.id
+                    ORDER BY
+                        RNS.priority ASC,
+                        RNA.unofficial_flag ASC,
+                        RNA.id ASC
+                ) as row_number,
+                RCL.id,
+                CASE WHEN RCL.non_cadastral_rd = 'Y' THEN
+                    TRUE
+                ELSE
+                    FALSE
+                END AS parcel_derived,
+                COALESCE(STR.name, RNA.name) as name,
+                RNA.location,
+                RCL.shape
+            FROM
+                crs_road_ctr_line AS RCL
+                JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
+                JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
+                LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+            WHERE
+                RCL.status = 'CURR' AND
+                RNA.type = 'ROAD' AND
+                RNA.status = 'CURR'
+        )
         SELECT
-            RNS.audit_id AS id,
-            RNA.id AS road_id,
-            RNA.name,
-            RNA.location AS asp_location,
-            CASE WHEN non_cadastral_rd = 'Y' THEN
-                TRUE
-            ELSE
-                FALSE
-            END AS parcel_derived,
-            RCL.shape
+            ROADS.rcl_id as id,
+            ROADS.name,
+            string_agg(DISTINCT OTHERS.name, ', ' ORDER BY OTHERS.name ASC) as other_names,
+            STR.locality,
+            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
+            ROADS.parcel_derived,
+            ROADS.shape
         FROM
-            crs_road_ctr_line RCL,
-            crs_road_name RNA,
-            crs_road_name_asc RNS
+            road_names AS ROADS
+            LEFT JOIN asp.street AS STR ON ROADS.location = STR.sufi::TEXT AND STR.status = 'C'
+            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
+            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+            LEFT JOIN road_names AS OTHERS ON ROADS.rcl_id = OTHERS.rcl_id AND OTHERS.row_number <> 1
+            LEFT JOIN asp.street AS STR1 ON OTHERS.location = STR1.sufi::TEXT AND STR1.status = 'C'
+            LEFT JOIN asp.street_part AS SPT1 ON STR1.sufi = SPT1.street_sufi AND SPT1.status = 'C'
+            LEFT JOIN asp.tla_codes AS TLA1 ON SPT1.tla = TLA1.code
         WHERE
-            RCL.id = RNS.rcl_id AND
-            RNA.id = RNS.rna_id AND
-            RNA.status = 'CURR' AND
-            RNA.type = 'ROAD';
+            ROADS.row_number = 1
+        GROUP BY
+            ROADS.rcl_id,
+            ROADS.name,
+            STR.locality,
+            ROADS.parcel_derived,
+            ROADS.shape
+        ORDER BY
+            ROADS.rcl_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2169,7 +2420,7 @@ BEGIN
         INSERT INTO %1% (
             id, 
             "name",
-             shape
+            shape
         )
         SELECT
             RNA.id,
@@ -2208,7 +2459,8 @@ BEGIN
             address,
             house_number,
             road_name,
-            asp_location,
+            locality,
+            territorial_authority,
             shape
         )
         SELECT
@@ -2216,16 +2468,25 @@ BEGIN
             SAD.house_number || ' ' || RNA.name AS address,
             SAD.house_number,
             RNA.name,
-            RNA.location AS asp_location,
+            STR.locality,
+            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
             SAD.shape
         FROM
-            crs_street_address SAD,
-            crs_road_name RNA
+            crs_street_address SAD
+            JOIN crs_road_name RNA ON RNA.id = SAD.rna_id
+            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
+            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
         WHERE
-            RNA.id = SAD.rna_id AND
             SAD.status = 'CURR'
+        GROUP BY
+            SAD.id,
+            SAD.house_number,
+            RNA.name,
+            STR.locality,
+            SAD.shape;
     $sql$;
-        
+    
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
@@ -2295,6 +2556,8 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'land_districts')
         AND LDS.LDS_TableHasData('lds', 'survey_plans')
         AND LDS.LDS_TableHasData('lds', 'cadastral_adjustments')
+        AND LDS.LDS_TableHasData('lds', 'spi_adjustments')
+        AND LDS.LDS_TableHasData('lds', 'waca_adjustments')
         AND LDS.LDS_TableHasData('lds', 'survey_observations')
         AND LDS.LDS_TableHasData('lds', 'survey_arc_observations')
         AND LDS.LDS_TableHasData('lds', 'parcel_vectors')
@@ -2483,6 +2746,106 @@ BEGIN
     );
 
     ----------------------------------------------------------------------------
+    -- spi_adjustments layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'spi_adjustments');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1%(
+            id,
+            date_adjusted,
+            survey_reference,
+            adjusted_nodes,
+            shape
+        )
+        SELECT
+            ADJ.id,
+            ADJ.adjust_datetime AS date_adjusted,
+            SUR.survey_reference,
+            count(*) AS adjusted_nodes,
+            CASE WHEN count(*) < 3 THEN
+                ST_Buffer(St_ConvexHull(ST_Collect(NOD.shape ORDER BY NOD.shape ASC)), 0.00001, 4)
+            ELSE
+                St_ConvexHull(ST_Collect(NOD.shape ORDER BY NOD.shape ASC))
+            END  AS shape
+        FROM
+            crs_adjustment_run ADJ
+            JOIN crs_adjust_method ADM ON ADJ.adm_id = ADM.id
+            LEFT JOIN tmp_survey_plans SUR ON ADJ.wrk_id = SUR.wrk_id
+            JOIN crs_ordinate_adj ORJ ON ADJ.id = ORJ.adj_id
+            JOIN crs_coordinate COO ON ORJ.coo_id_output = COO.id
+            JOIN crs_node NOD ON COO.nod_id = NOD.id
+        WHERE
+            ADJ.status = 'AUTH' AND
+            ADM.software_used = 'LNZC' AND
+            NOD.cos_id_official = 109 AND
+            ADM.name ilike '%Spatial Parcel Improv%'
+        GROUP BY
+            ADJ.id,
+            ADJ.adjust_datetime,
+            SUR.survey_reference
+        ORDER BY
+            ADJ.id;
+    $sql$;
+        
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    ----------------------------------------------------------------------------
+    -- waca_adjustments layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'waca_adjustments');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1%(
+            id,
+            date_adjusted,
+            survey_reference,
+            adjusted_nodes,
+            shape
+        )
+        SELECT
+            ADJ.id,
+            ADJ.adjust_datetime AS date_adjusted,
+            SUR.survey_reference,
+            count(*) AS adjusted_nodes,
+            CASE WHEN count(*) < 3 THEN
+                ST_Buffer(St_ConvexHull(ST_Collect(NOD.shape ORDER BY NOD.shape ASC)), 0.00001, 4)
+            ELSE
+                St_ConvexHull(ST_Collect(NOD.shape ORDER BY NOD.shape ASC))
+            END  AS shape
+        FROM
+            crs_adjustment_run ADJ
+            JOIN crs_adjust_method ADM ON ADJ.adm_id = ADM.id
+            LEFT JOIN tmp_survey_plans SUR ON ADJ.wrk_id = SUR.wrk_id
+            JOIN crs_ordinate_adj ORJ ON ADJ.id = ORJ.adj_id
+            JOIN crs_coordinate COO ON ORJ.coo_id_output = COO.id
+            JOIN crs_node NOD ON COO.nod_id = NOD.id
+        WHERE
+            ADJ.status = 'AUTH' AND
+            ADM.software_used = 'LNZC' AND
+            NOD.cos_id_official = 109 AND
+            ADM.name ilike 'SDC WACA adjustment%'
+        GROUP BY
+            ADJ.id,
+            ADJ.adjust_datetime,
+            SUR.survey_reference
+        ORDER BY
+            ADJ.id;
+    $sql$;
+        
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+
+    ----------------------------------------------------------------------------
     -- survey_observations layer
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'survey_observations');
@@ -2497,6 +2860,7 @@ BEGIN
             value_label,
             surveyed_type,
             coordinate_system,
+            land_district,
             ref_datetime,
             survey_reference,
             shape
@@ -2514,6 +2878,11 @@ BEGIN
             END AS value_label,
             SCO.char_value,
             COS.name,
+            CASE WHEN SUR.wrk_id IS NULL THEN
+                LDS_GetLandDistict(VCT.shape)
+            ELSE
+                SUR.land_district
+            END as land_district,
             OBN.ref_datetime,
             SUR.survey_reference,
             VCT.shape
@@ -2558,6 +2927,7 @@ BEGIN
             arc_direction,
             surveyed_type,
             coordinate_system,
+            land_district,
             ref_datetime,
             survey_reference,
             chord_bearing_label,
@@ -2575,6 +2945,11 @@ BEGIN
             OBN.arc_direction,
             SCO.char_value,
             COS.name,
+            CASE WHEN SUR.wrk_id IS NULL THEN
+                LDS_GetLandDistict(VCT.shape)
+            ELSE
+                SUR.land_district
+            END as land_district,
             OBN.ref_datetime,
             SUR.survey_reference,
             LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
