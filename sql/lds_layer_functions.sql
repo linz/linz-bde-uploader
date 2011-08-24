@@ -2358,9 +2358,9 @@ BEGIN
                 ) as row_number,
                 RCL.id,
                 CASE WHEN RCL.non_cadastral_rd = 'Y' THEN
-                    TRUE
-                ELSE
                     FALSE
+                ELSE
+                    TRUE
                 END AS parcel_derived,
                 COALESCE(STR.name, RNA.name) as name,
                 RNA.location,
