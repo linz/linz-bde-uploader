@@ -967,14 +967,12 @@ BEGIN
             (clock_timestamp()-query_start) > '2 HOURS' 
     LOOP
         BEGIN
-            PERFORM bde_control.bde_WriteUploadLog( p_upload_id,'W',
-                'Dropping idle connection held by ' || v_usename );
+            RAISE WARNING 'Dropping idle connection held by %', v_usename;
             PERFORM pg_terminate_backend( v_pid );
             v_ndrop := v_ndrop + 1;
         EXCEPTION
             WHEN OTHERS THEN
-                PERFORM bde_control.bde_WriteUploadLog( p_upload_id, 'E',
-                    'Failed to drop idle connection: ' || SQLERRM );
+                RAISE EXCEPTION 'Failed to drop idle connection:  %', SQLERRM;
         END;
     END LOOP;
     RETURN v_ndrop;

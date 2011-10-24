@@ -42,7 +42,6 @@ BEGIN
             1, 2
     LOOP
         v_msg := 'Versioning table ' ||  v_schema || '.' || v_table;
-        PERFORM bde_control.bde_WriteUploadLog(1,'2',v_msg);
         RAISE NOTICE '%', v_msg;
         
         BEGIN
