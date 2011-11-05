@@ -2300,29 +2300,48 @@ BEGIN
             territorial_authority,
             shape
         )
+        WITH roads (
+            rna_id,
+            name,
+            locality,
+            territorial_authority,
+            shape_hex
+        ) AS
+        (
+            SELECT DISTINCT
+                    RNA.id,
+                    COALESCE(STR.name, RNA.name) as name,
+                    STR.locality,
+                    TLA.name AS territorial_authority,
+                    encode(shape, 'hex') AS shape_hex
+                FROM
+                    crs_road_ctr_line AS RCL
+                    JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
+                    JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
+                    LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+                    LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
+                    LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+                WHERE
+                    RCL.status = 'CURR' AND
+                    RNA.type = 'ROAD' AND
+                    RNA.status = 'CURR'
+                ORDER BY
+                    RNA.id
+        )
         SELECT
-            RNA.id,
-            COALESCE(STR.name, RNA.name) as name,
-            STR.locality,
-            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
-            ST_Collect(RCL.shape ORDER BY RCL.shape ASC) AS shape
+            rna_id AS id,
+            name,
+            locality,
+            string_agg(DISTINCT territorial_authority, ', ' ORDER BY territorial_authority ASC) AS territorial_authority,
+            ST_Collect(shape_hex::geometry ORDER BY shape_hex ASC) AS shape
         FROM
-            crs_road_ctr_line AS RCL
-            JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
-            JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
-            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
-            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
-            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
-        WHERE
-            RCL.status = 'CURR' AND
-            RNA.type = 'ROAD' AND
-            RNA.status = 'CURR'
+            roads 
         GROUP BY
-            RNA.id,
-            COALESCE(STR.name, RNA.name),
-            STR.locality
+            rna_id,
+            name,
+            locality
         ORDER BY
-            RNA.id;
+            rna_id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
