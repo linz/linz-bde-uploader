@@ -2475,6 +2475,7 @@ BEGIN
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
             id,
+            rna_id,
             address,
             house_number,
             road_name,
@@ -2484,6 +2485,7 @@ BEGIN
         )
         SELECT
             SAD.id,
+            RNA.id AS rna_id,
             SAD.house_number || ' ' || RNA.name AS address,
             SAD.house_number,
             RNA.name,
@@ -2500,6 +2502,7 @@ BEGIN
             SAD.status = 'CURR'
         GROUP BY
             SAD.id,
+            RNA.id,
             SAD.house_number,
             RNA.name,
             STR.locality,
@@ -2886,8 +2889,8 @@ BEGIN
         )
         SELECT
             OBN.id,
-            VCT.nod_id_start,
-            VCT.nod_id_end,
+            STPL.nod_id AS nod_id_start,
+            STPR.nod_id AS nod_id_end,
             RTRIM(OET.description),
             OBN.value_1,
             CASE WHEN OBN.obt_sub_type = 'SLDI' THEN
@@ -2908,11 +2911,12 @@ BEGIN
         FROM
             crs_observation OBN
             JOIN crs_obs_elem_type OET ON OBN.obt_sub_type = OET.type
-            JOIN crs_setup STP ON OBN.stp_id_local = STP.id
+            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
+            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN tmp_survey_plans SUR ON STP.wrk_id = SUR.wrk_id
+            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
         WHERE
             OBN.rdn_id IS NULL AND
             OBN.obt_type = 'REDC' AND
@@ -2956,8 +2960,8 @@ BEGIN
         )
         SELECT
             OBN.id,
-            VCT.nod_id_start,
-            VCT.nod_id_end,
+            STPL.nod_id AS nod_id_start,
+            STPR.nod_id AS nod_id_end,
             OBN.value_1,
             OBN.value_2,
             OBN.arc_radius,
@@ -2977,11 +2981,12 @@ BEGIN
             VCT.shape
         FROM
             crs_observation OBN
-            JOIN crs_setup STP ON OBN.stp_id_local = STP.id
+            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
+            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN tmp_survey_plans SUR ON STP.wrk_id = SUR.wrk_id
+            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
         WHERE
             OBN.rdn_id IS NULL AND
             OBN.obt_type = 'REDC' AND
@@ -2989,7 +2994,7 @@ BEGIN
             OBN.status = 'AUTH' AND
             OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
             VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE';
+            VCT.type = 'LINE' 
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(

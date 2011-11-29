@@ -582,6 +582,7 @@ DROP TABLE IF EXISTS street_address CASCADE;
 
 CREATE TABLE street_address (
     id INTEGER NOT NULL,
+    rna_id INTEGER NOT NULL,
     address TEXT NOT NULL,
     house_number VARCHAR(25) NOT NULL,
     road_name VARCHAR(100) NOT NULL,
