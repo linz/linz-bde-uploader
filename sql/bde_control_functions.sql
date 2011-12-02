@@ -3164,6 +3164,8 @@ DECLARE
     v_check2       TEXT;
     v_uniq2        TEXT;
     v_return       RECORD;
+    v_i            INT8;
+    v_diff_count   INT8;
 BEGIN
     IF p_table1 = p_table2 THEN
         RETURN;
@@ -3226,34 +3228,44 @@ BEGIN
     INTO v_sql;
     OPEN v_table_cur2 NO SCROLL FOR EXECUTE v_sql;
     v_sql := '';
-
+    
     FETCH FIRST FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
     FETCH FIRST FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
     
+    v_i := 0;
+    v_diff_count := 0;
     WHILE v_id1 IS NOT NULL AND v_id2 IS NOT NULL LOOP
         IF v_id1 < v_id2 THEN
             action := 'D';
             id := v_id1;
+            v_diff_count := v_diff_count + 1;
             RETURN NEXT;
             FETCH NEXT FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
             CONTINUE;
         ELSIF v_id2 < v_id1 THEN
             action := 'I';
             id := v_id2;
+            v_diff_count := v_diff_count + 1;
             RETURN NEXT;
             FETCH NEXT FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
             CONTINUE;
         ELSIF v_uniq1 <> v_uniq2 THEN
             action := 'X';
             id := v_id1;
+            v_diff_count := v_diff_count + 1;
             RETURN NEXT;
         ELSIF v_check1 <> v_check2 THEN
             action := 'U';
             id := v_id1;
+            v_diff_count := v_diff_count + 1;
             RETURN NEXT;
         END IF;
         FETCH NEXT FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
         FETCH NEXT FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
+        v_i := v_i + 1;
+        IF (v_i % 100000 = 0) THEN
+            RAISE DEBUG 'Compared % records, % differences', v_i, v_diff_count;
+        END IF;
     END LOOP;
 
     WHILE v_id1 IS NOT NULL LOOP

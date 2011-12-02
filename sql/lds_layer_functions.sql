@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -2894,7 +2894,7 @@ BEGIN
             RTRIM(OET.description),
             OBN.value_1,
             CASE WHEN OBN.obt_sub_type = 'SLDI' THEN
-                to_char(OBN.value_1, 'FM9999999999D00')
+                to_char(OBN.value_1, 'FM9999999990D00')
             WHEN OBN.obt_sub_type = 'BEAR' THEN
                 LDS.LDS_deg_dms(OBN.value_1, 0)
             END AS value_label,
@@ -2924,7 +2924,9 @@ BEGIN
             OBN.status = 'AUTH' AND
             OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
             VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE';
+            VCT.type = 'LINE'
+        ORDER BY
+            OBN.id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2976,8 +2978,8 @@ BEGIN
             OBN.ref_datetime,
             SUR.survey_reference,
             LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
-            to_char(OBN.value_2, 'FM9999999999D00') AS arc_length_label,
-            to_char(OBN.arc_radius, 'FM9999999999D00') AS arc_radius_label,
+            to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
+            to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
             VCT.shape
         FROM
             crs_observation OBN
@@ -2994,7 +2996,7 @@ BEGIN
             OBN.status = 'AUTH' AND
             OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
             VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE' 
+            VCT.type = 'LINE';
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -3063,7 +3065,7 @@ BEGIN
         bearing,
         distance,
         LDS.LDS_deg_dms(bearing, 0) AS bearing_label,
-        to_char(distance, 'FM9999999999D00') AS distance_label,
+        to_char(distance, 'FM9999999990D00') AS distance_label,
         shape
     FROM
         latest_vector
@@ -3111,7 +3113,7 @@ BEGIN
         LVT.bearing,
         LVT.distance,
         LDS.LDS_deg_dms(LVT.bearing, 0) AS bearing_label,
-        to_char(LVT.distance, 'FM9999999999D00') AS distance_label,
+        to_char(LVT.distance, 'FM9999999990D00') AS distance_label,
         LVT.shape
     FROM
         latest_vector LVT
