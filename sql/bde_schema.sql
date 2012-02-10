@@ -327,7 +327,7 @@ CREATE TABLE crs_appellation (
     second_prcl_value VARCHAR(60),
     block_number VARCHAR(15),
     sub_type_position VARCHAR(4),
-    other_appellation text,
+    other_appellation VARCHAR(2048),
     act_id_crt INTEGER,
     act_tin_id_crt INTEGER,
     act_id_ext INTEGER,
@@ -803,7 +803,7 @@ CREATE TABLE crs_estate_share (
     ett_id INTEGER NOT NULL,
     share CHAR(100) NOT NULL,
     status VARCHAR(4) NOT NULL,
-    share_memorial text,
+    share_memorial VARCHAR(17500),
     act_tin_id_crt INTEGER,
     act_id_crt INTEGER,
     act_id_ext INTEGER,
@@ -1056,7 +1056,7 @@ CREATE TABLE crs_legal_desc (
     status VARCHAR(4) NOT NULL,
     total_area NUMERIC(22,12),
     ttl_title_no VARCHAR(20),
-    legal_desc_text text,
+    legal_desc_text VARCHAR(2048),
     audit_id INTEGER NOT NULL
 );
 
@@ -1108,7 +1108,7 @@ GRANT SELECT ON TABLE crs_legal_desc_prl TO bde_user;
 CREATE TABLE crs_line (
     boundary CHAR(1) NOT NULL,
     type VARCHAR(4) NOT NULL,
-    description text,
+    description VARCHAR(2048),
     nod_id_end INTEGER NOT NULL,
     nod_id_start INTEGER NOT NULL,
     arc_radius NUMERIC(22,12),
@@ -1173,7 +1173,7 @@ CREATE TABLE crs_maintenance (
     mrk_id INTEGER NOT NULL,
     type VARCHAR(4) NOT NULL,
     status VARCHAR(4) NOT NULL,
-    "desc" text,
+    "desc" VARCHAR(2048),
     complete_date DATE,
     audit_id INTEGER NOT NULL
 );
@@ -1220,7 +1220,7 @@ CREATE TABLE crs_mark (
     nod_id INTEGER NOT NULL,
     status VARCHAR(4) NOT NULL,
     type VARCHAR(4) NOT NULL,
-    "desc" text,
+    "desc" VARCHAR(2048),
     category VARCHAR(4),
     country VARCHAR(4),
     beacon_type VARCHAR(4),
@@ -1321,13 +1321,13 @@ CREATE TABLE crs_mrk_phys_state (
     pend_mark_name VARCHAR(100),
     pend_mark_type VARCHAR(4),
     pend_mark_ann VARCHAR(50),
-    description TEXT,
+    description VARCHAR(2048),
     latest_condition VARCHAR(4),
     latest_cond_date TIMESTAMP,
     pend_altr_name VARCHAR(100),
     pend_bcon_type VARCHAR(4),
     pend_hist_name VARCHAR(100),
-    pend_mrk_desc TEXT,
+    pend_mrk_desc VARCHAR(2048),
     pend_othr_name VARCHAR(100),
     pend_prot_type VARCHAR(4),
     audit_id INTEGER NOT NULL
@@ -2391,7 +2391,7 @@ GRANT SELECT ON TABLE crs_setup TO bde_user;
 CREATE TABLE crs_site (
     id INTEGER NOT NULL,
     type VARCHAR(4) NOT NULL,
-    "desc" text,
+    "desc" VARCHAR(2048),
     occupier VARCHAR(100),
     audit_id INTEGER NOT NULL,
     wrk_id_created INTEGER
@@ -2676,7 +2676,7 @@ CREATE TABLE crs_survey (
     dataset_suffix VARCHAR(7),
     surveyor_data_ref VARCHAR(100),
     survey_class CHAR(4),
-    description text,
+    description VARCHAR(2048),
     usr_id_sol VARCHAR(20),
     survey_date DATE,
     certified_date DATE,
@@ -2743,10 +2743,10 @@ GRANT SELECT ON TABLE crs_survey_image TO bde_user;
 CREATE TABLE crs_sys_code (
     scg_code VARCHAR(4) NOT NULL,
     code VARCHAR(4) NOT NULL,
-    "desc" text,
+    "desc" VARCHAR(2048),
     status VARCHAR(4) NOT NULL,
     date_value DATE,
-    char_value text,
+    char_value VARCHAR(2048),
     num_value NUMERIC(22,12),
     start_date DATE,
     end_date DATE,
@@ -2982,13 +2982,13 @@ CREATE TABLE crs_title_mem_text (
     sequence_no INTEGER NOT NULL,
     curr_hist_flag VARCHAR(4) NOT NULL,
     std_text VARCHAR(18000),
-    col_1_text TEXT,
-    col_2_text TEXT,
-    col_3_text TEXT,
-    col_4_text TEXT,
-    col_5_text TEXT,
-    col_6_text TEXT,
-    col_7_text TEXT,
+    col_1_text VARCHAR(2048),
+    col_2_text VARCHAR(2048),
+    col_3_text VARCHAR(2048),
+    col_4_text VARCHAR(2048),
+    col_5_text VARCHAR(2048),
+    col_6_text VARCHAR(2048),
+    col_7_text VARCHAR(2048),
     audit_id INTEGER NOT NULL
 );
 
@@ -3348,7 +3348,7 @@ CREATE TABLE crs_user (
     postal_recipient_suffix VARCHAR(100),
     preferred_name VARCHAR(200),
     single_pref_contact CHAR(1) NOT NULL,
-    sup_competency_det TEXT
+    sup_competency_det VARCHAR(2048)
 );
 
 ALTER TABLE ONLY crs_user
