@@ -146,6 +146,7 @@ eval
                 filename  => $listing_file,
                 mode      => "append",
                 min_level => 'debug',
+                max       => 99,
             );
             $file_appender->layout($layout);
             $logger->add_appender( $file_appender );
