@@ -647,7 +647,11 @@ BEGIN
         LOC.Name AS land_district,
         COO.value1 AS latitude,
         COO.value2 AS longitude,
-        COO.value3 AS ellipsoidal_height,
+        CASE WHEN COO.value3 BETWEEN -0.0001 AND 0.0001 THEN
+            NULL::NUMERIC(22,12)
+        ELSE
+            COO.value3
+        END AS ellipsoidal_height,
         NOD.cos_id_official,
         CASE WHEN NOD.cos_id_official = 142 THEN
             ST_SetSRID(ST_MakePoint(COO.value2, COO.value1), 4764)
@@ -796,7 +800,11 @@ BEGIN
         LOC.Name AS land_district,
         COO.value1,
         COO.value2,
-        COO.value3 AS normal_orthometric_height,
+        CASE WHEN COO.value3 BETWEEN -0.0001 AND 0.0001 THEN
+            NULL::NUMERIC(22,12)
+        ELSE
+            COO.value3
+        END AS normal_orthometric_height,
         COS.name AS coordinate_system,
         NOD.cos_id_official,
         CASE WHEN NOD.cos_id_official = 142 THEN
@@ -1027,7 +1035,11 @@ BEGIN
         LOC.Name AS land_district,
         COO.value1 AS latitude,
         COO.value2 AS longitude,
-        COO.value3 AS ellipsoidal_height,
+        CASE WHEN COO.value3 BETWEEN -0.0001 AND 0.0001 THEN
+            NULL::NUMERIC(22,12)
+        ELSE
+            COO.value3
+        END AS ellipsoidal_height,
         NOD.cos_id_official,
         CASE WHEN NOD.cos_id_official = 142 THEN
             ST_SetSRID(ST_MakePoint(COO.value2, COO.value1), 4764)
