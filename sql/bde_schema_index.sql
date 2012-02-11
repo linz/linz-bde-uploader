@@ -402,6 +402,7 @@ CREATE INDEX fk_prh_ttl ON crs_nominal_index USING btree (ttl_title_no);
 -------------------------------------------------------------------------------
 -- crs_obs_accuracy
 -------------------------------------------------------------------------------
+CREATE INDEX fk_oba_obn2 ON crs_obs_accuracy USING btree (obn_id1);
 CREATE INDEX fk_oba_obn1 ON crs_obs_accuracy USING btree (obn_id2);
 CREATE UNIQUE INDEX idx_oba_aud_id ON crs_obs_accuracy USING btree (audit_id);
 
