@@ -212,7 +212,7 @@ CREATE TABLE survey_protected_marks (
     mark_type VARCHAR(2048),
     mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
-    last_survey VARCHAR(14),
+    last_survey VARCHAR(50),
     last_survey_date DATE
 );
 PERFORM AddGeometryColumn('survey_protected_marks', 'shape', 4167, 'POINT', 2);
@@ -762,7 +762,7 @@ CREATE TABLE survey_arc_observations (
     coordinate_system VARCHAR(42) NOT NULL,
     land_district VARCHAR(100) NOT NULL,
     ref_datetime TIMESTAMP NOT NULL,
-    survey_reference VARCHAR(50) NOT NULL,
+    survey_reference VARCHAR(50),
     chord_bearing_label VARCHAR(10) NOT NULL,
     arc_length_label VARCHAR(10),
     arc_radius_label VARCHAR(10)
@@ -818,7 +818,7 @@ CREATE TABLE survey_network_marks (
     mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
     nominal_accuracy NUMERIC(4,2),
-    last_survey VARCHAR(16)
+    last_survey VARCHAR(50)
 );
 PERFORM AddGeometryColumn('survey_network_marks', 'shape', 4167, 'POINT', 2);
 
