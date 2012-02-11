@@ -277,6 +277,7 @@ CREATE UNIQUE INDEX idx_now_aud_id ON crs_node_works USING btree (audit_id);
 -------------------------------------------------------------------------------
 -- crs_obs_accuracy
 -------------------------------------------------------------------------------
+CREATE INDEX fk_oba_obn2 ON crs_obs_accuracy USING btree (obn_id1);
 CREATE UNIQUE INDEX idx_oba_aud_id ON crs_obs_accuracy USING btree (audit_id);
 
 -------------------------------------------------------------------------------

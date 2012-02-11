@@ -2571,6 +2571,7 @@ BEGIN
                     'crs_node',
                     'crs_obs_elem_type',
                     'crs_observation',
+                    'crs_obs_accuracy',
                     'crs_ordinate_adj',
                     'crs_parcel',
                     'crs_parcel_bndry',
@@ -2891,6 +2892,7 @@ BEGIN
             nod_id_end,
             obs_type,
             value,
+            value_accuracy,
             value_label,
             surveyed_type,
             coordinate_system,
@@ -2905,6 +2907,7 @@ BEGIN
             STPR.nod_id AS nod_id_end,
             RTRIM(OET.description),
             OBN.value_1,
+            OBA.value_11 * OBN.acc_multiplier,
             CASE WHEN OBN.obt_sub_type = 'SLDI' THEN
                 to_char(OBN.value_1, 'FM9999999990D00')
             WHEN OBN.obt_sub_type = 'BEAR' THEN
@@ -2927,6 +2930,7 @@ BEGIN
             JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
+            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
             LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
         WHERE
@@ -2962,6 +2966,8 @@ BEGIN
             arc_length,
             arc_radius,
             arc_direction,
+            chord_bearing_accuracy,
+            arc_length_accuracy,
             surveyed_type,
             coordinate_system,
             land_district,
@@ -2980,6 +2986,8 @@ BEGIN
             OBN.value_2,
             OBN.arc_radius,
             OBN.arc_direction,
+            OBA.value_11 * OBN.acc_multiplier,
+            OBA.value_22 * OBN.acc_multiplier,
             SCO.char_value,
             COS.name,
             CASE WHEN SUR.wrk_id IS NULL THEN
@@ -2999,6 +3007,7 @@ BEGIN
             JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
+            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
             LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
         WHERE
