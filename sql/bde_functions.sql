@@ -696,7 +696,12 @@ BEGIN
         END IF;
     END IF;
     
-    RETURN TRIM(both FROM v_output);
+    v_output := TRIM(both FROM v_output);
+    IF length(v_output) > 2048 THEN
+        v_output := 'Appellation Too Long';
+    END IF;
+    
+    RETURN v_output;
 END;
     $$ LANGUAGE plpgsql;
 
@@ -735,16 +740,10 @@ BEGIN
     IF FOUND THEN
         IF v_title_app = 'Y' AND v_surv_app = 'Y' THEN
             v_appellation := bde_get_app_specific(p_par_id, 'SURV', p_long);
-            IF v_app_count > 1 THEN
-                v_temp_app := bde_get_app_specific(p_par_id, 'TITL', p_long);
-                IF v_temp_app <> v_appellation THEN
-                    v_appellation := v_appellation || ' or ' || v_temp_app;
-                END IF;
-            END IF;
-        ELSIF v_title_app = 'Y' THEN
-            v_appellation := bde_get_app_specific(p_par_id, 'TITL', p_long);
-        ELSE
+        ELSIF v_surv_app = 'Y' THEN
             v_appellation := bde_get_app_specific(p_par_id, 'SURV', p_long);
+        ELSE
+            v_appellation := bde_get_app_specific(p_par_id, 'TITL', p_long);
         END IF;
     END IF;
 

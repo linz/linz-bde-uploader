@@ -40,11 +40,11 @@ DROP TABLE IF EXISTS geodetic_marks CASCADE;
 CREATE TABLE geodetic_marks (
     id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    beacon_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    beacon_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
     land_district VARCHAR(100),
     latitude NUMERIC(22,12) NOT NULL,
@@ -72,11 +72,11 @@ CREATE TABLE geodetic_network_marks (
     nod_id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
     control_network VARCHAR(4) NOT NULL,
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    beacon_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    beacon_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
     land_district VARCHAR(100),
     latitude NUMERIC(22,12) NOT NULL,
@@ -108,11 +108,11 @@ CREATE TABLE geodetic_vertical_marks(
     id INTEGER NOT NULL,
     nod_id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    beacon_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    beacon_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" CHAR(2) NOT NULL,
     land_district VARCHAR(100),
     normal_orthometric_height NUMERIC(22, 12),
@@ -143,11 +143,11 @@ DROP TABLE IF EXISTS geodetic_antarctic_marks CASCADE;
 CREATE TABLE geodetic_antarctic_marks (
     id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    beacon_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    beacon_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
     latitude NUMERIC(22,12) NOT NULL,
     longitude NUMERIC(22,12) NOT NULL,
@@ -173,11 +173,11 @@ CREATE TABLE geodetic_antarctic_vertical_marks(
     id INTEGER NOT NULL,
     nod_id INTEGER NOT NULL,
     geodetic_code CHAR(4) NOT NULL,
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    beacon_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    beacon_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" CHAR(2) NOT NULL,
     normal_orthometric_height NUMERIC(22, 12),
     coordinate_system VARCHAR(100) NOT NULL
@@ -207,12 +207,12 @@ DROP TABLE IF EXISTS survey_protected_marks CASCADE;
 CREATE TABLE survey_protected_marks (
     id INTEGER NOT NULL,
     geodetic_code CHAR(4),
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
-    last_survey TEXT,
+    last_survey VARCHAR(14),
     last_survey_date DATE
 );
 PERFORM AddGeometryColumn('survey_protected_marks', 'shape', 4167, 'POINT', 2);
@@ -233,13 +233,13 @@ DROP TABLE IF EXISTS primary_parcels CASCADE;
 
 CREATE TABLE primary_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -261,13 +261,13 @@ DROP TABLE IF EXISTS land_parcels CASCADE;
 
 CREATE TABLE land_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -289,13 +289,13 @@ DROP TABLE IF EXISTS hydro_parcels CASCADE;
 
 CREATE TABLE hydro_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -317,13 +317,13 @@ DROP TABLE IF EXISTS road_parcels CASCADE;
 
 CREATE TABLE road_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -345,13 +345,13 @@ DROP TABLE IF EXISTS non_primary_parcels CASCADE;
 
 CREATE TABLE non_primary_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -373,13 +373,13 @@ DROP TABLE IF EXISTS non_primary_linear_parcels CASCADE;
 
 CREATE TABLE non_primary_linear_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4)
 );
@@ -401,13 +401,13 @@ DROP TABLE IF EXISTS strata_parcels CASCADE;
 
 CREATE TABLE strata_parcels (
     id INTEGER NOT NULL,
-    appellation TEXT,
-    affected_surveys TEXT,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
     parcel_intent VARCHAR(100) NOT NULL,
     topology_type VARCHAR(100) NOT NULL,
-    statutory_actions TEXT,
+    statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles TEXT,
+    titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 4) NOT NULL
 );
@@ -435,7 +435,7 @@ CREATE TABLE titles (
     land_district VARCHAR(100) NOT NULL,
     issue_date TIMESTAMP NOT NULL,
     guarantee_status VARCHAR(100) NOT NULL,
-    estate_description TEXT,
+    estate_description VARCHAR(4096),
     number_owners INT8 NOT NULL,
     spatial_extents_shared BOOLEAN NOT NULL
 );
@@ -463,8 +463,8 @@ CREATE TABLE titles_plus (
     land_district VARCHAR(100) NOT NULL,
     issue_date TIMESTAMP NOT NULL,
     guarantee_status VARCHAR(100) NOT NULL,
-    estate_description TEXT,
-    owners TEXT,
+    estate_description VARCHAR(4096),
+    owners VARCHAR(102400),
     spatial_extents_shared BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('titles_plus', 'shape', 4167, 'MULTIPOLYGON', 2);
@@ -516,8 +516,8 @@ DROP TABLE IF EXISTS road_centre_line CASCADE;
 CREATE TABLE road_centre_line (
     id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    locality TEXT,
-    territorial_authority TEXT
+    locality VARCHAR(30),
+    territorial_authority VARCHAR(255)
 );
 PERFORM AddGeometryColumn('road_centre_line', 'shape', 4167, 'MULTILINESTRING', 2);
 
@@ -538,9 +538,9 @@ DROP TABLE IF EXISTS road_centre_line_subsection CASCADE;
 CREATE TABLE road_centre_line_subsection (
     id INTEGER NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    other_names TEXT,
-    locality TEXT,
-    territorial_authority TEXT,
+    other_names VARCHAR(255),
+    locality VARCHAR(30),
+    territorial_authority VARCHAR(255),
     parcel_derived BOOLEAN NOT NULL
 );
 
@@ -583,11 +583,11 @@ DROP TABLE IF EXISTS street_address CASCADE;
 CREATE TABLE street_address (
     id INTEGER NOT NULL,
     rna_id INTEGER NOT NULL,
-    address TEXT NOT NULL,
+    address VARCHAR(126) NOT NULL,
     house_number VARCHAR(25) NOT NULL,
     road_name VARCHAR(100) NOT NULL,
-    locality TEXT,
-    territorial_authority TEXT
+    locality VARCHAR(30),
+    territorial_authority VARCHAR(255)
 );
 PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
 
@@ -628,11 +628,11 @@ DROP TABLE IF EXISTS survey_plans CASCADE;
 CREATE TABLE survey_plans (
     id INTEGER NOT NULL,
     survey_reference VARCHAR(50) NOT NULL,
-    land_district TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    description VARCHAR(2048),
+    status VARCHAR(2048) NOT NULL,
     survey_date DATE,
-    purpose TEXT NOT NULL,
+    purpose VARCHAR(2048) NOT NULL,
     type VARCHAR(100) NOT NULL,
     datum VARCHAR(10)
 );
@@ -656,7 +656,7 @@ DROP TABLE IF EXISTS cadastral_adjustments CASCADE;
 CREATE TABLE cadastral_adjustments (
     id INTEGER NOT NULL,
     date_adjusted TIMESTAMP NOT NULL,
-    survey_reference TEXT,
+    survey_reference VARCHAR(50),
     adjusted_nodes INTEGER NOT NULL
 );
 PERFORM AddGeometryColumn('cadastral_adjustments', 'shape', 4167, 'GEOMETRY', 2);
@@ -678,7 +678,7 @@ DROP TABLE IF EXISTS spi_adjustments CASCADE;
 CREATE TABLE spi_adjustments (
     id INTEGER NOT NULL,
     date_adjusted TIMESTAMP NOT NULL,
-    survey_reference TEXT,
+    survey_reference VARCHAR(50),
     adjusted_nodes INTEGER NOT NULL
 );
 PERFORM AddGeometryColumn('spi_adjustments', 'shape', 4167, 'GEOMETRY', 2);
@@ -700,7 +700,7 @@ DROP TABLE IF EXISTS waca_adjustments CASCADE;
 CREATE TABLE waca_adjustments (
     id INTEGER NOT NULL,
     date_adjusted TIMESTAMP NOT NULL,
-    survey_reference TEXT,
+    survey_reference VARCHAR(50),
     adjusted_nodes INTEGER NOT NULL
 );
 PERFORM AddGeometryColumn('waca_adjustments', 'shape', 4167, 'GEOMETRY', 2);
@@ -726,12 +726,12 @@ CREATE TABLE survey_observations (
     nod_id_end integer NOT NULL,
     obs_type character varying(18) NOT NULL,
     value numeric(22,12) NOT NULL,
-    value_label VARCHAR(11) NOT NULL,
+    value_label VARCHAR(10) NOT NULL,
     surveyed_type VARCHAR(10),
     coordinate_system VARCHAR(42) NOT NULL,
     land_district VARCHAR(14) NOT NULL,
     ref_datetime timestamp without time zone NOT NULL,
-    survey_reference VARCHAR(14)
+    survey_reference VARCHAR(50)
 );
 PERFORM AddGeometryColumn('survey_observations', 'shape', 4167, 'LINESTRING', 2);
 
@@ -762,10 +762,10 @@ CREATE TABLE survey_arc_observations (
     coordinate_system VARCHAR(42) NOT NULL,
     land_district VARCHAR(100) NOT NULL,
     ref_datetime TIMESTAMP NOT NULL,
-    survey_reference VARCHAR(14) NOT NULL,
-    chord_bearing_label TEXT NOT NULL,
-    arc_length_label VARCHAR(11),
-    arc_radius_label VARCHAR(11)
+    survey_reference VARCHAR(50) NOT NULL,
+    chord_bearing_label VARCHAR(10) NOT NULL,
+    arc_length_label VARCHAR(10),
+    arc_radius_label VARCHAR(10)
 );
 PERFORM AddGeometryColumn('survey_arc_observations', 'shape', 4167, 'LINESTRING', 2);
 
@@ -786,11 +786,11 @@ DROP TABLE IF EXISTS parcel_vectors CASCADE;
 DROP TABLE IF EXISTS parcel_vectors CASCADE;
 CREATE TABLE parcel_vectors (
     id INTEGER NOT NULL,
-    type TEXT NOT NULL,
+    type VARCHAR(6) NOT NULL,
     bearing NUMERIC(22,12),
     distance NUMERIC(22,12),
-    bearing_label TEXT,
-    distance_label TEXT
+    bearing_label VARCHAR(10),
+    distance_label VARCHAR(10)
 );
 PERFORM AddGeometryColumn('parcel_vectors', 'shape', 4167, 'LINESTRING', 2);
 
@@ -812,13 +812,13 @@ DROP TABLE IF EXISTS survey_network_marks CASCADE;
 CREATE TABLE survey_network_marks (
     id INTEGER NOT NULL,
     geodetic_code CHAR(4),
-    current_mark_name TEXT,
-    description TEXT,
-    mark_type TEXT,
-    mark_condition TEXT,
+    current_mark_name VARCHAR(100),
+    description VARCHAR(2048),
+    mark_type VARCHAR(2048),
+    mark_condition VARCHAR(2048),
     "order" INTEGER NOT NULL,
     nominal_accuracy NUMERIC(4,2),
-    last_survey TEXT
+    last_survey VARCHAR(16)
 );
 PERFORM AddGeometryColumn('survey_network_marks', 'shape', 4167, 'POINT', 2);
 
@@ -839,7 +839,7 @@ DROP TABLE IF EXISTS survey_bdy_marks CASCADE;
 DROP TABLE IF EXISTS survey_bdy_marks CASCADE;
 CREATE TABLE survey_bdy_marks (
     id INTEGER NOT NULL,
-    name TEXT,
+    name VARCHAR(100),
     "order" INTEGER NOT NULL,
     nominal_accuracy NUMERIC(4,2),
     date_last_adjusted TIMESTAMP
@@ -863,7 +863,7 @@ DROP TABLE IF EXISTS survey_non_bdy_marks CASCADE;
 DROP TABLE IF EXISTS survey_non_bdy_marks CASCADE;
 CREATE TABLE survey_non_bdy_marks (
     id INTEGER NOT NULL,
-    name TEXT,
+    name VARCHAR(100),
     "order" INTEGER NOT NULL,
     nominal_accuracy NUMERIC(4,2),
     date_last_adjusted TIMESTAMP
