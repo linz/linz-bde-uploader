@@ -75,9 +75,9 @@ BEGIN
                     WHEN 'N' THEN
                         CASE WHEN APP.parcel_type in ( 'LOT', 'SECT', 'UNIT', 'FLAT', 'MARK' )
                             THEN
-                               bde_get_charcode('ASAP',APP.parcel_type)::TEXT
-                            ELSE
                                bde_get_desccode('ASAP',APP.parcel_type)::TEXT
+                            ELSE
+                               bde_get_charcode('ASAP',APP.parcel_type)::TEXT
                         END
                    END), ''),
         COALESCE( APP.parcel_value, ''),
@@ -733,7 +733,8 @@ BEGIN
     FROM
         crs_appellation
     WHERE
-        par_id = p_par_id
+        par_id = p_par_id AND
+        status = 'CURR'
     GROUP BY
         par_id;
 

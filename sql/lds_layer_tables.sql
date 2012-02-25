@@ -241,7 +241,7 @@ CREATE TABLE primary_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -269,7 +269,7 @@ CREATE TABLE land_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('land_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -297,7 +297,7 @@ CREATE TABLE hydro_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('hydro_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -325,7 +325,7 @@ CREATE TABLE road_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('road_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -353,7 +353,7 @@ CREATE TABLE non_primary_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('non_primary_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -381,7 +381,7 @@ CREATE TABLE non_primary_linear_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4)
+    calc_area NUMERIC(20, 0)
 );
 PERFORM AddGeometryColumn('non_primary_linear_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
@@ -409,7 +409,7 @@ CREATE TABLE strata_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(4096),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 4) NOT NULL
+    calc_area NUMERIC(20, 0) NOT NULL
 );
 PERFORM AddGeometryColumn('strata_parcels', 'shape', 4167, 'GEOMETRY', 2);
 
