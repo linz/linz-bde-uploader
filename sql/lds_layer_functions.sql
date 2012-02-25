@@ -1532,7 +1532,7 @@ BEGIN
         CASE WHEN WDR.name = 'chathams' THEN
             CAST(ST_Area(ST_Transform(GEOM.shape, 3793)) AS NUMERIC(20, 4))
         ELSE
-            CAST(ST_Area(ST_Transform(GEOM.shape, 2193)) AS NUMERIC(20, 4))
+            CAST(ST_Area(ST_Transform(GEOM.shape, 2193)) AS NUMERIC(20, 0))
         END AS calc_area,
         GEOM.shape
     FROM
