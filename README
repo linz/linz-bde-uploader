@@ -15,6 +15,10 @@ Zealand Government.
     - File::Which
     - LINZ::Config
     - LINZ::Bde
+    - Log::Log4perl
+    - Log::Dispatch
+    - Log::Dispatch::FileRotate
+    - Log::Dispatch::Email::MailSender
  * PostgreSQL 9.0 or greater, plus
     - Postgis 1.5
  * linz_bde_copy, plus
@@ -37,7 +41,7 @@ to be done as manual task afterward.
     perl Build.PL
     ./build install
     
--- Advance install options
+-- Advanced install options
 
 The build system is using perl Module::Build. A full list of the building
 options are available run:
@@ -136,19 +140,19 @@ Key parameters to change in the linz_bde_uploader.conf config are:
     smtpserver and smtpsender: The mail host and sender email address to send
     completion or error reports to.
 
-    info_email_address: The email address ro addressed that the mail server will
+    log_email_address: The email address ro addressed that the mail server will
     send the completion or error reports to. multiple emails can be listing with
-    a ";" separator.
+    a "," separator.
     
 
 == Running linz_bde_uploader
 
 A simple example to upload all available bde files into the database is:
     
-    linz_bde_uploader -verbose -listing /var/log/lds_bde/linz_bde_loader.log
+    linz_bde_uploader -verbose -listing /var/log/linz-bde-uploader/linz_bde_loader.log
 
 For more help about options for running linz_bde_uploader can be made available
 through the following command:
     
-    linz_bde_uploader help
+    linz_bde_uploader -help
 

@@ -17,7 +17,14 @@
 SET client_min_messages TO WARNING;
 SET search_path = bde, public;
 
-BEGIN;
+
+DO $SCHEMA$
+BEGIN
+
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde') THEN
+    RETURN;
+END IF;
+
 -------------------------------------------------------------------------------
 -- crs_action
 -------------------------------------------------------------------------------
@@ -564,4 +571,6 @@ CREATE UNIQUE INDEX idx_vts_aud_id ON crs_vertx_sequence USING btree (audit_id);
 CREATE INDEX fk_wrk_cos ON crs_work USING btree (cos_id);
 CREATE UNIQUE INDEX idx_wrk_aud_id ON crs_work USING btree (audit_id);
 
-COMMIT;
+END;
+$SCHEMA$;
+
