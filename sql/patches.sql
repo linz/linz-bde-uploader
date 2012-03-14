@@ -19,7 +19,7 @@
 SET client_min_messages TO WARNING;
 
 SELECT _patches.apply_patch(
-    '1.0.0 Apply BDE indexes',
+    'BDE - 1.0.0: Apply BDE schema indexes',
     '
 SET search_path = bde, lds, public;
 -------------------------------------------------------------------------------
@@ -575,7 +575,3 @@ CREATE UNIQUE INDEX ak_ctpa_ttlpar ON cbe_title_parcel_association USING btree (
 '
 );
 
-SELECT _patches.apply_patch(
-    '1.0.2 - Implement New Logging System',
-    'DROP TABLE bde_control.upload_log'
-);
