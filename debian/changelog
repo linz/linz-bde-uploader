@@ -1,3 +1,16 @@
+linz-bde-uploader (1.1.0-1) UNRELEASED; urgency=low
+
+  * Added 3 new layers. WACA and SPI adjustments and Mesh Blocks
+  * Fixes to generation of Road centreline datasets
+  * Defined all fields width to better support FGBD exports on LDS
+  * Added rna_id to street_address layer
+  * Improved the performance of the survey observation differencing
+  * Improved logging to allow for 99 rotated files
+  * Added accuracy values observation related layers
+  * Rounded calc_area to whole number
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 13 Mar 2011 17:37:40 +1200
+
 linz-bde-uploader (1.0.2-1) UNRELEASED; urgency=low
 
   * Added new logging system based on log4perl. This removes all logging to db.
