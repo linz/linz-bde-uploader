@@ -3478,6 +3478,33 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_work TO bde_admin;
 GRANT SELECT ON TABLE crs_work TO bde_user;
 
 --------------------------------------------------------------------------------
+-- BDE table cbe_title_parcel_association
+--------------------------------------------------------------------------------
+
+CREATE TABLE cbe_title_parcel_association (
+    id INTEGER NOT NULL ,
+    ttl_title_no VARCHAR(20) NOT NULL,
+    par_id INTEGER NOT NULL,
+    source VARCHAR(4) NOT NULL,
+    status VARCHAR(4) NOT NULL,
+    inserted_date DATE NOT NULL,
+    last_updated TIMESTAMP NOT NULL
+);
+
+ALTER TABLE ONLY cbe_title_parcel_association
+    ADD CONSTRAINT pkey_cbe_title_parcel_association PRIMARY KEY (id);
+
+ALTER TABLE cbe_title_parcel_association ALTER COLUMN id SET STATISTICS 500;
+ALTER TABLE cbe_title_parcel_association ALTER COLUMN ttl_title_no SET STATISTICS 500;
+ALTER TABLE cbe_title_parcel_association ALTER COLUMN par_id SET STATISTICS 500;
+
+ALTER TABLE cbe_title_parcel_association OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE cbe_title_parcel_association FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE cbe_title_parcel_association TO bde_admin;
+GRANT SELECT ON TABLE cbe_title_parcel_association TO bde_user;
+
+--------------------------------------------------------------------------------
 -- Spatial table geometry column metdata. Use don't use the AddGeometryColumn()
 -- function for the table definitions, because we want to control the geometry
 -- type for tables with mixed geometry types.

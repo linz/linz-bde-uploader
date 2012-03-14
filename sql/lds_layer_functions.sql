@@ -1364,7 +1364,8 @@ BEGIN
                     'crs_title_estate',
                     'crs_ttl_hierarchy',
                     'crs_topology_class',
-                    'crs_work'
+                    'crs_work',
+                    'cbe_title_parcel_association'
                 ],
                 'any affected'
             )
@@ -1432,22 +1433,16 @@ BEGIN
 
     CREATE TEMP TABLE tmp_parcel_titles AS
     SELECT
-        PAR.id AS par_id,
-        TTL.title_no
+        TPA.par_id,
+        TPA.ttl_title_no AS title_no
     FROM
-        crs_parcel PAR
-        JOIN crs_legal_desc_prl LGP ON PAR.id = LGP.par_id
-        JOIN crs_legal_desc LGD ON LGP.lgd_id = LGD.id
-        JOIN crs_title TTL ON LGD.ttl_title_no = TTL.title_no
+        cbe_title_parcel_association TPA
     WHERE
-        PAR.status = 'CURR' AND
-        LGD.status = 'REGD' AND
-        LGD.ttl_title_no IS NOT NULL AND
-        TTL.status IN ('LIVE', 'PRTC') AND
-        TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        TPA.status = 'VALD' AND
+        TPA.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
     GROUP BY
-        PAR.id,
-        TTL.title_no;
+        TPA.par_id,
+        TPA.ttl_title_no;
 
     ALTER TABLE tmp_parcel_titles ADD PRIMARY KEY (par_id, title_no);
     ANALYSE tmp_parcel_titles;
@@ -2005,15 +2000,15 @@ BEGIN
         TTL.spatial_extents_shared,
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
-        -- are order so all null shapes row are at the end of input list.
-        -- We also want to ensure the newly constructed polygon has valid OGC 
-        -- Topology use the buffer 0 trick
+        -- are ordered so all null rows are at the end of input list.
+        -- We also want to ensure the newly constructed polygon has valid OGC
+        -- Topology so use the buffer 0 trick
         ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
     FROM
         titles TTL
         JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
         LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
-        LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
+        LEFT JOIN tmp_parcel_titles TPA ON TTL.title_no = TPA.title_no
         LEFT JOIN (
             SELECT
                 par_id,
@@ -2022,7 +2017,7 @@ BEGIN
                 tmp_parcel_geoms
             WHERE
                 ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON LGP.par_id = PAR.par_id 
+        ) PAR ON TPA.par_id = PAR.par_id 
         LEFT JOIN crs_sys_code ETTT ON ETT.type = ETTT.code AND ETTT.scg_code = 'ETTT'
     GROUP BY
         TTL.id,
@@ -2035,8 +2030,6 @@ BEGIN
         TTL.owners,
         TTL.number_owners,
         TTL.spatial_extents_shared;
-
-    DROP TABLE IF EXISTS tmp_parcel_titles;
 
     RAISE DEBUG 'Finished creating temp table tmp_titles';
     
@@ -2150,14 +2143,13 @@ BEGIN
             TTL.title_no,
             TTL.status AS title_status,
             LOC.name AS land_district,
-            LGP.par_id
+            TPA.par_id
         FROM
             crs_title TTL
             JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
             JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id AND ETT.status = 'REGD'
             JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
-            LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
-            LEFT JOIN crs_legal_desc_prl LGP ON LGD.id = LGP.lgd_id
+            LEFT JOIN tmp_parcel_titles TPA ON TTL.title_no = TPA.title_no
             LEFT JOIN tmp_protected_titles PRO ON TTL.title_no = PRO.title_no
             JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
         WHERE
@@ -2168,7 +2160,7 @@ BEGIN
             TTL.title_no,
             TTL.status,
             LOC.name,
-            LGP.par_id
+            TPA.par_id
     ),
     parcel_part_ownership (
         par_id
@@ -2190,9 +2182,9 @@ BEGIN
         count(PART.par_id) > 0 AS part_ownership,
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
-        -- are order so all null shapes row are at the end of input list.
+        -- are ordered so all null rows are at the end of input list.
         -- We also want to ensure the newly constructed polygon has valid OGC 
-        -- Topology use the buffer 0 trick
+        -- Topology so we use the buffer 0 trick
         ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
     FROM
         title_owner_parcels TOP
@@ -2213,6 +2205,7 @@ BEGIN
         TOP.land_district;
     
     DROP TABLE IF EXISTS tmp_parcel_geoms;
+    DROP TABLE IF EXISTS tmp_parcel_titles;
     
     RAISE DEBUG 'Finished creating temp table tmp_title_owners';
 
@@ -2519,6 +2512,36 @@ BEGIN
             RNA.name,
             STR.locality,
             SAD.shape;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+
+    ----------------------------------------------------------------------------
+    -- mesh_blocks layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'mesh_blocks');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            code,
+            shape
+        )
+        SELECT
+            MBK.id,
+            MBK.code,
+            MBK.shape
+        FROM
+            crs_mesh_blk MBK
+        WHERE
+            MBK.end_datetime IS NULL
+        ORDER BY
+            id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(

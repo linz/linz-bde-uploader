@@ -97,7 +97,6 @@ fi
 SQL_FILES="
     $LDS_SHARE_DIR/sql/bde_roles.sql
     $LDS_SHARE_DIR/sql/bde_schema.sql
-    $LDS_SHARE_DIR/sql/bde_schema_index_lds.sql
     $LDS_SHARE_DIR/sql/bde_functions.sql
     $LDS_SHARE_DIR/sql/table_version_tables.sql
     $LDS_SHARE_DIR/sql/table_version_functions.sql

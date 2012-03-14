@@ -21,10 +21,6 @@ SET search_path = bde, public;
 DO $SCHEMA$
 BEGIN
 
-IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde') THEN
-    RETURN;
-END IF;
-
 -------------------------------------------------------------------------------
 -- crs_action
 -------------------------------------------------------------------------------
@@ -571,6 +567,12 @@ CREATE UNIQUE INDEX idx_vts_aud_id ON crs_vertx_sequence USING btree (audit_id);
 CREATE INDEX fk_wrk_cos ON crs_work USING btree (cos_id);
 CREATE UNIQUE INDEX idx_wrk_aud_id ON crs_work USING btree (audit_id);
 
+-------------------------------------------------------------------------------
+-- cbe_title_parcel_association
+-------------------------------------------------------------------------------
+CREATE UNIQUE INDEX ak_ctpa_ttlpar ON cbe_title_parcel_association USING btree (ttl_title_no, par_id);
+CREATE UNIQUE INDEX ak_ctpa_ttlpar1 ON cbe_title_parcel_association USING btree (par_id, ttl_title_no, status);
+          
 END;
 $SCHEMA$;
 
