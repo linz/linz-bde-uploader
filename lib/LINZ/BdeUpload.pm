@@ -604,17 +604,22 @@ sub ApplyUpdates
     $self->set_error($@);
     $self->send_error();
     
-    
-    eval
+    if( !$dry_run )
     {
-        if( !$dry_run )
+        eval
         {
             $self->ApplyPostUploadFunctions;
+        };
+        $self->set_error($@);
+        $self->send_error();
+        
+        eval
+        {
             $self->FinishJob;
-        }
-    };
-    $self->set_error($@);
-    $self->send_error();
+        };
+        $self->set_error($@);
+        $self->send_error();
+    }
 }
 
 sub GetLevel0Updates

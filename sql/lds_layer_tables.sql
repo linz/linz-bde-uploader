@@ -214,8 +214,7 @@ CREATE TABLE survey_protected_marks (
     "order" INTEGER NOT NULL,
     last_survey VARCHAR(50),
     last_survey_date DATE
-);
-PERFORM AddGeometryColumn('survey_protected_marks', 'shape', 4167, 'POINT', 2);
+);PERFORM AddGeometryColumn('survey_protected_marks', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE survey_protected_marks ADD PRIMARY KEY (id);
 CREATE INDEX shx_spm_shape ON survey_protected_marks USING gist (shape);
@@ -239,7 +238,7 @@ CREATE TABLE primary_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -267,7 +266,7 @@ CREATE TABLE land_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -295,7 +294,7 @@ CREATE TABLE hydro_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -323,7 +322,7 @@ CREATE TABLE road_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -351,7 +350,7 @@ CREATE TABLE non_primary_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -379,7 +378,7 @@ CREATE TABLE non_primary_linear_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0)
 );
@@ -407,7 +406,7 @@ CREATE TABLE strata_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(4096),
+    titles VARCHAR(32768)
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -601,7 +600,27 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address TO bde_admin;
 GRANT SELECT ON TABLE street_address TO bde_user;
 
 --------------------------------------------------------------------------------
--- LDS table street_address
+-- LDS table mesh_blocks
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS mesh_blocks CASCADE;
+
+CREATE TABLE mesh_blocks (
+    id INTEGER NOT NULL,
+    code VARCHAR(7) NOT NULL
+);
+PERFORM AddGeometryColumn('mesh_blocks', 'shape', 4167, 'GEOMETRY', 2);
+
+ALTER TABLE mesh_blocks ADD PRIMARY KEY (id);
+CREATE INDEX shx_mesh_blocks_shape ON mesh_blocks USING gist (shape);
+
+ALTER TABLE mesh_blocks OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE mesh_blocks FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE mesh_blocks TO bde_admin;
+GRANT SELECT ON TABLE mesh_blocks TO bde_user;
+
+--------------------------------------------------------------------------------
+-- LDS table land_districts
 --------------------------------------------------------------------------------
 DROP TABLE IF EXISTS land_districts CASCADE;
 

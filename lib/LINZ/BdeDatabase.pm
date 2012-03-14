@@ -407,8 +407,27 @@ sub finishJob
 {
     my ($self) = @_;
     return if ! $self->jobCreated;
-    $self->_runFinishSql;
-    $self->finishUpload($self->{_error});
+    eval
+    {
+        $self->_runFinishSql;
+    };
+    if ($@)
+    {
+        ERROR("Could not run finish SQL, transaction will be rolled back: $@");
+        $self->_rollbackTransaction;
+    }
+    
+    eval
+    {
+        $self->finishUpload($self->{_error});
+    };
+    if ($@)
+    {
+        ERROR("Could not finish job transaction will be rolled back: $@");
+        $self->_rollbackTransaction;
+        $self->finishUpload($self->{_error});
+    }
+    
     my $msg = 'Job ' . $self->{uploadId} . ' finished ' .
         ($self->{_error} ? 'with errors' : 'successfully');
     INFO($msg);
@@ -479,8 +498,7 @@ sub rollBackDataset
     my $result;
     if ( $self->datasetInTransaction )
     {
-        $result = $self->_dbh->rollback;
-        $self->{_intransaction} = 0;
+        $self->_rollbackTransaction;
     }
     return $result;
 }
@@ -709,16 +727,6 @@ sub _beginTransaction
     $self->{_intransaction} = 1;
 }
 
-sub _dbh_do
-{
-    my ($self, $sql) = @_;
-    $self->_setDbMessageHandler;
-    DEBUG("Running: $sql");
-    my $rv = $self->_dbh->do($sql);
-    $self->_clearDbMessageHandler;
-    return $rv;
-}
-
 sub _commitTransaction
 {
     my($self) = @_;
@@ -728,6 +736,28 @@ sub _commitTransaction
         $self->_dbh->commit;
         $self->{_intransaction} = 0;
     }
+}
+
+sub _rollbackTransaction
+{
+    my $self = shift;
+    my $result;
+    eval
+    {
+        $result = $self->_dbh->rollback;
+    };
+    $self->{_intransaction} = 0;
+    return $result;
+}
+
+sub _dbh_do
+{
+    my ($self, $sql) = @_;
+    $self->_setDbMessageHandler;
+    DEBUG("Running: $sql");
+    my $rv = $self->_dbh->do($sql);
+    $self->_clearDbMessageHandler;
+    return $rv;
 }
 
 1;
