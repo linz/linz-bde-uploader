@@ -103,9 +103,9 @@ SQL_FILES="
     $LDS_SHARE_DIR/sql/bde_control_tables.sql
     $LDS_SHARE_DIR/sql/bde_control_functions.sql
     $LDS_SHARE_DIR/sql/lds_layer_tables.sql
+    $LDS_SHARE_DIR/sql/lds_layer_functions.sql
     $LDS_SHARE_DIR/sql/patch_management.sql
     $LDS_SHARE_DIR/sql/patches.sql
-    $LDS_SHARE_DIR/sql/lds_layer_functions.sql
 "
 
 for SQL_FILE in $SQL_FILES

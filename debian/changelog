@@ -1,3 +1,9 @@
+linz-bde-uploader (1.1.1-1) UNRELEASED; urgency=low
+
+  * Fixed bug with creation of LDS schema.
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Tue, 20 Mar 2012 11:01:02 +1200
+
 linz-bde-uploader (1.1.0-1) UNRELEASED; urgency=low
 
   * Added 3 new layers. WACA and SPI adjustments and Mesh Blocks
@@ -9,7 +15,7 @@ linz-bde-uploader (1.1.0-1) UNRELEASED; urgency=low
   * Added accuracy values observation related layers
   * Rounded calc_area to whole number
 
- -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 13 Mar 2011 17:37:40 +1200
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 13 Mar 2012 17:37:40 +1200
 
 linz-bde-uploader (1.0.2-1) UNRELEASED; urgency=low
 

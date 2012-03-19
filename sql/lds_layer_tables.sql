@@ -238,7 +238,7 @@ CREATE TABLE primary_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -266,7 +266,7 @@ CREATE TABLE land_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -294,7 +294,7 @@ CREATE TABLE hydro_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -322,7 +322,7 @@ CREATE TABLE road_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -350,7 +350,7 @@ CREATE TABLE non_primary_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
@@ -378,7 +378,7 @@ CREATE TABLE non_primary_linear_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0)
 );
@@ -406,7 +406,7 @@ CREATE TABLE strata_parcels (
     topology_type VARCHAR(100) NOT NULL,
     statutory_actions VARCHAR(4096),
     land_district VARCHAR(100) NOT NULL,
-    titles VARCHAR(32768)
+    titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0) NOT NULL
 );
