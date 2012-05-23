@@ -39,20 +39,20 @@ to be done as manual task afterward.
 -- Simple install
 
     perl Build.PL
-    ./build install
+    ./Build install
     
 -- Advanced install options
 
 The build system is using perl Module::Build. A full list of the building
 options are available run:
 
-    ./build help
+    ./Build help
     
 A more complex example involving specific install directories could something
 like:
 
     perl Build.PL --prefix=/usr/local
-    ./build install
+    ./Build install
 or:
 
     perl Build.PL \
@@ -80,26 +80,26 @@ Next PostGIS 1.5 is required to be installed into the database.
 Next the database needs to be configured for uploading BDE data. This is setup
 with the following series of scripts:
 
-    psql -d bde_db sql/bde_roles.sql
-    psql -d bde_db sql/bde_schema.sql
-    psql -d bde_db sql/bde_schema_index.sql
-    psql -d bde_db sql/bde_functions.sql
-    psql -d bde_db sql/table_version_tables.sql
-    psql -d bde_db sql/table_version_functions.sql
-    psql -d bde_db sql/bde_control_tables.sql
-    psql -d bde_db sql/bde_control_functions.sql
+    psql -d bde_db -f sql/bde_roles.sql
+    psql -d bde_db -f sql/bde_schema.sql
+    psql -d bde_db -f sql/bde_schema_index.sql
+    psql -d bde_db -f sql/bde_functions.sql
+    psql -d bde_db -f sql/table_version_tables.sql
+    psql -d bde_db -f sql/table_version_functions.sql
+    psql -d bde_db -f sql/bde_control_tables.sql
+    psql -d bde_db -f sql/bde_control_functions.sql
 
 Also if you want to enable versioning on the BDE tables the following scripts
 need to be run:
 
-    psql -d bde_db sql/lds_layer_tables.sql
-    psql -d bde_db sql/lds_layer_functions.sql
+    psql -d bde_db -f sql/lds_layer_tables.sql
+    psql -d bde_db -f sql/lds_layer_functions.sql
 
 Lastly the PostgreSQL user account for linz_bde_uploader needs to be created. On
 LINUX it is best to first create a system user account as well so ident
 authenication can be used.
 
-    adduser --system --geocos "LDS BDE Maintainer" lds_bde
+    adduser --system --gecos "LDS BDE Maintainer" lds_bde
     
 The lds_bde PostgreSQL user account needs to have bde_dba rights, but does not
 need to have superuser rights by default. An example SQL create user script
