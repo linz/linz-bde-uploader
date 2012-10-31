@@ -444,6 +444,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_revision(INTEGER) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_revision(INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_revision(INTEGER) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_revision(INTEGER) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_revisions(INTEGER[]);
 /**
@@ -477,6 +478,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_revisions(INTEGER[]) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_revisions(INTEGER[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_revisions(INTEGER[]) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_revisions(INTEGER[]) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_revisions(TIMESTAMP, TIMESTAMP);
 /**
@@ -507,6 +509,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_revisions(TIMESTAMP, TIMESTAMP) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_revisions(TIMESTAMP, TIMESTAMP) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_revisions(TIMESTAMP, TIMESTAMP) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_revisions(TIMESTAMP, TIMESTAMP) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_revision(TIMESTAMP);
 /**
@@ -536,6 +539,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_revision(TIMESTAMP) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_revision(TIMESTAMP) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_revision(TIMESTAMP) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_revision(TIMESTAMP) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_last_revision();
 /**
@@ -560,6 +564,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_last_revision() OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_last_revision() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_last_revision() TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_last_revision() TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_table_base_revision(NAME, NAME);
 /**
@@ -604,6 +609,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION ver_get_table_base_revision(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_table_base_revision(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_table_base_revision(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_table_base_revision(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_table_last_revision(NAME, NAME);
 /**
@@ -649,6 +655,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION ver_get_table_last_revision(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_table_last_revision(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_table_last_revision(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_table_last_revision(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_modified_tables(INTEGER);
 /**
@@ -690,6 +697,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION ver_get_modified_tables(INTEGER) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_modified_tables(INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_modified_tables(INTEGER) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_modified_tables(INTEGER) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_modified_tables(INTEGER, INTEGER);
 /**
@@ -745,6 +753,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION ver_get_modified_tables(INTEGER, INTEGER) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_modified_tables(INTEGER, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_modified_tables(INTEGER, INTEGER) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_modified_tables(INTEGER, INTEGER) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_is_table_versioned(NAME, NAME);
 /**
@@ -784,6 +793,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION ver_is_table_versioned(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_is_table_versioned(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_is_table_versioned(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_is_table_versioned(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_versioned_tables();
 /**
@@ -810,6 +820,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_versioned_tables() OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_versioned_tables() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_versioned_tables() TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_versioned_tables() TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_versioned_table_key(NAME, NAME);
 /**
@@ -836,6 +847,7 @@ $$ LANGUAGE sql SECURITY DEFINER;
 ALTER FUNCTION ver_get_versioned_table_key(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_versioned_table_key(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_versioned_table_key(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_versioned_table_key(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_create_table_functions(NAME, NAME, NAME);
 /**
@@ -994,6 +1006,10 @@ $FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%key_col%',        quote_ident(p_key_col));
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
     EXECUTE v_sql;
+    
+    EXECUTE 'REVOKE ALL ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' FROM PUBLIC;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_admin;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_user;';
 
     -- Create get version function for table called: 
     -- ver_get_$schema$_$table$_revision(p_revision integer)
@@ -1030,6 +1046,10 @@ $FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%select_columns%', v_select_columns_rev);
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
     EXECUTE v_sql;
+    
+	EXECUTE 'REVOKE ALL ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' FROM PUBLIC;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' TO bde_admin;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' TO bde_user;';
 
     RETURN TRUE;
 END;
@@ -1282,6 +1302,7 @@ $$ LANGUAGE sql;
 ALTER FUNCTION _ver_get_table_cols(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION _ver_get_table_cols(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_table_cols(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION _ver_get_table_cols(NAME, NAME) TO bde_user;
 
 
 DROP FUNCTION IF EXISTS ver_get_version_table(NAME, NAME);
@@ -1303,6 +1324,7 @@ $$ LANGUAGE sql IMMUTABLE;
 ALTER FUNCTION ver_get_version_table(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_version_table(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_version_table(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_version_table(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS ver_get_version_table_full(NAME, NAME);
 /**
@@ -1323,6 +1345,7 @@ $$ LANGUAGE sql IMMUTABLE;
 ALTER FUNCTION ver_get_version_table_full(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_get_version_table_full(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_get_version_table_full(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION ver_get_version_table_full(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS _ver_get_version_trigger(NAME, NAME);
 /**
@@ -1343,6 +1366,7 @@ $$ LANGUAGE sql IMMUTABLE;
 ALTER FUNCTION _ver_get_version_trigger(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION _ver_get_version_trigger(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_version_trigger(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION _ver_get_version_trigger(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS _ver_get_diff_function(NAME, NAME);
 /**
@@ -1363,6 +1387,7 @@ $$ LANGUAGE sql IMMUTABLE;
 ALTER FUNCTION _ver_get_diff_function(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION _ver_get_diff_function(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_diff_function(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION _ver_get_diff_function(NAME, NAME) TO bde_user;
 
 DROP FUNCTION IF EXISTS _ver_get_revision_function(NAME, NAME);
 /**
@@ -1383,6 +1408,8 @@ $$ LANGUAGE sql IMMUTABLE;
 ALTER FUNCTION _ver_get_revision_function(NAME, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION _ver_get_revision_function(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_revision_function(NAME, NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION _ver_get_revision_function(NAME, NAME) TO bde_user;
+
 
 DROP FUNCTION IF EXISTS _ver_get_reversion_temp_table(NAME);
 /**
@@ -1423,5 +1450,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER FUNCTION _ver_get_reversion_temp_table(NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION _ver_get_reversion_temp_table(NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION _ver_get_reversion_temp_table(NAME) TO bde_admin;
+GRANT EXECUTE ON FUNCTION _ver_get_reversion_temp_table(NAME) TO bde_user;
 
 COMMIT;
