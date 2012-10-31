@@ -1,3 +1,9 @@
+linz-bde-uploader (1.1.5-1) precise; urgency=low
+
+  * Upgrade to fix user permission problems identified with issue #8
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Wed, 31 Oct 2012 16:48:09 +1300
+
 linz-bde-uploader (1.1.4-1) lucid; urgency=low
 
   [ Craig de Stigter ]
