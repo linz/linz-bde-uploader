@@ -1,8 +1,8 @@
-linz-bde-uploader (1.1.6-1) UNRELEASED; urgency=low
+linz-bde-uploader (1.1.6-1) precise; urgency=low
 
-  * UNRELEASED
+  * Apply ver_get function permission changes
 
- -- Joseph Ramsay <jramsay@linz.govt.nz>  Thu, 01 Nov 2012 10:34:24 +1300
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Thu, 01 Nov 2012 10:43:51 +1300
 
 linz-bde-uploader (1.1.5-1) precise; urgency=low
 
