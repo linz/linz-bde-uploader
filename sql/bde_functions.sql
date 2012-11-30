@@ -760,11 +760,10 @@ GRANT EXECUTE ON FUNCTION bde_get_combined_appellation(INTEGER, CHAR) TO bde_use
 CREATE OR REPLACE FUNCTION bde_get_par_stat_act(p_sta_id INTEGER, p_par_id INTEGER)
     RETURNS TEXT AS $$
 DECLARE
-    v_sap_action      TEXT;
     v_sap_purpose     crs_stat_act_parcl.purpose%TYPE;
     v_sap_name        crs_stat_act_parcl.name%TYPE;
     v_comments        crs_stat_act_parcl.comments%TYPE;
-    v_par_act_desc    TEXT;
+    v_par_act_desc    TEXT DEFAULT '';
     v_stat_act_type   crs_statute_action.type%TYPE;
     v_ste_id          crs_statute.id%TYPE;
     v_sur_wrk_id_vest crs_statute_action.sur_wrk_id_vesting%TYPE;
@@ -779,31 +778,28 @@ DECLARE
     v_description     TEXT;
 BEGIN
     SELECT
-        SCO.char_value,
-        regexp_replace(SAP.purpose, E'(\r\n)|(\n)', '', 'g'),
-        SAP.name,
-        regexp_replace(SAP.comments, E'(\r\n)|(\n)', '', 'g')
+        NULLIF(TRIM(both FROM regexp_replace(SAP.purpose, E'(\r\n)|(\n)', '', 'g')), ''),
+        NULLIF(TRIM(both FROM SAP.name), ''),
+        NULLIF(TRIM(both FROM regexp_replace(SAP.comments, E'(\r\n)|(\n)', '', 'g')), '')
     INTO
-        v_sap_action,
         v_sap_purpose,
         v_sap_name,
         v_comments
     FROM
-        crs_stat_act_parcl SAP,
-        crs_sys_code SCO
+        crs_stat_act_parcl SAP
     WHERE
-        SCO.scg_code = 'SAPA' AND
-        SCO.code = SAP.action AND
         SAP.sta_id = p_sta_id AND
         SAP.par_id = p_par_id;
 
     IF FOUND THEN
-        v_par_act_desc := '[' ||  v_sap_action || ']';
         IF v_sap_purpose IS NOT NULL THEN
-             v_par_act_desc := v_par_act_desc || ' ' || v_sap_purpose;
+             v_par_act_desc := v_sap_purpose;
         END IF;
         IF v_sap_name IS NOT NULL THEN
-             v_par_act_desc := v_par_act_desc || ' [' || v_sap_name || ']';
+             IF v_par_act_desc <> '' THEN
+                 v_par_act_desc := v_par_act_desc || ' ';
+             END IF;
+             v_par_act_desc := v_par_act_desc || '[' || v_sap_name || ']';
         END IF;
     END IF;
     
@@ -864,7 +860,7 @@ BEGIN
         v_stat_act_desc := v_other_legality;
     END IF;
 
-    IF v_par_act_desc IS NULL THEN
+    IF v_par_act_desc = '' THEN
         v_description := v_stat_act_desc;
     ELSE
         v_description := v_par_act_desc;
