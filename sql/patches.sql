@@ -575,3 +575,255 @@ CREATE UNIQUE INDEX ak_ctpa_ttlpar ON cbe_title_parcel_association USING btree (
 '
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.2.0: Create tables for the LDS aspatial release',
+    '
+
+SET search_path = lds, bde, public;
+
+--------------------------------------------------------------------------------
+-- LDS table all_parcels
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS all_parcels CASCADE;
+
+CREATE TABLE all_parcels (
+    id INTEGER NOT NULL,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
+    parcel_intent VARCHAR(100) NOT NULL,
+    topology_type VARCHAR(100) NOT NULL,
+    status VARCHAR(25) NOT NULL,
+    statutory_actions VARCHAR(4096),
+    land_district VARCHAR(100) NOT NULL,
+    titles VARCHAR(32768),
+    survey_area NUMERIC(20, 4),
+    calc_area NUMERIC(20, 0) NOT NULL
+);
+SELECT AddGeometryColumn(''all_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
+
+ALTER TABLE all_parcels ADD PRIMARY KEY (id);
+CREATE INDEX shx_all_par_shape ON all_parcels USING gist (shape);
+
+ALTER TABLE all_parcels OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE all_parcels FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE all_parcels TO bde_admin;
+GRANT SELECT ON TABLE all_parcels TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''all_parcels'');
+
+--------------------------------------------------------------------------------
+-- LDS table all_parcels
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS all_linear_parcels CASCADE;
+
+CREATE TABLE all_linear_parcels (
+    id INTEGER NOT NULL,
+    appellation VARCHAR(2048),
+    affected_surveys VARCHAR(2048),
+    parcel_intent VARCHAR(100) NOT NULL,
+    topology_type VARCHAR(100) NOT NULL,
+    status VARCHAR(25) NOT NULL,
+    statutory_actions VARCHAR(4096),
+    land_district VARCHAR(100) NOT NULL,
+    titles VARCHAR(32768),
+    survey_area NUMERIC(20, 4),
+    calc_area NUMERIC(20, 0) NOT NULL
+);
+SELECT AddGeometryColumn(''all_linear_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
+
+ALTER TABLE all_linear_parcels ADD PRIMARY KEY (id);
+CREATE INDEX shx_all_line_par_shape ON all_linear_parcels USING gist (shape);
+
+ALTER TABLE all_linear_parcels OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE all_linear_parcels FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE all_linear_parcels TO bde_admin;
+GRANT SELECT ON TABLE all_linear_parcels TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''all_linear_parcels'');
+
+--------------------------------------------------------------------------------
+-- LDS table parcel_stat_actions
+--------------------------------------------------------------------------------
+
+CREATE TABLE parcel_stat_actions (
+    id INTEGER NOT NULL,
+    par_id INTEGER NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    statutory_action VARCHAR(1024)
+);
+
+ALTER TABLE parcel_stat_actions ADD PRIMARY KEY (id);
+
+ALTER TABLE parcel_stat_actions OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE parcel_stat_actions FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE parcel_stat_actions TO bde_admin;
+GRANT SELECT ON TABLE parcel_stat_actions TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''parcel_stat_actions'');
+
+--------------------------------------------------------------------------------
+-- LDS table affected_parcel_surveys
+--------------------------------------------------------------------------------
+
+CREATE TABLE affected_parcel_surveys (
+    id INTEGER NOT NULL,
+    par_id INTEGER NOT NULL,
+    sur_wrk_id INTEGER NOT NULL,
+    action VARCHAR(12)
+);
+
+ALTER TABLE affected_parcel_surveys ADD PRIMARY KEY (id);
+
+ALTER TABLE affected_parcel_surveys OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE affected_parcel_surveys FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE affected_parcel_surveys TO bde_admin;
+GRANT SELECT ON TABLE affected_parcel_surveys TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''affected_parcel_surveys'');
+
+--------------------------------------------------------------------------------
+-- LDS table title_parcel_associations
+--------------------------------------------------------------------------------
+
+CREATE TABLE title_parcel_associations (
+    id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    par_id INTEGER NOT NULL,
+    source VARCHAR(8) NOT NULL
+);
+
+ALTER TABLE title_parcel_associations ADD PRIMARY KEY (id);
+
+ALTER TABLE title_parcel_associations OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_parcel_associations FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_parcel_associations TO bde_admin;
+GRANT SELECT ON TABLE title_parcel_associations TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_parcel_associations'');
+--------------------------------------------------------------------------------
+-- LDS table title_estates
+--------------------------------------------------------------------------------
+
+CREATE TABLE title_estates (
+    id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    type VARCHAR(255),
+    share VARCHAR(100) NOT NULL,
+    purpose VARCHAR(255),
+    timeshare_week_no VARCHAR(20),
+    term VARCHAR(255),
+    legal_description VARCHAR(2048),
+    area BIGINT
+);
+
+ALTER TABLE title_estates ADD PRIMARY KEY (id);
+
+ALTER TABLE title_estates OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_estates FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_estates TO bde_admin;
+GRANT SELECT ON TABLE title_estates TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_estates'');
+--------------------------------------------------------------------------------
+-- LDS table titles_aspatial
+--------------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS titles_aspatial CASCADE;
+
+CREATE TABLE titles_aspatial (
+    id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    register_type VARCHAR(50) NOT NULL, 
+    type VARCHAR(100) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    issue_date TIMESTAMP NOT NULL,
+    guarantee_status VARCHAR(100) NOT NULL,
+    provisional CHAR(1) NOT NULL,
+    title_no_srs VARCHAR(20),
+    title_no_head_srs VARCHAR(20),
+    survey_reference VARCHAR(50),
+    maori_land CHAR(1),
+    number_owners INT8 NOT NULL
+);
+
+ALTER TABLE titles_aspatial ADD PRIMARY KEY (id);
+
+ALTER TABLE titles_aspatial OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE titles_aspatial FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE titles_aspatial TO bde_admin;
+GRANT SELECT ON TABLE titles_aspatial TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''titles_aspatial'');
+--------------------------------------------------------------------------------
+-- LDS table title_owners_aspatial
+--------------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS title_owners_aspatial CASCADE;
+
+CREATE TABLE title_owners_aspatial (
+    id INTEGER NOT NULL,
+    tte_id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    estate_share VARCHAR(100) NOT NULL,
+    owner_type VARCHAR(10) NOT NULL,
+    prime_surname VARCHAR(100),
+    prime_other_names VARCHAR(100),
+    corporate_name VARCHAR(250),
+    name_suffix VARCHAR(6)
+);
+
+ALTER TABLE title_owners_aspatial ADD PRIMARY KEY (id);
+
+ALTER TABLE title_owners_aspatial OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_owners_aspatial FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_owners_aspatial TO bde_admin;
+GRANT SELECT ON TABLE title_owners_aspatial TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+
+'
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.2.0: Fix spatial_extents_shared constraint',
+    '
+DO $PATCH$
+BEGIN
+    ALTER TABLE lds.titles
+       ALTER COLUMN spatial_extents_shared DROP NOT NULL;
+
+    ALTER TABLE lds.titles_plus
+       ALTER COLUMN spatial_extents_shared DROP NOT NULL;
+
+    IF EXISTS ( select true from pg_tables
+                where tablename = ''lds_titles_revision''
+                and schemaname =''table_version'')
+    THEN
+        ALTER TABLE table_version.lds_titles_revision 
+           ALTER COLUMN spatial_extents_shared DROP NOT NULL;
+    END IF;
+
+    IF EXISTS ( select true from pg_tables
+                where tablename = ''lds_titles_plus_revision''
+                and schemaname =''table_version'')
+    THEN
+        ALTER TABLE table_version.lds_titles_plus_revision 
+           ALTER COLUMN spatial_extents_shared DROP NOT NULL;
+    END IF;
+END;
+$PATCH$
+'
+);
+
+

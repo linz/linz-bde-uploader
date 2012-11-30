@@ -1370,6 +1370,8 @@ BEGIN
                 'any affected'
             )
         )
+        AND LDS.LDS_TableHasData('lds', 'affected_parcel_surveys')
+        AND LDS.LDS_TableHasData('lds', 'parcel_stat_actions')
         AND LDS.LDS_TableHasData('lds', 'primary_parcels')
         AND LDS.LDS_TableHasData('lds', 'land_parcels')
         AND LDS.LDS_TableHasData('lds', 'hydro_parcels')
@@ -1379,7 +1381,11 @@ BEGIN
         AND LDS.LDS_TableHasData('lds', 'strata_parcels')
         AND LDS.LDS_TableHasData('lds', 'titles')
         AND LDS.LDS_TableHasData('lds', 'titles_plus')
+        AND LDS.LDS_TableHasData('lds', 'titles_aspatial')
+        AND LDS.LDS_TableHasData('lds', 'title_estates')
         AND LDS.LDS_TableHasData('lds', 'title_owners')
+        AND LDS.LDS_TableHasData('lds', 'title_owners_aspatial')
+        AND LDS.LDS_TableHasData('lds', 'title_parcel_associations')
     )
     THEN
         RAISE INFO
@@ -1429,46 +1435,168 @@ BEGIN
     ALTER TABLE tmp_protected_titles ADD PRIMARY KEY (title_no);
     ANALYSE tmp_protected_titles;
 
-    RAISE DEBUG 'Started creating temp table tmp_parcel_titles';
+    RAISE DEBUG 'Started creating temp table tmp_title_parcel_associations';
 
-    CREATE TEMP TABLE tmp_parcel_titles AS
+    CREATE TEMP TABLE tmp_title_parcel_associations AS
     SELECT
-        TPA.par_id,
-        TPA.ttl_title_no AS title_no
+        id,
+        ttl_title_no AS title_no,
+        par_id,
+        CAST (
+            CASE source
+            WHEN 'LINZ' THEN 'LINZ'
+            WHEN 'LOL' THEN 'LINZ'
+            WHEN 'EXTL' THEN 'External'
+            END
+        AS VARCHAR(8) ) AS source
     FROM
-        cbe_title_parcel_association TPA
+        cbe_title_parcel_association
     WHERE
-        TPA.status = 'VALD' AND
-        TPA.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-    GROUP BY
-        TPA.par_id,
-        TPA.ttl_title_no;
-
-    ALTER TABLE tmp_parcel_titles ADD PRIMARY KEY (par_id, title_no);
-    ANALYSE tmp_parcel_titles;
+        status = 'VALD' AND
+        ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
+    
+    ALTER TABLE tmp_title_parcel_associations ADD PRIMARY KEY (par_id, title_no);
+    
+    ANALYSE tmp_title_parcel_associations;
+    
+    ----------------------------------------------------------------------------
+    -- title_parcel_associations table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'title_parcel_associations');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            title_no,
+            par_id,
+            source
+        )
+        SELECT
+            TPA.id,
+            TPA.title_no,
+            TPA.par_id,
+            source
+        FROM
+            tmp_title_parcel_associations TPA;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
     
     RAISE DEBUG 'Started creating temp table tmp_par_stat_action';
     
     CREATE TEMP TABLE tmp_par_stat_action AS
     SELECT
+        SAP.audit_id as id,
         SAP.par_id,
-        string_agg(
-            bde_get_par_stat_act(SAP.sta_id, SAP.par_id), 
-            E'\r\n'
-            ORDER BY
-                bde_get_par_stat_act(SAP.sta_id, SAP.par_id)
-        ) AS statutory_actions
+        SCO.char_value AS action,
+        bde_get_par_stat_act(SAP.sta_id, SAP.par_id) as statutory_action
     FROM
         crs_stat_act_parcl SAP
+        LEFT JOIN  crs_sys_code SCO ON SCO.scg_code ='SAPA' AND SAP.action = SCO.code
     WHERE
         SAP.status = 'CURR'
-    GROUP BY
-        SAP.par_id;
-
-    ALTER TABLE tmp_par_stat_action ADD PRIMARY KEY (par_id);
-    ANALYSE tmp_par_stat_action;
+    ORDER BY SAP.par_id;
     
+    ANALYSE tmp_par_stat_action;
+
+    ----------------------------------------------------------------------------
+    -- parcel_stat_actions
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'parcel_stat_actions');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        id,
+        par_id,
+        action,
+        statutory_action
+    )
+    SELECT
+        PSA.id,
+        PSA.par_id,
+        PSA.action,
+        PSA.statutory_action
+    FROM
+        tmp_par_stat_action PSA;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    -- create aggregated listing of statutory actions for the parcels layers
+    CREATE TEMP TABLE tmp_par_stat_action_agg AS
+    SELECT
+        PSA.par_id,
+        string_agg(
+            '[' ||  PSA.action || '] ' ||  PSA.statutory_action,
+            E'\r\n'
+            ORDER BY
+                '[' ||  PSA.action || '] ' ||  PSA.statutory_action
+        ) AS statutory_actions
+    FROM
+        tmp_par_stat_action PSA
+    GROUP BY
+        PSA.par_id;
+
+    ALTER TABLE tmp_par_stat_action_agg ADD PRIMARY KEY (par_id);
+    ANALYSE tmp_par_stat_action_agg;
+    
+    -- create a list of survey plans references
     PERFORM LDS.LDS_CreateSurveyPlansTable(p_upload);
+    
+    CREATE TEMP TABLE tmp_affected_parcel_surveys AS
+    SELECT
+        AFP.audit_id AS id,
+        AFP.par_id,
+        AFP.sur_wrk_id,
+        AFPT.char_value AS action
+    FROM
+        crs_parcel PAR
+        JOIN crs_affected_parcl AFP ON PAR.id = AFP.par_id
+        LEFT JOIN tmp_survey_plans SUR ON AFP.sur_wrk_id = SUR.wrk_id
+        LEFT JOIN crs_sys_code AFPT ON AFPT.scg_code = 'AFPT' AND AFPT.code = AFP.action
+    WHERE
+        PAR.status IN ('CURR', 'SHST', 'APPR');
+    
+    ANALYSE tmp_affected_parcel_surveys;
+    ----------------------------------------------------------------------------
+    -- affected_parcel_surveys
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'affected_parcel_surveys');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        id,
+        par_id,
+        sur_wrk_id,
+        action
+    )
+    SELECT
+        APS.id,
+        APS.par_id,
+        APS.sur_wrk_id,
+        APS.action
+    FROM
+        tmp_affected_parcel_surveys APS;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    DROP TABLE IF EXISTS tmp_affected_parcel_surveys;
     
     -- make region data for determining how to calc areas
     CREATE TEMP TABLE tmp_world_regions (
@@ -1500,8 +1628,8 @@ BEGIN
     FROM
         crs_parcel PAR
     WHERE
-        PAR.status = 'CURR';
-        
+        PAR.status IN ('CURR', 'APPR');
+    
     ALTER TABLE tmp_parcel_geoms ADD PRIMARY KEY(par_id);
     ANALYSE tmp_parcel_geoms;
     
@@ -1520,6 +1648,7 @@ BEGIN
         ) AS affected_surveys,
         PAR.parcel_intent,
         PAR.toc_code,
+        PAR.status,
         PSA.statutory_actions,
         LOC.name AS land_district,
         string_agg(DISTINCT TTL.title_no, ', ' ORDER BY TTL.title_no ASC) AS titles,
@@ -1535,21 +1664,121 @@ BEGIN
         crs_parcel PAR
         JOIN tmp_parcel_geoms GEOM ON PAR.id = GEOM.par_id
         JOIN crs_locality LOC ON PAR.ldt_loc_id = LOC.id
-        LEFT JOIN tmp_parcel_titles TTL ON PAR.id = TTL.par_id
-        LEFT JOIN tmp_par_stat_action PSA ON PAR.id = PSA.par_id
+        LEFT JOIN tmp_title_parcel_associations TTL ON PAR.id = TTL.par_id
+        LEFT JOIN tmp_par_stat_action_agg PSA ON PAR.id = PSA.par_id
         LEFT JOIN crs_affected_parcl AFP ON PAR.id = AFP.par_id
         LEFT JOIN tmp_survey_plans SUR ON AFP.sur_wrk_id = SUR.wrk_id
     WHERE
-        PAR.status = 'CURR' AND
+        PAR.status IN ('CURR', 'APPR') AND
         ST_Contains(WDR.shape, PAR.shape)
     GROUP BY
-        1, 2, 4, 5, 6, 7, 9, 10, 11
+        1, 2, 4, 5, 6, 7, 8, 10, 11, 12
     ORDER BY
         PAR.id;
 
     RAISE DEBUG 'Finished creating temp table tmp_current_parcels';
     
     DROP TABLE IF EXISTS tmp_world_regions;
+    
+    ----------------------------------------------------------------------------
+    -- all_parcels layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'all_parcels');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        id,
+        appellation,
+        affected_surveys,
+        parcel_intent,
+        topology_type,
+        status,
+        statutory_actions,
+        land_district,
+        titles,
+        survey_area,
+        calc_area,
+        shape
+    )
+    SELECT
+        PAR.id,
+        PAR.appellation,
+        PAR.affected_surveys,
+        COALESCE(SYSP.char_value, PAR.parcel_intent) AS parcel_intent,
+        TOC.name AS topology_type,
+        SYSS.char_value AS status,
+        PAR.statutory_actions,
+        PAR.land_district,
+        PAR.titles,
+        PAR.survey_area,
+        PAR.calc_area,
+        PAR.shape
+    FROM
+        tmp_current_parcels PAR
+        JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
+        LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
+        LEFT JOIN crs_sys_code SYSS ON PAR.status = SYSS.code AND SYSS.scg_code = 'PARS'
+    WHERE
+        PAR.status IN ('CURR', 'APPR') AND
+        ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
+    $sql$;
+        
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    ----------------------------------------------------------------------------
+    -- all_parcels layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'all_linear_parcels');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        id,
+        appellation,
+        affected_surveys,
+        parcel_intent,
+        topology_type,
+        status,
+        statutory_actions,
+        land_district,
+        titles,
+        survey_area,
+        calc_area,
+        shape
+    )
+    SELECT
+        PAR.id,
+        PAR.appellation,
+        PAR.affected_surveys,
+        COALESCE(SYSP.char_value, PAR.parcel_intent) AS parcel_intent,
+        TOC.name AS topology_type,
+        SYSS.char_value AS status,
+        PAR.statutory_actions,
+        PAR.land_district,
+        PAR.titles,
+        PAR.survey_area,
+        PAR.calc_area,
+        PAR.shape
+    FROM
+        tmp_current_parcels PAR
+        JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
+        LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
+        LEFT JOIN crs_sys_code SYSS ON PAR.status = SYSS.code AND SYSS.scg_code = 'PARS'
+    WHERE
+        PAR.status IN ('CURR', 'APPR') AND
+        ST_GeometryType(PAR.shape) IN ('ST_LineString', 'ST_MultiLineString');
+    $sql$;
+        
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
     
     ----------------------------------------------------------------------------
     -- primary_parcels layer
@@ -1587,6 +1816,7 @@ BEGIN
         JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
         LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
     WHERE
+        PAR.status = 'CURR' AND
         PAR.toc_code =  'PRIM' AND
         ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
     $sql$;
@@ -1634,6 +1864,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code =  'PRIM' AND
             PAR.parcel_intent NOT IN ('HYDR', 'ROAD') AND
             ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
@@ -1682,6 +1913,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code =  'PRIM' AND
             PAR.parcel_intent = 'HYDR' AND
             ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
@@ -1730,6 +1962,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code =  'PRIM' AND
             PAR.parcel_intent = 'ROAD' AND
             ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
@@ -1778,6 +2011,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code IN ('SECO', 'TERT', 'STRA') AND
             ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
     $sql$;
@@ -1825,6 +2059,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code IN ('SECL', 'TECL') AND
             ST_GeometryType(PAR.shape) IN ('ST_LineString', 'ST_MultiLineString');
     $sql$;
@@ -1872,6 +2107,7 @@ BEGIN
             JOIN crs_topology_class TOC ON PAR.toc_code = TOC.code
             LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         WHERE
+            PAR.status = 'CURR' AND
             PAR.toc_code IN ('STRA') AND
             ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
     $sql$;
@@ -1885,130 +2121,199 @@ BEGIN
 
     -- These temp table not required from here on...
     DROP TABLE IF EXISTS tmp_par_stat_action;
+    DROP TABLE IF EXISTS tmp_par_stat_action_agg;
     DROP TABLE IF EXISTS tmp_current_parcels;
-
-    RAISE DEBUG 'Started creating temp table tmp_titles';
     
-    CREATE TEMP TABLE tmp_titles AS
-    WITH titles (
-        id,
-        title_no,
-        status,
-        type,
-        land_district,
-        issue_date,
-        guarantee_status,
-        owners,
-        number_owners,
-        spatial_extents_shared
-    ) AS (
+    RAISE DEBUG 'Started creating temp table tmp_title_estates';
+    
+    DROP TABLE IF EXISTS tmp_title_estates;
+    
+    CREATE TABLE tmp_title_estates AS
     SELECT
-        TTL.audit_id AS id,
+        ETT.id,
         TTL.title_no,
-        TTL.status,
-        TTLT.char_value AS type,
         LOC.name AS land_district,
-        TTL.issue_date,
-        TTLG.char_value AS guarantee_status,
-        string_agg(
-            DISTINCT 
-                CASE WHEN PRO.title_no IS NULL THEN
-                    CASE PRP.type
-                        WHEN 'CORP' THEN PRP.corporate_name
-                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-                    END
-                ELSE
-                    LDS_GetProtectedText(PRO.title_no)
-                END,
-            ', '
-            ORDER BY
-                CASE WHEN PRO.title_no IS NULL THEN
-                    CASE PRP.type
-                        WHEN 'CORP' THEN PRP.corporate_name
-                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-                    END
-                ELSE
-                    LDS_GetProtectedText(PRO.title_no)
-                END ASC
-        ) AS owners,
-        count(
-            DISTINCT
-                CASE WHEN PRO.title_no IS NULL THEN
-                    CASE PRP.type
-                        WHEN 'CORP' THEN PRP.corporate_name
-                        WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-                    END
-                ELSE
-                    LDS_GetProtectedText(PRO.title_no)
-                END
-        ) AS number_owners,
-        TPA.title_no IS NOT NULL AS spatial_extents_shared
+        ETTT.char_value AS type,
+        ETT.share::VARCHAR(100),
+        ETT.purpose,
+        ETT.timeshare_week_no,
+        ETT.term,
+        LGD.legal_desc_text AS legal_description,
+        ROUND(LGD.total_area, 0) AS area
     FROM
         crs_title TTL
         JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
-        JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id AND ETT.status = 'REGD'
-        JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
-        LEFT JOIN (
-            SELECT
-                title_no 
-            FROM
-                tmp_parcel_titles 
-            GROUP BY
-                title_no
-            HAVING
-                count(*) > 1
-        ) TPA ON TTL.title_no = TPA.title_no
         JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
-        LEFT JOIN crs_sys_code TTLG ON TTL.guarantee_status = TTLG.code AND TTLG.scg_code = 'TTLG'
-        LEFT JOIN crs_sys_code TTLT ON TTL.type = TTLT.code AND TTLT.scg_code = 'TTLT'
-        LEFT JOIN tmp_protected_titles PRO ON TTL.title_no = PRO.title_no
-    WHERE
+        LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
+        LEFT JOIN crs_sys_code ETTT ON ETT.type = ETTT.code AND ETTT.scg_code = 'ETTT'
+     WHERE
         TTL.status IN ('LIVE', 'PRTC') AND
-        TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-    GROUP BY
-        TTL.audit_id,
-        TTL.title_no,
-        TTL.status,
-        TTLT.char_value,
-        LOC.name,
-        TTL.issue_date,
-        TTLG.char_value,
-        TPA.title_no
+        TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
+    
+    RAISE DEBUG 'Finished creating temp table tmp_title_estates';
+    
+    ----------------------------------------------------------------------------
+    -- title_estates table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'title_estates');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            title_no,
+            land_district,
+            type,
+            share,
+            purpose,
+            timeshare_week_no,
+            term,
+            legal_description,
+            area
+        )
+        SELECT
+            ETT.id,
+            ETT.title_no,
+            ETT.land_district,
+            ETT.type,
+            ETT.share,
+            ETT.purpose,
+            ETT.timeshare_week_no,
+            ETT.term,
+            ETT.legal_description,
+            ETT.area
+        FROM
+            tmp_title_estates ETT;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    RAISE DEBUG 'Started creating temp table tmp_title_owners_aspatial';
+    
+    DROP TABLE IF EXISTS tmp_title_owners_aspatial;
+    
+    CREATE TABLE tmp_title_owners_aspatial AS
+    SELECT
+        PRP.id,
+        TTS.id AS tte_id,
+        TTS.title_no,
+        TTS.land_district::VARCHAR(100),
+        ETS.share::VARCHAR(100) AS estate_share,
+        PRPT.char_value::VARCHAR(10) AS owner_type,
+        PRP.prime_surname,
+        PRP.prime_other_names,
+        PRP.corporate_name,
+        NMSF.char_value::VARCHAR(6) AS name_suffix
+    FROM
+        tmp_title_estates TTS
+        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id
+        JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
+        LEFT JOIN tmp_protected_titles PRO ON TTS.title_no = PRO.title_no
+        LEFT JOIN crs_sys_code PRPT ON PRPT.scg_code = 'PRPT' AND PRPT.code = PRP.type
+        LEFT JOIN crs_sys_code NMSF ON NMSF.scg_code = 'NMSF' AND NMSF.code = PRP.name_suffix
+    WHERE
+        PRO.title_no IS NULL;
+    
+    
+    INSERT INTO tmp_title_owners_aspatial(
+        id,
+        tte_id,
+        title_no,
+        land_district,
+        estate_share,
+        owner_type,
+        corporate_name
     )
     SELECT
-        TTL.id,
-        TTL.title_no,
-        TTL.status,
-        TTL.type,
-        TTL.land_district,
-        TTL.issue_date,
-        TTL.guarantee_status,
-        string_agg(
-            DISTINCT(
-                ETTT.char_value || ', ' || 
-                ETT.share || COALESCE(', ' || LGD.legal_desc_text, '') ||
-                COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m2', '')
-            ),
-            E'\r\n'
-            ORDER BY
-                ETTT.char_value || ', ' || 
-                ETT.share || COALESCE(', ' || LGD.legal_desc_text, '') ||
-                COALESCE(', ' || to_char(ROUND(LGD.total_area, 0), 'FM9G999G999G999G999') || ' m2', '') ASC
-        ) AS estate_description,
-        TTL.owners,
-        TTL.number_owners,
-        TTL.spatial_extents_shared,
+        PRP.id,
+        TTS.id,
+        TTS.title_no,
+        TTS.land_district,
+        ETS.share,
+        'Corporate',
+        LDS_GetProtectedText(PRO.title_no)
+    FROM
+        tmp_title_estates TTS
+        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id
+        JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
+        LEFT JOIN tmp_protected_titles PRO ON TTS.title_no = PRO.title_no
+        LEFT JOIN crs_sys_code PRPT ON PRPT.scg_code = 'PRPT' AND PRPT.code = PRP.type
+        LEFT JOIN crs_sys_code NMSF ON NMSF.scg_code = 'NMSF' AND NMSF.code = PRP.name_suffix
+    WHERE
+        PRO.title_no IS NOT NULL;
+    
+    RAISE DEBUG 'Finished creating temp table tmp_title_owners_aspatial';
+    
+    ----------------------------------------------------------------------------
+    -- title_owners_aspatial table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'title_owners_aspatial');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            tte_id,
+            title_no,
+            land_district,
+            estate_share,
+            owner_type,
+            prime_surname,
+            prime_other_names,
+            corporate_name,
+            name_suffix
+        )
+        SELECT
+            id,
+            tte_id,
+            title_no,
+            land_district,
+            estate_share,
+            owner_type,
+            prime_surname,
+            prime_other_names,
+            corporate_name,
+            name_suffix
+        FROM
+            tmp_title_owners_aspatial;
+    $sql$;
+
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    DROP TABLE IF EXISTS tmp_title_polygon;
+
+    CREATE TEMP TABLE tmp_title_polygon AS
+    WITH tmp_shared_parcels (
+        par_id
+    ) AS (
+        SELECT
+            TOP.par_id
+        FROM
+            tmp_title_parcel_associations TOP
+        GROUP BY
+            TOP.par_id
+        HAVING
+           count(TOP.title_no) > 1
+    )
+    SELECT
+        TPA.title_no,
         -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
         -- collection when a null value is found. To fix this the shapes 
         -- are ordered so all null rows are at the end of input list.
         -- We also want to ensure the newly constructed polygon has valid OGC
         -- Topology so use the buffer 0 trick
+        count(SPA.par_id) > 0 AS spatial_extents_shared,
         ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
     FROM
-        titles TTL
-        JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
-        LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
-        LEFT JOIN tmp_parcel_titles TPA ON TTL.title_no = TPA.title_no
+        tmp_title_parcel_associations TPA
         LEFT JOIN (
             SELECT
                 par_id,
@@ -2017,20 +2322,101 @@ BEGIN
                 tmp_parcel_geoms
             WHERE
                 ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON TPA.par_id = PAR.par_id 
-        LEFT JOIN crs_sys_code ETTT ON ETT.type = ETTT.code AND ETTT.scg_code = 'ETTT'
+        ) PAR ON TPA.par_id = PAR.par_id
+        LEFT JOIN tmp_shared_parcels SPA ON TPA.par_id = SPA.par_id
     GROUP BY
-        TTL.id,
-        TTL.title_no,
-        TTL.status,
-        TTL.type,
-        TTL.land_district,
-        TTL.issue_date,
-        TTL.guarantee_status,
-        TTL.owners,
-        TTL.number_owners,
-        TTL.spatial_extents_shared;
+        TPA.title_no;
 
+    ANALYSE tmp_title_polygon;
+
+    DROP TABLE IF EXISTS tmp_title_owner_concat;
+    
+    CREATE TEMP TABLE tmp_title_owner_concat AS
+    SELECT DISTINCT
+        TOW.title_no,
+        CASE TOW.owner_type
+            WHEN 'Corporate' THEN TOW.corporate_name
+            WHEN 'Individual' THEN COALESCE(TOW.prime_other_names || ' ', '') || TOW.prime_surname
+        END AS owner
+    FROM
+        tmp_title_owners_aspatial TOW;
+
+    ANALYSE tmp_title_owner_concat;
+    
+    ALTER TABLE tmp_title_owner_concat ADD PRIMARY KEY (title_no, owner);
+    
+    DROP TABLE IF EXISTS tmp_title_owners_aspatial;
+        
+    RAISE DEBUG 'Started creating temp table tmp_titles';
+        
+    CREATE TEMP TABLE tmp_titles AS
+    SELECT
+        TTL.audit_id AS id,
+        TTL.title_no,
+        TTL.status AS status_code, -- TODO: remove once old spatial schema is realigned with aspatial.
+        TTLS.char_value::VARCHAR(50) AS status,
+        TTLR.char_value::VARCHAR(50) AS register_type,
+        TTLT.char_value AS type,
+        LOC.name AS land_district,
+        TTL.issue_date,
+        TTLG.char_value AS guarantee_status,
+        TTL.provisional,
+        TTL.ttl_title_no_srs as title_no_srs,
+        NULL::VARCHAR(20) as title_no_head_srs,
+        SUR.survey_reference::VARCHAR(50),
+        TTL.maori_land,
+        string_agg(
+            DISTINCT(
+                TTE.type || ', ' || 
+                TTE.share || COALESCE(', ' || TTE.legal_description, '') ||
+                COALESCE(', ' || to_char(ROUND(TTE.area, 0), 'FM9G999G999G999G999') || ' m2', '')
+            ),
+            E'\r\n'
+            ORDER BY
+                TTE.type || ', ' || 
+                TTE.share || COALESCE(', ' || TTE.legal_description, '') ||
+                COALESCE(', ' || to_char(ROUND(TTE.area, 0), 'FM9G999G999G999G999') || ' m2', '') ASC
+        ) AS estate_description,
+        string_agg(
+            DISTINCT TOC.owner, ', '
+            ORDER BY TOC.owner ASC
+        ) AS owners,
+        count( DISTINCT TOC.owner ) AS number_owners,
+        TTP.spatial_extents_shared,
+        TTP.shape
+    FROM
+        crs_title TTL
+        LEFT JOIN tmp_title_owner_concat TOC ON TTL.title_no = TOC.title_no
+        JOIN tmp_title_estates TTE ON TTL.title_no = TTE.title_no
+        LEFT JOIN tmp_title_polygon TTP ON TTL.title_no = TTP.title_no
+        LEFT JOIN tmp_survey_plans SUR ON TTL.sur_wrk_id = SUR.wrk_id
+        JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
+        LEFT JOIN crs_sys_code TTLG ON TTL.guarantee_status = TTLG.code AND TTLG.scg_code = 'TTLG'
+        LEFT JOIN crs_sys_code TTLT ON TTL.type = TTLT.code AND TTLT.scg_code = 'TTLT'
+        LEFT JOIN crs_sys_code TTLS ON TTLS.scg_code = 'TTLS' AND TTLS.code = TTL.status
+        LEFT JOIN crs_sys_code TTLR ON TTLR.scg_code = 'TTLR' AND TTLR.code = TTL.register_type
+    WHERE
+        TTL.status IN ('LIVE', 'PRTC') AND
+        TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+    GROUP BY
+        TTL.audit_id,
+        TTL.title_no,
+        TTLS.char_value,
+        TTLR.char_value,
+        TTLT.char_value,
+        LOC.name,
+        TTL.issue_date,
+        TTLG.char_value,
+        TTL.provisional,
+        TTL.ttl_title_no_srs,
+       --TTL.title_no_head_srs,
+        SUR.survey_reference,
+        TTL.maori_land,
+        TTP.spatial_extents_shared,
+        TTP.shape;
+        
+    DROP TABLE IF EXISTS tmp_title_polygon;
+    
     RAISE DEBUG 'Finished creating temp table tmp_titles';
     
     ----------------------------------------------------------------------------
@@ -2055,7 +2441,7 @@ BEGIN
         SELECT
             id,
             title_no,
-            status, 
+            status_code, 
             type,
             land_district,
             issue_date,
@@ -2097,7 +2483,7 @@ BEGIN
         SELECT
             id,
             title_no,
-            status,
+            status_code,
             type,
             land_district,
             issue_date,
@@ -2110,7 +2496,54 @@ BEGIN
             tmp_titles;
     $sql$;
 
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
     
+    ----------------------------------------------------------------------------
+    -- titles_aspatial table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'titles_aspatial');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            title_no,
+            status,
+            register_type, 
+            type,
+            land_district,
+            issue_date,
+            guarantee_status,
+            provisional,
+            title_no_srs,
+            title_no_head_srs,
+            survey_reference,
+            maori_land,
+            number_owners
+        )
+        SELECT
+            id,
+            title_no,
+            status,
+            register_type, 
+            type,
+            land_district,
+            issue_date,
+            guarantee_status,
+            provisional,
+            title_no_srs,
+            title_no_head_srs,
+            survey_reference,
+            maori_land,
+            number_owners
+        FROM
+            tmp_titles;
+    $sql$;
+
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
@@ -2118,94 +2551,51 @@ BEGIN
         v_data_insert_sql
     );
 
-    DROP TABLE IF EXISTS tmp_titles;
-
     RAISE DEBUG 'Started creating temp table tmp_title_owners';
 
     CREATE TEMP TABLE tmp_title_owners AS
     WITH title_owner_parcels (
-        owner,
-        title_no,
-        title_status,
-        land_district,
-        par_id
-    ) AS
-    (
-        SELECT
-            CASE WHEN PRO.title_no IS NULL THEN
-                CASE PRP.type
-                    WHEN 'CORP' THEN PRP.corporate_name
-                    WHEN 'PERS' THEN COALESCE(PRP.prime_other_names || ' ', '') || PRP.prime_surname
-                END
-            ELSE
-                LDS_GetProtectedText(PRO.title_no)
-            END as owner,
-            TTL.title_no,
-            TTL.status AS title_status,
-            LOC.name AS land_district,
-            TPA.par_id
-        FROM
-            crs_title TTL
-            JOIN crs_title_estate ETT ON TTL.title_no = ETT.ttl_title_no AND ETT.status = 'REGD'
-            JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id AND ETT.status = 'REGD'
-            JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
-            LEFT JOIN tmp_parcel_titles TPA ON TTL.title_no = TPA.title_no
-            LEFT JOIN tmp_protected_titles PRO ON TTL.title_no = PRO.title_no
-            JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
-        WHERE
-            TTL.status IN ('LIVE', 'PRTC') AND
-            TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-        GROUP BY
-            1,
-            TTL.title_no,
-            TTL.status,
-            LOC.name,
-            TPA.par_id
-    ),
-    parcel_part_ownership (
         par_id
     ) AS (
+        -- TODO: This way of determining if the owner has exlusive rights
+        -- over the title spatial extents is not completely robust
+        -- in the siutation that there are multiple proprietors
+        -- with exactly the same first and last names relating to
+        -- the title. Analysis should be done at some point to see
+        -- if there are any of these cases.
         SELECT
-            TOP.par_id
+            TPA.par_id
         FROM
-            title_owner_parcels TOP
+            tmp_title_owner_concat TOP
+            JOIN tmp_title_parcel_associations TPA ON TOP.title_no = TPA.title_no
         GROUP BY
-            TOP.par_id
+            TPA.par_id
         HAVING
            count(DISTINCT TOP.owner) > 1
     )
     SELECT
-        TOP.owner,
-        TOP.title_no,
-        TOP.title_status,
-        TOP.land_district,
-        count(PART.par_id) > 0 AS part_ownership,
-        -- With Postgis 1.5.2 the ST_Collect aggregate returns a truncated
-        -- collection when a null value is found. To fix this the shapes 
-        -- are ordered so all null rows are at the end of input list.
-        -- We also want to ensure the newly constructed polygon has valid OGC 
-        -- Topology so we use the buffer 0 trick
-        ST_Multi(ST_Buffer(ST_Collect(PAR.shape ORDER BY PAR.shape ASC), 0)) AS shape
+        TOW.owner,
+        TTL.title_no,
+        TTL.status_code AS title_status,
+        TTL.land_district,
+        count(TOP.par_id) > 0 AS part_ownership,
+        TTL.shape
     FROM
-        title_owner_parcels TOP
-        LEFT JOIN (
-            SELECT
-                par_id,
-                (ST_Dump(shape)).geom AS shape  
-            FROM
-                tmp_parcel_geoms 
-            WHERE
-                ST_GeometryType(shape) IN ('ST_MultiPolygon', 'ST_Polygon')
-        ) PAR ON TOP.par_id = PAR.par_id
-        LEFT JOIN parcel_part_ownership PART ON TOP.par_id = PART.par_id
+        tmp_title_owner_concat TOW
+        JOIN tmp_titles TTL ON TOW.title_no = TTL.title_no
+        LEFT JOIN tmp_title_parcel_associations TPA ON TPA.title_no = TTL.title_no
+        LEFT JOIN title_owner_parcels TOP ON TPA.par_id = TOP.par_id
     GROUP BY
-        TOP.owner,
-        TOP.title_no,
-        TOP.title_status,
-        TOP.land_district;
+        TOW.owner,
+        TTL.title_no,
+        TTL.status_code,
+        TTL.land_district,
+        TTL.shape;
     
+    DROP TABLE IF EXISTS tmp_titles;
     DROP TABLE IF EXISTS tmp_parcel_geoms;
-    DROP TABLE IF EXISTS tmp_parcel_titles;
+    DROP TABLE IF EXISTS tmp_title_parcel_associations;
+    DROP TABLE IF EXISTS tmp_title_owner_concat;
     
     RAISE DEBUG 'Finished creating temp table tmp_title_owners';
 
