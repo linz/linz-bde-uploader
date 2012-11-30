@@ -572,8 +572,39 @@ CREATE UNIQUE INDEX idx_wrk_aud_id ON crs_work USING btree (audit_id);
 -- cbe_title_parcel_association
 -------------------------------------------------------------------------------
 CREATE UNIQUE INDEX ak_ctpa_ttlpar ON cbe_title_parcel_association USING btree (ttl_title_no, par_id);
+
 '
 );
+
+-------------------------------------------------------------------------------
+-- table_version_functions patch
+-------------------------------------------------------------------------------
+
+SELECT _patches.apply_patch(
+    'BDE - 1.1.5: Apply ver_get function permission changes',
+    '
+DO $$
+DECLARE
+   v_proc    TEXT;
+   v_schema  TEXT = ''table_version'';
+BEGIN
+    FOR v_proc IN 
+        SELECT
+            v_schema || ''.'' || proname || ''('' || pg_get_function_identity_arguments(oid) || '')''
+        FROM
+            pg_proc 
+        WHERE
+            pronamespace=(SELECT oid FROM pg_namespace WHERE nspname = v_schema) AND
+            proname like ''ver_get_%''
+    LOOP
+        EXECUTE ''REVOKE ALL ON FUNCTION ''    || v_proc || '' FROM PUBLIC'';
+        EXECUTE ''GRANT EXECUTE ON FUNCTION '' || v_proc || '' TO bde_admin'';
+        EXECUTE ''GRANT EXECUTE ON FUNCTION '' || v_proc || '' TO bde_user'';
+    END LOOP;
+END;
+$$;
+'
+)
 
 SELECT _patches.apply_patch(
     'BDE - 1.2.0: Create tables for the LDS aspatial release',
@@ -791,7 +822,6 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_owners_aspatial TO bde_admin
 GRANT SELECT ON TABLE title_owners_aspatial TO bde_user;
 
 SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
-
 '
 );
 

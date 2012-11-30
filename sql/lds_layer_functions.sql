@@ -608,7 +608,7 @@ BEGIN
             'detected: ' || v_bad_code_string || '. Any of these codes that ' ||
             'are still malformed after white space has been trimmed will ' ||
             'be removed from the geodetic layers.';
-        RAISE WARNING '%';
+        RAISE WARNING '%', v_message;
         
         UPDATE
             tmp_geo_nodes
