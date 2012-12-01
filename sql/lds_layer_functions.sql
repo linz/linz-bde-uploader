@@ -1372,6 +1372,8 @@ BEGIN
         )
         AND LDS.LDS_TableHasData('lds', 'affected_parcel_surveys')
         AND LDS.LDS_TableHasData('lds', 'parcel_stat_actions')
+        AND LDS.LDS_TableHasData('lds', 'all_parcels')
+        AND LDS.LDS_TableHasData('lds', 'all_linear_parcels')
         AND LDS.LDS_TableHasData('lds', 'primary_parcels')
         AND LDS.LDS_TableHasData('lds', 'land_parcels')
         AND LDS.LDS_TableHasData('lds', 'hydro_parcels')

@@ -114,7 +114,9 @@ BEGIN
         'LIKE ' || quote_ident(p_schema) || '.' || quote_ident(p_table) ||
     ');';
     EXECUTE v_sql;
-
+    
+    EXECUTE 'GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE ' || v_revision_table || ' TO bde_admin';
+    EXECUTE 'GRANT SELECT ON TABLE ' || v_revision_table || ' TO bde_user';
 
     v_sql := (
         SELECT
