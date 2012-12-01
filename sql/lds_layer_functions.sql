@@ -3337,12 +3337,14 @@ BEGIN
             END as land_district,
             OBN.ref_datetime,
             SUR.survey_reference,
-            VCT.shape
+            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
         FROM
             crs_observation OBN
             JOIN crs_obs_elem_type OET ON OBN.obt_sub_type = OET.type
             JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
             JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
+            JOIN crs_node NODL ON NODL.id = STPL.nod_id
+            JOIN crs_node NODR ON NODR.id = STPR.nod_id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
@@ -3415,11 +3417,13 @@ BEGIN
             LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
             to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
             to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
-            VCT.shape
+            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
         FROM
             crs_observation OBN
             JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
             JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
+            JOIN crs_node NODL ON NODL.id = STPL.nod_id
+            JOIN crs_node NODR ON NODR.id = STPR.nod_id
             JOIN crs_vector VCT ON OBN.vct_id = VCT.id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
