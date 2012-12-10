@@ -1495,13 +1495,13 @@ BEGIN
     SELECT
         SAP.audit_id as id,
         SAP.par_id,
-        SCO.char_value AS action,
+        SAPS.char_value as status,
+        SAPA.char_value AS action,
         bde_get_par_stat_act(SAP.sta_id, SAP.par_id) as statutory_action
     FROM
         crs_stat_act_parcl SAP
-        LEFT JOIN  crs_sys_code SCO ON SCO.scg_code ='SAPA' AND SAP.action = SCO.code
-    WHERE
-        SAP.status = 'CURR'
+        LEFT JOIN  crs_sys_code SAPA ON SAPA.scg_code ='SAPA' AND SAP.action = SAPA.code
+        LEFT JOIN  crs_sys_code SAPS ON SAPS.scg_code ='SAPS' AND SAP.status = SAPS.code
     ORDER BY SAP.par_id;
     
     ANALYSE tmp_par_stat_action;
@@ -1516,12 +1516,14 @@ BEGIN
         id,
         par_id,
         action,
+        status,
         statutory_action
     )
     SELECT
         PSA.id,
         PSA.par_id,
         PSA.action,
+        PSA.status,
         PSA.statutory_action
     FROM
         tmp_par_stat_action PSA;
@@ -1546,6 +1548,8 @@ BEGIN
         ) AS statutory_actions
     FROM
         tmp_par_stat_action PSA
+    WHERE
+        PSA.status = 'Current'
     GROUP BY
         PSA.par_id;
 
@@ -1567,7 +1571,7 @@ BEGIN
         LEFT JOIN tmp_survey_plans SUR ON AFP.sur_wrk_id = SUR.wrk_id
         LEFT JOIN crs_sys_code AFPT ON AFPT.scg_code = 'AFPT' AND AFPT.code = AFP.action
     WHERE
-        PAR.status IN ('CURR', 'SHST', 'APPR');
+        PAR.status <> 'PEND';
     
     ANALYSE tmp_affected_parcel_surveys;
     ----------------------------------------------------------------------------
@@ -1630,7 +1634,7 @@ BEGIN
     FROM
         crs_parcel PAR
     WHERE
-        PAR.status IN ('CURR', 'APPR');
+        PAR.status <> 'PEND';
     
     ALTER TABLE tmp_parcel_geoms ADD PRIMARY KEY(par_id);
     ANALYSE tmp_parcel_geoms;
@@ -1671,8 +1675,8 @@ BEGIN
         LEFT JOIN crs_affected_parcl AFP ON PAR.id = AFP.par_id
         LEFT JOIN tmp_survey_plans SUR ON AFP.sur_wrk_id = SUR.wrk_id
     WHERE
-        PAR.status IN ('CURR', 'APPR') AND
-        ST_Contains(WDR.shape, PAR.shape)
+        PAR.status <> 'PEND' AND
+        (ST_Contains(WDR.shape, PAR.shape) OR PAR.shape IS NULL)
     GROUP BY
         1, 2, 4, 5, 6, 7, 8, 10, 11, 12
     ORDER BY
@@ -1721,8 +1725,8 @@ BEGIN
         LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         LEFT JOIN crs_sys_code SYSS ON PAR.status = SYSS.code AND SYSS.scg_code = 'PARS'
     WHERE
-        PAR.status IN ('CURR', 'APPR') AND
-        ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon');
+        PAR.status <> 'PEND' AND
+        ( ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon', 'ST_Polygon') OR shape IS NULL );
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1771,7 +1775,7 @@ BEGIN
         LEFT JOIN crs_sys_code SYSP ON PAR.parcel_intent = SYSP.code AND SYSP.scg_code = 'PARI'
         LEFT JOIN crs_sys_code SYSS ON PAR.status = SYSS.code AND SYSS.scg_code = 'PARS'
     WHERE
-        PAR.status IN ('CURR', 'APPR') AND
+        PAR.status <> 'PEND' AND
         ST_GeometryType(PAR.shape) IN ('ST_LineString', 'ST_MultiLineString');
     $sql$;
         
@@ -2130,7 +2134,7 @@ BEGIN
     
     DROP TABLE IF EXISTS tmp_title_estates;
     
-    CREATE TABLE tmp_title_estates AS
+    CREATE TEMP TABLE tmp_title_estates AS
     SELECT
         ETT.id,
         TTL.title_no,
@@ -2198,7 +2202,7 @@ BEGIN
     
     DROP TABLE IF EXISTS tmp_title_owners_aspatial;
     
-    CREATE TABLE tmp_title_owners_aspatial AS
+    CREATE TEMP TABLE tmp_title_owners_aspatial AS
     SELECT
         PRP.id,
         TTS.id AS tte_id,
@@ -2416,7 +2420,7 @@ BEGIN
         TTL.maori_land,
         TTP.spatial_extents_shared,
         TTP.shape;
-        
+    
     DROP TABLE IF EXISTS tmp_title_polygon;
     
     RAISE DEBUG 'Finished creating temp table tmp_titles';
@@ -2595,6 +2599,7 @@ BEGIN
         TTL.shape;
     
     DROP TABLE IF EXISTS tmp_titles;
+    DROP TABLE IF EXISTS tmp_title_estates;
     DROP TABLE IF EXISTS tmp_parcel_geoms;
     DROP TABLE IF EXISTS tmp_title_parcel_associations;
     DROP TABLE IF EXISTS tmp_title_owner_concat;
