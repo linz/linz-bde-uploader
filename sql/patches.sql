@@ -865,32 +865,31 @@ $PATCH$
 
 SELECT _patches.apply_patch(
     'BDE - 1.2.0: Fix observation shape vertex order to be the same as observation direction',
-    '
-CREATE OR REPLACE FUNCTION __truncate_versioned_table(p_schema VARCHAR, p_table VARCHAR) RETURNS void AS $FUNC$
-DECLARE
-    v_versioned BOOLEAN;
-BEGIN
-    IF EXISTS (select true from pg_tables
-                where tablename = p_table
-                and schemaname = p_schema)
-    THEN
-        IF table_version.ver_is_table_versioned(p_schema, p_table) THEN
-            v_versioned := TRUE;
-            PERFORM table_version.ver_disable_versioning(p_schema, p_table);
+    ARRAY[
+    'CREATE OR REPLACE FUNCTION _patches.__truncate_versioned_table(p_schema VARCHAR, p_table VARCHAR) RETURNS void AS $FUNC$
+    DECLARE
+        v_versioned BOOLEAN;
+    BEGIN
+        IF EXISTS (select true from pg_tables
+                    where tablename = p_table
+                    and schemaname = p_schem)
+        THEN
+            IF table_version.ver_is_table_versioned(p_schema, p_table) THEN
+                v_versioned := TRUE;
+                PERFORM table_version.ver_disable_versioning(p_schema, p_table);
+            END IF;
+            
+            EXECUTE ''TRUNCATE '' || p_schema || ''.'' || p_table;
+            
+            IF v_versioned THEN
+                PERFORM table_version.ver_enable_versioning(p_schema, p_table);
+            END IF;
         END IF;
-        
-        EXECUTE ''TRUNCATE '' || p_schema || ''.'' || p_table;
-        
-        IF v_versioned THEN
-            PERFORM table_version.ver_enable_versioning(p_schema, p_table);
-        END IF;
-    END IF;
-END;
-$FUNC$ LANGUAGE plpgsql;
-
-SELECT __truncate_versioned_table(''lds'', ''survey_observations'');
-SELECT __truncate_versioned_table(''lds'', ''survey_arc_observations'');
-
-DROP FUNCTION __truncate_versioned_table(VARCHAR, VARCHAR);
-'
+    END;
+    $FUNC$ LANGUAGE plpgsql;',
+    'SELECT _patches.__truncate_versioned_table(''lds''::VARCHAR, ''survey_observations''::VARCHAR);',
+    'SELECT _patches.__truncate_versioned_table(''lds''::VARCHAR, ''survey_arc_observations''::VARCHAR);',
+    'DROP FUNCTION _patches.__truncate_versioned_table(VARCHAR, VARCHAR);'
+    ]
 );
+
