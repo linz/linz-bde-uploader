@@ -628,7 +628,7 @@ CREATE TABLE all_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 0) NOT NULL
+    calc_area NUMERIC(20, 0)
 );
 SELECT AddGeometryColumn(''all_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
 
@@ -681,6 +681,7 @@ SELECT table_version.ver_enable_versioning(''lds'', ''all_linear_parcels'');
 CREATE TABLE parcel_stat_actions (
     id INTEGER NOT NULL,
     par_id INTEGER NOT NULL,
+    status VARCHAR(10) NOT NULL,
     action VARCHAR(20) NOT NULL,
     statutory_action VARCHAR(1024)
 );
