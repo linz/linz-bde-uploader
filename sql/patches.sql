@@ -604,7 +604,7 @@ BEGIN
 END;
 $$;
 '
-)
+);
 
 SELECT _patches.apply_patch(
     'BDE - 1.2.0: Create tables for the LDS aspatial release',
