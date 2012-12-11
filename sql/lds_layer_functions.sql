@@ -2407,6 +2407,7 @@ BEGIN
     GROUP BY
         TTL.audit_id,
         TTL.title_no,
+        TTL.status,
         TTLS.char_value,
         TTLR.char_value,
         TTLT.char_value,
