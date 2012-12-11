@@ -1,3 +1,11 @@
+linz-bde-uploader (1.2.1-1) precise; urgency=low
+
+  * Fix obs patch
+  * Fix another syntax error for new aspatial patches
+  * Fix Title layer SQL error
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 12 Dec 2012 11:37:53 +1300
+
 linz-bde-uploader (1.2.0-1) precise; urgency=low
 
   * Support for aspatial tables
