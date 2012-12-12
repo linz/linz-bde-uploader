@@ -1,3 +1,10 @@
+linz-bde-uploader (1.2.2-1) precise; urgency=low
+
+  * Set new All Linear Parcels calc area to NULL
+  * Fix table constraint for all linear parcels
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 13 Dec 2012 10:25:58 +1300
+
 linz-bde-uploader (1.2.1-1) precise; urgency=low
 
   * Fix obs patch
