@@ -659,7 +659,7 @@ CREATE TABLE all_linear_parcels (
     land_district VARCHAR(100) NOT NULL,
     titles VARCHAR(32768),
     survey_area NUMERIC(20, 4),
-    calc_area NUMERIC(20, 0) NOT NULL
+    calc_area NUMERIC(20, 0)
 );
 SELECT AddGeometryColumn(''all_linear_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
 
