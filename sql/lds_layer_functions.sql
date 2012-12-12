@@ -1767,7 +1767,7 @@ BEGIN
         PAR.land_district,
         PAR.titles,
         PAR.survey_area,
-        PAR.calc_area,
+        NULL,
         PAR.shape
     FROM
         tmp_current_parcels PAR
