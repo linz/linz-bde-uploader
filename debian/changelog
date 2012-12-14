@@ -1,3 +1,9 @@
+linz-bde-uploader (1.2.3-1) precise; urgency=low
+
+  * Fix bug in observation patch [issue #9]
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Fri, 14 Dec 2012 13:44:41 +1300
+
 linz-bde-uploader (1.2.2-1) precise; urgency=low
 
   * Set new All Linear Parcels calc area to NULL
