@@ -872,7 +872,7 @@ SELECT _patches.apply_patch(
     BEGIN
         IF EXISTS (select true from pg_tables
                     where tablename = p_table
-                    and schemaname = p_schem)
+                    and schemaname = p_schema)
         THEN
             IF table_version.ver_is_table_versioned(p_schema, p_table) THEN
                 v_versioned := TRUE;
