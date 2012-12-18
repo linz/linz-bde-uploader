@@ -897,10 +897,33 @@ SELECT _patches.apply_patch(
     'BDE - 1.2.4: Apply table version functions that we missed as part of 85ee4a219a',
     '
 DO $PATCH$
+DECLARE
+    v_schema_name TEXT;
+    v_table_name  TEXT;
+    v_key_column  TEXT;
+    v_diff_proc   TEXT;
+    v_ver_proc    TEXT;
 BEGIN
-    SELECT count(table_version.ver_create_table_functions(TBL.schema_name, TBL.table_name, TBL.key_column)) 
-        || ' Versioned tabled functions updated'
-    FROM  table_version.ver_get_versioned_tables() AS TBL;
+    FOR
+        v_schema_name,
+        v_table_name,
+        v_key_column,
+        v_diff_proc,
+        v_ver_proc
+    IN
+        SELECT 
+            TBL.schema_name,
+            TBL.table_name,
+            TBL.key_column,
+            table_version._ver_get_diff_function(TBL.schema_name, TBL.table_name) as diff_proc,
+            table_version._ver_get_revision_function(TBL.schema_name, TBL.table_name) as rev_proc
+        FROM
+            table_version.ver_get_versioned_tables() AS TBL
+    LOOP
+        EXECUTE ''DROP FUNCTION IF EXISTS '' || v_diff_proc;
+        EXECUTE ''DROP FUNCTION IF EXISTS '' || v_ver_proc;
+        PERFORM table_version.ver_create_table_functions(v_schema_name, v_table_name, v_key_column);
+    END LOOP;
 END;
 $PATCH$
 '
