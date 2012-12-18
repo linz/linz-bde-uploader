@@ -893,3 +893,15 @@ SELECT _patches.apply_patch(
     ]
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.2.4: Apply table version functions that we missed as part of 85ee4a219a',
+    '
+DO $PATCH$
+BEGIN
+    SELECT count(table_version.ver_create_table_functions(TBL.schema_name, TBL.table_name, TBL.key_column)) 
+        || ' Versioned tabled functions updated'
+    FROM  table_version.ver_get_versioned_tables() AS TBL;
+END;
+$PATCH$
+'
+);
