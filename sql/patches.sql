@@ -928,3 +928,72 @@ END;
 $PATCH$
 '
 );
+
+SELECT _patches.apply_patch(
+    'BDE - 1.2.4: Recreate title estate and owners tables to include status columns',
+    '
+
+SET search_path = lds, bde, public;
+
+SELECT table_version.ver_disable_versioning(''lds'', ''title_estates'');
+
+DROP TABLE IF EXISTS title_estates CASCADE;
+
+CREATE TABLE title_estates (
+    id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    status VARCHAR(25) NOT NULL,
+    type VARCHAR(255),
+    share VARCHAR(100) NOT NULL,
+    purpose VARCHAR(255),
+    timeshare_week_no VARCHAR(20),
+    term VARCHAR(255),
+    legal_description VARCHAR(2048),
+    area BIGINT
+);
+
+ALTER TABLE title_estates ADD PRIMARY KEY (id);
+
+ALTER TABLE title_estates OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_estates FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_estates TO bde_admin;
+GRANT SELECT ON TABLE title_estates TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_estates'');
+
+--------------------------------------------------------------------------------
+-- LDS table title_owners_aspatial
+--------------------------------------------------------------------------------
+
+SELECT table_version.ver_disable_versioning(''lds'', ''title_owners_aspatial'');
+
+DROP TABLE IF EXISTS title_owners_aspatial CASCADE;
+
+CREATE TABLE title_owners_aspatial (
+    id INTEGER NOT NULL,
+    tte_id INTEGER NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    status VARCHAR(25) NOT NULL,
+    estate_share VARCHAR(100) NOT NULL,
+    owner_type VARCHAR(10) NOT NULL,
+    prime_surname VARCHAR(100),
+    prime_other_names VARCHAR(100),
+    corporate_name VARCHAR(250),
+    name_suffix VARCHAR(6)
+);
+
+ALTER TABLE title_owners_aspatial ADD PRIMARY KEY (id);
+
+ALTER TABLE title_owners_aspatial OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_owners_aspatial FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_owners_aspatial TO bde_admin;
+GRANT SELECT ON TABLE title_owners_aspatial TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+'
+);
+

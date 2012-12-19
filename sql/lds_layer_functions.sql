@@ -2139,6 +2139,8 @@ BEGIN
         ETT.id,
         TTL.title_no,
         LOC.name AS land_district,
+        ETT.status as status_code,
+        TSDS.char_value AS status,
         ETTT.char_value AS type,
         ETT.share::VARCHAR(100),
         ETT.purpose,
@@ -2152,6 +2154,7 @@ BEGIN
         JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
         LEFT JOIN crs_legal_desc LGD ON ETT.lgd_id = LGD.id AND LGD.type = 'ETT' AND LGD.status = 'REGD'
         LEFT JOIN crs_sys_code ETTT ON ETT.type = ETTT.code AND ETTT.scg_code = 'ETTT'
+        LEFT JOIN crs_sys_code TSDS ON ETT.status = TSDS.code AND TSDS.scg_code = 'TSDS'
      WHERE
         TTL.status IN ('LIVE', 'PRTC') AND
         TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
@@ -2168,6 +2171,7 @@ BEGIN
             id,
             title_no,
             land_district,
+            status,
             type,
             share,
             purpose,
@@ -2180,6 +2184,7 @@ BEGIN
             ETT.id,
             ETT.title_no,
             ETT.land_district,
+            ETT.status,
             ETT.type,
             ETT.share,
             ETT.purpose,
@@ -2208,6 +2213,8 @@ BEGIN
         TTS.id AS tte_id,
         TTS.title_no,
         TTS.land_district::VARCHAR(100),
+        TSDS.char_value AS status,
+        PRP.status AS status_code,
         ETS.share::VARCHAR(100) AS estate_share,
         PRPT.char_value::VARCHAR(10) AS owner_type,
         PRP.prime_surname,
@@ -2216,11 +2223,12 @@ BEGIN
         NMSF.char_value::VARCHAR(6) AS name_suffix
     FROM
         tmp_title_estates TTS
-        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id
+        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id AND ETS.status = 'REGD'
         JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
         LEFT JOIN tmp_protected_titles PRO ON TTS.title_no = PRO.title_no
         LEFT JOIN crs_sys_code PRPT ON PRPT.scg_code = 'PRPT' AND PRPT.code = PRP.type
         LEFT JOIN crs_sys_code NMSF ON NMSF.scg_code = 'NMSF' AND NMSF.code = PRP.name_suffix
+        LEFT JOIN crs_sys_code TSDS ON PRP.status = TSDS.code AND TSDS.scg_code = 'TSDS'
     WHERE
         PRO.title_no IS NULL;
     
@@ -2230,6 +2238,8 @@ BEGIN
         tte_id,
         title_no,
         land_district,
+        status,
+        status_code,
         estate_share,
         owner_type,
         corporate_name
@@ -2239,16 +2249,19 @@ BEGIN
         TTS.id,
         TTS.title_no,
         TTS.land_district,
+        TSDS.char_value AS status,
+        PRP.status AS status_code,
         ETS.share,
         'Corporate',
         LDS_GetProtectedText(PRO.title_no)
     FROM
         tmp_title_estates TTS
-        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id
+        JOIN crs_estate_share ETS ON TTS.id = ETS.ett_id AND ETS.status = 'REGD'
         JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id AND PRP.status = 'REGD'
         LEFT JOIN tmp_protected_titles PRO ON TTS.title_no = PRO.title_no
         LEFT JOIN crs_sys_code PRPT ON PRPT.scg_code = 'PRPT' AND PRPT.code = PRP.type
         LEFT JOIN crs_sys_code NMSF ON NMSF.scg_code = 'NMSF' AND NMSF.code = PRP.name_suffix
+        LEFT JOIN crs_sys_code TSDS ON PRP.status = TSDS.code AND TSDS.scg_code = 'TSDS'
     WHERE
         PRO.title_no IS NOT NULL;
     
@@ -2265,6 +2278,7 @@ BEGIN
             tte_id,
             title_no,
             land_district,
+            status,
             estate_share,
             owner_type,
             prime_surname,
@@ -2277,6 +2291,7 @@ BEGIN
             tte_id,
             title_no,
             land_district,
+            status,
             estate_share,
             owner_type,
             prime_surname,
@@ -2458,7 +2473,9 @@ BEGIN
             spatial_extents_shared,
             shape
         FROM
-            tmp_titles;
+            tmp_titles
+        WHERE
+            status_code IN ('LIVE', 'PRTC');
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2500,7 +2517,9 @@ BEGIN
             spatial_extents_shared,
             shape
         FROM
-            tmp_titles;
+            tmp_titles
+        WHERE
+            status_code IN ('LIVE', 'PRTC');
     $sql$;
 
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2559,7 +2578,7 @@ BEGIN
     );
 
     RAISE DEBUG 'Started creating temp table tmp_title_owners';
-
+    
     CREATE TEMP TABLE tmp_title_owners AS
     WITH title_owner_parcels (
         par_id
@@ -2592,6 +2611,8 @@ BEGIN
         JOIN tmp_titles TTL ON TOW.title_no = TTL.title_no
         LEFT JOIN tmp_title_parcel_associations TPA ON TPA.title_no = TTL.title_no
         LEFT JOIN title_owner_parcels TOP ON TPA.par_id = TOP.par_id
+    WHERE
+        TTL.status_code IN ('LIVE', 'PRTC')
     GROUP BY
         TOW.owner,
         TTL.title_no,
