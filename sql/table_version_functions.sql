@@ -946,7 +946,7 @@ AS $FUNC$
                     %revision_table% AS T
                 WHERE (
                     (T._revision_created <= %1% AND T._revision_expired > %1% AND T._revision_expired <= %2%) OR
-                    (T._revision_created > %1%  AND T._revision_created <= %2% AND T._revision_expired > %2%)
+                    (T._revision_created > %1%  AND T._revision_created <= %2% AND (T._revision_expired > %2% OR T._revision_expired IS NULL))
                 )
                 ORDER BY
                     T.%key_col%, 
