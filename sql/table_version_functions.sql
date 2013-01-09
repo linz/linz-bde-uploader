@@ -895,7 +895,7 @@ BEGIN
     FETCH FIRST IN v_col_cur INTO v_column_name, v_column_type;
     LOOP
         v_select_columns_rev := v_select_columns_rev || REPEAT(' ', 16) || 'T.' || quote_ident(v_column_name);
-        v_select_columns_diff := v_select_columns_diff || REPEAT(' ', 16) || 'LVC.' || quote_ident(v_column_name);
+        v_select_columns_diff := v_select_columns_diff || REPEAT(' ', 16) || 'TL.' || quote_ident(v_column_name);
         v_table_columns := v_table_columns || '    ' || quote_ident(v_column_name) || ' ' || v_column_type;
         FETCH v_col_cur INTO v_column_name, v_column_type;
         IF FOUND THEN
@@ -946,47 +946,39 @@ AS $FUNC$
         IF v_base_version > v_revision2 THEN
             RETURN;
         END IF;
-        IF v_base_version > v_revision1 THEN
-            v_revision1 := v_base_version;
-        END IF;
         
         RETURN QUERY EXECUTE
         table_version.ver_ExpandTemplate(
             $sql$
-            WITH last_value_changed AS (
-                SELECT DISTINCT ON (T.%key_col%)
-                    T.*
+            WITH changed_within_range AS (
+                SELECT 
+                    T.%key_col%,
+                    min(T._revision_created) <= %1% AS existed,
+                    max(T._revision_created) AS last_update_revision
                 FROM
                     %revision_table% AS T
                 WHERE (
                     (T._revision_created <= %1% AND T._revision_expired > %1% AND T._revision_expired <= %2%) OR
-                    (T._revision_created > %1%  AND T._revision_created <= %2% AND T._revision_expired > %2%)
+                    (T._revision_created > %1%  AND T._revision_created <= %2%)
                 )
-                ORDER BY
-                    T.%key_col%, 
-                    T._revision_created DESC
-            ),
-            old_state_changed AS(
-                SELECT DISTINCT
+                GROUP BY
                     T.%key_col%
-                FROM
-                    %revision_table% AS T
-                WHERE
-                     T._revision_created <= %1% AND T._revision_expired > %1% AND
-                     T.%key_col% IN (SELECT last_value_changed.%key_col% FROM last_value_changed)
             )
             SELECT
-                CASE WHEN LVC._revision_expired <= %2% THEN
-                    'D'::CHAR(1)
-                WHEN OSC.%key_col% IS NULL THEN
-                    'I'::CHAR(1)
-                ELSE
-                    'U'::CHAR(1)
-                END AS diff_action,
+                CAST(
+                    CASE
+                       WHEN TL._revision_expired <= %2% THEN 'D'
+                       WHEN C.existed THEN 'U'
+                       ELSE 'I'
+                    END
+                AS CHAR(1)) AS action,
 %select_columns%
             FROM
-                last_value_changed AS LVC
-                LEFT JOIN old_state_changed AS OSC ON LVC.%key_col% = OSC.%key_col%;
+                changed_within_range C
+                JOIN %revision_table% AS TL ON TL.%key_col% = C.%key_col% AND TL._revision_created = C.last_update_revision
+            WHERE
+                C.existed OR
+                (TL._revision_expired IS NULL OR TL._revision_expired > %2%);
             $sql$,
             ARRAY[
                 v_revision1::TEXT,

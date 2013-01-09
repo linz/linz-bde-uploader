@@ -997,3 +997,39 @@ SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
 '
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.2.5: Recreate table version functions to fix diff functions',
+    '
+DO $PATCH$
+DECLARE
+    v_schema_name TEXT;
+    v_table_name  TEXT;
+    v_key_column  TEXT;
+    v_diff_proc   TEXT;
+    v_ver_proc    TEXT;
+BEGIN
+    FOR
+        v_schema_name,
+        v_table_name,
+        v_key_column,
+        v_diff_proc,
+        v_ver_proc
+    IN
+        SELECT 
+            TBL.schema_name,
+            TBL.table_name,
+            TBL.key_column,
+            table_version._ver_get_diff_function(TBL.schema_name, TBL.table_name) as diff_proc,
+            table_version._ver_get_revision_function(TBL.schema_name, TBL.table_name) as rev_proc
+        FROM
+            table_version.ver_get_versioned_tables() AS TBL
+    LOOP
+        EXECUTE ''DROP FUNCTION IF EXISTS '' || v_diff_proc;
+        EXECUTE ''DROP FUNCTION IF EXISTS '' || v_ver_proc;
+        PERFORM table_version.ver_create_table_functions(v_schema_name, v_table_name, v_key_column);
+    END LOOP;
+END;
+$PATCH$
+'
+);
+
