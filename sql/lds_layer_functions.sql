@@ -88,10 +88,6 @@ RETURNS
 DECLARE
     v_dataset        TEXT;
 BEGIN
-    -- Need to drop idle connections, as otherwise they may block
-    -- updates to database
-    PERFORM bde.bde_drop_idle_connections(p_upload_id);
-    
     v_dataset := COALESCE(
         bde_control.bde_GetOption(p_upload_id, '_dataset'),
         '(undefined dataset)'
