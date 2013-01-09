@@ -1,3 +1,10 @@
+linz-bde-uploader (1.2.5-1) lucid; urgency=low
+
+  * Fixed table version diff bug [issue #19]
+  * Included first unit tests for table version functions using pgTAP
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 09 Jan 2013 14:22:20 +1300
+
 linz-bde-uploader (1.2.4-1) precise; urgency=low
 
   * Apply patch to upgrade table version functions. Relates to 85ee4a219a [issue #10]
