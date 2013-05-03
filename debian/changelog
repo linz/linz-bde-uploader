@@ -1,3 +1,10 @@
+linz-bde-uploader (1.2.6-1) lucid; urgency=low
+
+  * Remove dropping of connections by default
+  * Add new street address layer schema for NZPost
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Fri, 03 May 2013 15:54:23 +1200
+
 linz-bde-uploader (1.2.5-1) lucid; urgency=low
 
   * Fixed table version diff bug [issue #19]
