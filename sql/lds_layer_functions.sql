@@ -2937,6 +2937,64 @@ BEGIN
     );
 
     ----------------------------------------------------------------------------
+    -- street_address layer (New schema, temporary solution for NZPost.
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'street_address2');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            rna_id,
+            rcl_id,
+            address,
+            house_number,
+            range_low,
+            range_high,
+            road_name,
+            locality,
+            territorial_authority,
+            shape
+        )
+        SELECT
+            SAD.id,
+            RNA.id AS rna_id,
+            SAD.rcl_id,
+            SAD.house_number || ' ' || RNA.name AS address,
+            SAD.house_number,
+            SAD.range_low,
+            SAD.range_high,
+            RNA.name,
+            STR.locality,
+            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
+            SAD.shape
+        FROM
+            crs_street_address SAD
+            JOIN crs_road_name RNA ON RNA.id = SAD.rna_id
+            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
+            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+        WHERE
+            SAD.status = 'CURR'
+        GROUP BY
+            SAD.id,
+            RNA.id,
+            SAD.rcl_id,
+            SAD.house_number,
+            SAD.range_low,
+            SAD.range_high,
+            RNA.name,
+            STR.locality,
+            SAD.shape;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    ----------------------------------------------------------------------------
     -- mesh_blocks layer
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'mesh_blocks');

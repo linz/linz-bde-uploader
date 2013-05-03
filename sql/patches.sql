@@ -982,7 +982,7 @@ CREATE TABLE title_owners_aspatial (
     prime_surname VARCHAR(100),
     prime_other_names VARCHAR(100),
     corporate_name VARCHAR(250),
-    name_suffix VARCHAR(6)
+    name_suffix VARCHAR(6)Just a quick heads up to let you know that Paul’s now working on the final checks for the next release of Topo data - should be ready the week 13-17 May.
 );
 
 ALTER TABLE title_owners_aspatial ADD PRIMARY KEY (id);
@@ -1033,3 +1033,39 @@ $PATCH$
 '
 );
 
+
+SELECT _patches.apply_patch(
+    'BDE - 1.2.6: Add new street address schema for NZPost',
+    '
+SET search_path = lds, bde, public;
+
+DROP TABLE IF EXISTS street_address2 CASCADE;
+
+CREATE TABLE street_address2
+(
+  id integer NOT NULL,
+  rna_id integer NOT NULL,
+  rcl_id integer NOT NULL,
+  address VARCHAR(126) NOT NULL,
+  house_number VARCHAR(25) NOT NULL,
+  range_low integer NOT NULL,
+  range_high integer,
+  road_name VARCHAR(100) NOT NULL,
+  locality VARCHAR(30),
+  territorial_authority VARCHAR(255)
+);
+
+SELECT AddGeometryColumn(''street_address2'', ''shape'', 4167, ''POINT'', 2);
+
+ALTER TABLE street_address2 ADD PRIMARY KEY (id);
+
+ALTER TABLE street_address2 OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE street_address2 FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address2 TO bde_admin;
+GRANT SELECT ON TABLE street_address2 TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''street_address2'');
+
+'
+);
