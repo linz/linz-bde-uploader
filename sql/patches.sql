@@ -982,7 +982,7 @@ CREATE TABLE title_owners_aspatial (
     prime_surname VARCHAR(100),
     prime_other_names VARCHAR(100),
     corporate_name VARCHAR(250),
-    name_suffix VARCHAR(6)Just a quick heads up to let you know that Paul’s now working on the final checks for the next release of Topo data - should be ready the week 13-17 May.
+    name_suffix VARCHAR(6)
 );
 
 ALTER TABLE title_owners_aspatial ADD PRIMARY KEY (id);
