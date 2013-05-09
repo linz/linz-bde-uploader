@@ -1069,3 +1069,92 @@ SELECT table_version.ver_enable_versioning(''lds'', ''street_address2'');
 
 '
 );
+
+SELECT _patches.apply_patch(
+    'BDE - 1.2.7: Rebuild primary keys using versioned table column key',
+    '
+DO $PATCH$
+DECLARE
+    v_schema_name             TEXT;
+    v_table_name              TEXT;
+    v_version_key_column      TEXT;
+    v_table_primary_key       TEXT;
+    v_table_primary_key_name  TEXT;
+    v_table_unique_constraint TEXT;
+    v_table_unqiue_index      TEXT;
+BEGIN
+    FOR
+        v_schema_name,
+        v_table_name,
+        v_version_key_column,
+        v_table_primary_key,
+        v_table_primary_key_name,
+        v_table_unique_constraint,
+        v_table_unqiue_index
+    IN
+        WITH t AS (
+            SELECT
+                CLS.oid AS table_oid,
+                TBL.schema_name,
+                TBL.table_name,
+                TBL.key_column AS version_key_column,
+                string_agg(DISTINCT ATT.attname, '','') as table_primary_key,
+                string_agg(DISTINCT CONP.conname, '','') AS table_primary_key_name,
+                string_agg(DISTINCT CONU.conname, '','') AS table_unique_constraint
+            FROM
+                table_version.ver_get_versioned_tables() AS TBL,
+                pg_namespace NSP,
+                pg_index IDX,
+                pg_attribute ATT,
+                pg_class CLS
+                JOIN pg_constraint CONP ON (CONP.conrelid = CLS.oid AND CONP.contype = ''p'')
+                LEFT JOIN pg_constraint CONU ON (CONU.conrelid = CLS.oid AND CONU.contype = ''u'')
+            WHERE
+                NSP.nspname  = TBL.schema_name AND
+                CLS.relname  = TBL.table_name AND
+                NSP.oid      = CLS.relnamespace AND
+                IDX.indrelid = CLS.oid AND
+                ATT.attrelid = CLS.oid AND 
+                ATT.attnum   = any(IDX.indkey) AND
+                IDX.indisprimary
+            GROUP BY
+                CLS.oid,
+                TBL.schema_name,
+                TBL.table_name,
+                TBL.key_column
+            HAVING
+                TBL.key_column <> string_agg(ATT.attname, '','')
+        )
+        SELECT
+            t.schema_name,
+            t.table_name,
+            t.version_key_column,     
+            t.table_primary_key,
+            t.table_primary_key_name,
+            t.table_unique_constraint,
+            CLS.relname as table_unqiue_index
+        FROM
+            t
+            LEFT JOIN pg_index IDX ON (IDX.indrelid = t.table_oid AND IDX.indisunique AND NOT IDX.indisprimary)
+            LEFT JOIN pg_class CLS ON (IDX.indexrelid = CLS.oid)
+            LEFT JOIN pg_attribute ATT ON (ATT.attrelid = t.table_oid AND ATT.attname = t.version_key_column AND ATT.attnum = ANY(IDX.indkey))
+        WHERE
+            ATT.attname IS NOT NULL
+        ORDER BY
+            t.schema_name,
+            t.table_name
+    LOOP
+        RAISE INFO ''Re-building primary keys for %.%'', v_schema_name, v_table_name;  
+        EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_primary_key_name;
+        EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' ADD PRIMARY KEY  ('' || v_version_key_column || '')'';
+        IF v_table_unique_constraint IS NULL THEN
+            EXECUTE ''DROP INDEX '' || v_table_unqiue_index;
+        ELSE
+            EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_unique_constraint;
+        END IF;
+        EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' ADD UNIQUE('' || v_table_primary_key || '')'';
+    END LOOP;
+END;
+$PATCH$
+'
+);
