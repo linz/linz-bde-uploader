@@ -1,3 +1,10 @@
+linz-bde-uploader (1.2.7-1) lucid; urgency=low
+
+  * Rebuild BDE table primary keys using versioned table column key
+  * remove debugging message
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Fri, 10 May 2013 14:44:40 +1200
+
 linz-bde-uploader (1.2.6-1) lucid; urgency=low
 
   * Remove dropping of connections by default
