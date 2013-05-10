@@ -1144,7 +1144,6 @@ BEGIN
             t.schema_name,
             t.table_name
     LOOP
-        RAISE INFO ''Re-building primary keys for %.%'', v_schema_name, v_table_name;  
         EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_primary_key_name;
         EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' ADD PRIMARY KEY  ('' || v_version_key_column || '')'';
         IF v_table_unique_constraint IS NULL THEN
