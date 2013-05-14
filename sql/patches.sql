@@ -1147,7 +1147,7 @@ BEGIN
         EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_primary_key_name;
         EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' ADD PRIMARY KEY  ('' || v_version_key_column || '')'';
         IF v_table_unique_constraint IS NULL THEN
-            EXECUTE ''DROP INDEX '' || v_table_unqiue_index;
+            EXECUTE ''DROP INDEX '' || v_schema_name || ''.'' || v_table_unqiue_index;
         ELSE
             EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_unique_constraint;
         END IF;
