@@ -1,3 +1,10 @@
+linz-bde-uploader (1.2.8-1) lucid; urgency=low
+
+  * Fixed bug relating to 286468ae09 where schema prefix was not being
+    explicitly used in patch
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 15 May 2013 11:38:26 +1200
+
 linz-bde-uploader (1.2.7-1) lucid; urgency=low
 
   * Rebuild BDE table primary keys using versioned table column key
