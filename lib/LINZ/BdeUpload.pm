@@ -1094,9 +1094,9 @@ sub BuildTempFile
         log_file => $log,
         config => $cfg
         );
-    foreach my $msg (@{$result->{errors}})
+    if ($result->{nerrors} > 0)
     {
-        ERROR($msg);
+        $self->die_error(@{$result->{errors}});
     }
     foreach my $msg (@{$result->{warnings}})
     {
