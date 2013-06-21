@@ -1157,3 +1157,80 @@ END;
 $PATCH$
 '
 );
+
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.0: Fix control characters',
+    '
+DO $PATCH$
+DECLARE
+    
+BEGIN
+    IF table_version.ver_is_table_versioned(''bde'', ''crs_parcel'') THEN
+        UPDATE
+            table_version.bde_crs_parcel_revision
+        SET
+            nonsurvey_def = replace(nonsurvey_def, E''\x03'', '''')
+        WHERE
+            id IN (
+                3019663,
+                3026667,
+                3062540,
+                3163214
+            ) AND
+            nonsurvey_def <> replace(nonsurvey_def, E''\x03'', '''');
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''bde'', ''crs_stat_act_parcl'') THEN
+        UPDATE
+           table_version.bde_crs_stat_act_parcl_revision 
+        SET
+            comments = replace(comments, E''\x03'', ''ā'')
+        WHERE
+            sta_id = 823843 AND
+            comments <> replace(comments, E''\x03'', ''ā'');
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''parcel_stat_actions'') THEN
+        UPDATE
+            table_version.lds_parcel_stat_actions_revision
+        SET
+            statutory_action = replace(statutory_action, E''\x03'', ''ā'')
+        WHERE
+            id = 220742 AND
+            statutory_action <> replace(statutory_action, E''\x03'', ''ā'');
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''primary_parcels'') THEN
+        UPDATE
+            table_version.lds_primary_parcels_revision
+        SET
+            statutory_actions = replace(statutory_actions, E''\x03'', ''ā'')
+        WHERE
+            id = 6959636 AND
+            statutory_actions <> replace(statutory_actions, E''\x03'', ''ā'');
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''land_parcels'') THEN
+        UPDATE
+            table_version.lds_land_parcels_revision
+        SET
+            statutory_actions = replace(statutory_actions, E''\x03'', ''ā'')
+        WHERE
+            id = 6959636 AND
+            statutory_actions <> replace(statutory_actions, E''\x03'', ''ā'');
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''all_parcels'') THEN
+        UPDATE
+            table_version.lds_all_parcels_revision
+        SET
+            statutory_actions = replace(statutory_actions, E''\x03'', ''ā'')
+        WHERE
+            id = 6959636 AND
+            statutory_actions <> replace(statutory_actions, E''\x03'', ''ā'');
+    END IF;
+END;
+$PATCH$
+'
+);
