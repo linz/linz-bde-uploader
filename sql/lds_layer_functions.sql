@@ -3375,157 +3375,6 @@ BEGIN
         v_data_insert_sql,
         v_data_insert_sql
     );
-
-    ----------------------------------------------------------------------------
-    -- survey_observations layer
-    ----------------------------------------------------------------------------
-    v_table := LDS.LDS_GetTable('lds', 'survey_observations');
-    
-    v_data_insert_sql := $sql$
-        INSERT INTO %1%(
-            id,
-            nod_id_start,
-            nod_id_end,
-            obs_type,
-            value,
-            value_accuracy,
-            value_label,
-            surveyed_type,
-            coordinate_system,
-            land_district,
-            ref_datetime,
-            survey_reference,
-            shape
-        )
-        SELECT
-            OBN.id,
-            STPL.nod_id AS nod_id_start,
-            STPR.nod_id AS nod_id_end,
-            RTRIM(OET.description),
-            OBN.value_1,
-            OBA.value_11 * OBN.acc_multiplier,
-            CASE WHEN OBN.obt_sub_type = 'SLDI' THEN
-                to_char(OBN.value_1, 'FM9999999990D00')
-            WHEN OBN.obt_sub_type = 'BEAR' THEN
-                LDS.LDS_deg_dms(OBN.value_1, 0)
-            END AS value_label,
-            SCO.char_value,
-            COS.name,
-            CASE WHEN SUR.wrk_id IS NULL THEN
-                LDS_GetLandDistict(VCT.shape)
-            ELSE
-                SUR.land_district
-            END as land_district,
-            OBN.ref_datetime,
-            SUR.survey_reference,
-            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
-        FROM
-            crs_observation OBN
-            JOIN crs_obs_elem_type OET ON OBN.obt_sub_type = OET.type
-            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
-            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
-            JOIN crs_node NODL ON NODL.id = STPL.nod_id
-            JOIN crs_node NODR ON NODR.id = STPR.nod_id
-            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
-            JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
-            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
-            LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
-        WHERE
-            OBN.rdn_id IS NULL AND
-            OBN.obt_type = 'REDC' AND
-            OBN.obt_sub_type IN ('SLDI', 'BEAR') AND
-            OBN.status = 'AUTH' AND
-            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
-            VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE'
-        ORDER BY
-            OBN.id;
-    $sql$;
-    
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
-        p_upload,
-        v_table,
-        v_data_insert_sql,
-        v_data_insert_sql
-    );
-
-    ----------------------------------------------------------------------------
-    -- survey_arc_observations layer
-    ----------------------------------------------------------------------------
-    v_table := LDS.LDS_GetTable('lds', 'survey_arc_observations');
-    
-    v_data_insert_sql := $sql$
-        INSERT INTO %1%(
-            id,
-            nod_id_start,
-            nod_id_end,
-            chord_bearing,
-            arc_length,
-            arc_radius,
-            arc_direction,
-            chord_bearing_accuracy,
-            arc_length_accuracy,
-            surveyed_type,
-            coordinate_system,
-            land_district,
-            ref_datetime,
-            survey_reference,
-            chord_bearing_label,
-            arc_length_label,
-            arc_radius_label,
-            shape
-        )
-        SELECT
-            OBN.id,
-            STPL.nod_id AS nod_id_start,
-            STPR.nod_id AS nod_id_end,
-            OBN.value_1,
-            OBN.value_2,
-            OBN.arc_radius,
-            OBN.arc_direction,
-            OBA.value_11 * OBN.acc_multiplier,
-            OBA.value_22 * OBN.acc_multiplier,
-            SCO.char_value,
-            COS.name,
-            CASE WHEN SUR.wrk_id IS NULL THEN
-                LDS_GetLandDistict(VCT.shape)
-            ELSE
-                SUR.land_district
-            END as land_district,
-            OBN.ref_datetime,
-            SUR.survey_reference,
-            LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
-            to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
-            to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
-            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
-        FROM
-            crs_observation OBN
-            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
-            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
-            JOIN crs_node NODL ON NODL.id = STPL.nod_id
-            JOIN crs_node NODR ON NODR.id = STPR.nod_id
-            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
-            JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
-            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
-            LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
-        WHERE
-            OBN.rdn_id IS NULL AND
-            OBN.obt_type = 'REDC' AND
-            OBN.obt_sub_type = 'ARCO' AND
-            OBN.status = 'AUTH' AND
-            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
-            VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE';
-    $sql$;
-    
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
-        p_upload,
-        v_table,
-        v_data_insert_sql,
-        v_data_insert_sql
-    );
     
     ----------------------------------------------------------------------------
     -- parcel_vectors layer
@@ -3959,13 +3808,177 @@ BEGIN
         v_data_insert_sql
     );
     
+    DROP TABLE IF EXISTS tmp_bdy_nodes;
+    DROP TABLE IF EXISTS tmp_node_last_adjusted;
+    
+    ----------------------------------------------------------------------------
+    -- survey_observations layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'survey_observations');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1%(
+            id,
+            nod_id_start,
+            mark_name_start,
+            nod_id_end,
+            mark_name_end,
+            obs_type,
+            value,
+            value_accuracy,
+            value_label,
+            surveyed_type,
+            coordinate_system,
+            land_district,
+            ref_datetime,
+            survey_reference,
+            shape
+        )
+        SELECT
+            OBN.id,
+            STPL.nod_id AS nod_id_start,
+            MRKL.name AS mark_name_start,
+            STPR.nod_id AS nod_id_end,
+            MRKR.name AS mark_name_end,
+            RTRIM(OET.description) AS obs_type,
+            OBN.value_1 AS value,
+            OBA.value_11 * OBN.acc_multiplier AS value_accuracy,
+            CASE WHEN OBN.obt_sub_type = 'SLDI' THEN
+                to_char(OBN.value_1, 'FM9999999990D00')
+            WHEN OBN.obt_sub_type = 'BEAR' THEN
+                LDS.LDS_deg_dms(OBN.value_1, 0)
+            END AS value_label,
+            SCO.char_value AS surveyed_type,
+            COS.name AS coordinate_system,
+            CASE WHEN SUR.wrk_id IS NULL THEN
+                LDS_GetLandDistict(VCT.shape)
+            ELSE
+                SUR.land_district
+            END as land_district,
+            OBN.ref_datetime,
+            SUR.survey_reference,
+            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
+        FROM
+            crs_observation OBN
+            JOIN crs_obs_elem_type OET ON OBN.obt_sub_type = OET.type
+            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
+            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
+            JOIN crs_node NODL ON NODL.id = STPL.nod_id
+            JOIN crs_node NODR ON NODR.id = STPR.nod_id
+            LEFT JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
+            LEFT JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
+            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
+            JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
+            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
+            LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
+            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
+        WHERE
+            OBN.rdn_id IS NULL AND
+            OBN.obt_type = 'REDC' AND
+            OBN.obt_sub_type IN ('SLDI', 'BEAR') AND
+            OBN.status = 'AUTH' AND
+            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
+            VCT.id = OBN.vct_id AND
+            VCT.type = 'LINE'
+        ORDER BY
+            OBN.id;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+
+    ----------------------------------------------------------------------------
+    -- survey_arc_observations layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'survey_arc_observations');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1%(
+            id,
+            nod_id_start,
+            mark_name_start,
+            nod_id_end,
+            mark_name_end,
+            chord_bearing,
+            arc_length,
+            arc_radius,
+            arc_direction,
+            chord_bearing_accuracy,
+            arc_length_accuracy,
+            surveyed_type,
+            coordinate_system,
+            land_district,
+            ref_datetime,
+            survey_reference,
+            chord_bearing_label,
+            arc_length_label,
+            arc_radius_label,
+            shape
+        )
+        SELECT
+            OBN.id,
+            STPL.nod_id AS nod_id_start,
+            MRKL.name AS mark_name_start,
+            STPR.nod_id AS nod_id_end,
+            MRKR.name AS mark_name_end,
+            OBN.value_1,
+            OBN.value_2,
+            OBN.arc_radius,
+            OBN.arc_direction,
+            OBA.value_11 * OBN.acc_multiplier,
+            OBA.value_22 * OBN.acc_multiplier,
+            SCO.char_value,
+            COS.name,
+            CASE WHEN SUR.wrk_id IS NULL THEN
+                LDS_GetLandDistict(VCT.shape)
+            ELSE
+                SUR.land_district
+            END as land_district,
+            OBN.ref_datetime,
+            SUR.survey_reference,
+            LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
+            to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
+            to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
+            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
+        FROM
+            crs_observation OBN
+            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
+            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
+            JOIN crs_node NODL ON NODL.id = STPL.nod_id
+            JOIN crs_node NODR ON NODR.id = STPR.nod_id
+            LEFT JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
+            LEFT JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
+            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
+            JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
+            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
+            LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
+            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
+        WHERE
+            OBN.rdn_id IS NULL AND
+            OBN.obt_type = 'REDC' AND
+            OBN.obt_sub_type = 'ARCO' AND
+            OBN.status = 'AUTH' AND
+            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
+            VCT.id = OBN.vct_id AND
+            VCT.type = 'LINE';
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
     RAISE INFO 'Finished maintenance on cadastral survey simplified layers';
     
     PERFORM LDS.LDS_DropSurveyPlansTable(p_upload);
     
     DROP TABLE IF EXISTS tmp_cord_nominal_error;
-    DROP TABLE IF EXISTS tmp_bdy_nodes;
-    DROP TABLE IF EXISTS tmp_node_last_adjusted;
     DROP TABLE IF EXISTS tmp_cadastral_marks;
     
     RETURN 1;
