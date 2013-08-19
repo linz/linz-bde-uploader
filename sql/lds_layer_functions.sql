@@ -3816,6 +3816,11 @@ BEGIN
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'survey_observations');
     
+    -- NOTE: There are authoritative survey (arc) observations connected to
+    -- decommissioned nodes. It has been decided to filter these observations
+    -- from this table until the data has been fixed.
+    -- Data Improvement issue has been created for this – DI#146
+    
     v_data_insert_sql := $sql$
         INSERT INTO %1%(
             id,
@@ -3851,23 +3856,20 @@ BEGIN
             SCO.char_value AS surveyed_type,
             COS.name AS coordinate_system,
             CASE WHEN SUR.wrk_id IS NULL THEN
-                LDS_GetLandDistict(VCT.shape)
+                LDS_GetLandDistict(MRKL.shape)
             ELSE
                 SUR.land_district
             END as land_district,
             OBN.ref_datetime,
             SUR.survey_reference,
-            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
+            ST_SetSrid(ST_MakeLine(MRKL.shape, MRKR.shape), 4167) AS shape
         FROM
             crs_observation OBN
             JOIN crs_obs_elem_type OET ON OBN.obt_sub_type = OET.type
             JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
             JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
-            JOIN crs_node NODL ON NODL.id = STPL.nod_id
-            JOIN crs_node NODR ON NODR.id = STPR.nod_id
-            LEFT JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
-            LEFT JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
-            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
+            JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
+            JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
             JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
             LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
             LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
@@ -3877,9 +3879,7 @@ BEGIN
             OBN.obt_type = 'REDC' AND
             OBN.obt_sub_type IN ('SLDI', 'BEAR') AND
             OBN.status = 'AUTH' AND
-            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
-            VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE'
+            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS')
         ORDER BY
             OBN.id;
     $sql$;
@@ -3919,52 +3919,47 @@ BEGIN
             arc_radius_label,
             shape
         )
-        SELECT
-            OBN.id,
-            STPL.nod_id AS nod_id_start,
-            MRKL.name AS mark_name_start,
-            STPR.nod_id AS nod_id_end,
-            MRKR.name AS mark_name_end,
-            OBN.value_1,
-            OBN.value_2,
-            OBN.arc_radius,
-            OBN.arc_direction,
-            OBA.value_11 * OBN.acc_multiplier,
-            OBA.value_22 * OBN.acc_multiplier,
-            SCO.char_value,
-            COS.name,
-            CASE WHEN SUR.wrk_id IS NULL THEN
-                LDS_GetLandDistict(VCT.shape)
-            ELSE
-                SUR.land_district
-            END as land_district,
-            OBN.ref_datetime,
-            SUR.survey_reference,
-            LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
-            to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
-            to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
-            ST_SetSrid(ST_MakeLine(NODL.shape, NODR.shape), 4167) AS shape
-        FROM
-            crs_observation OBN
-            JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
-            JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
-            JOIN crs_node NODL ON NODL.id = STPL.nod_id
-            JOIN crs_node NODR ON NODR.id = STPR.nod_id
-            LEFT JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
-            LEFT JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
-            JOIN crs_vector VCT ON OBN.vct_id = VCT.id
-            JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
-            LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
-            LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
-            LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
-        WHERE
-            OBN.rdn_id IS NULL AND
-            OBN.obt_type = 'REDC' AND
-            OBN.obt_sub_type = 'ARCO' AND
-            OBN.status = 'AUTH' AND
-            OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS') AND
-            VCT.id = OBN.vct_id AND
-            VCT.type = 'LINE';
+    SELECT
+        OBN.id,
+        STPL.nod_id AS nod_id_start,
+        MRKL.name AS mark_name_start,
+        STPR.nod_id AS nod_id_end,
+        MRKR.name AS mark_name_end,
+        OBN.value_1,
+        OBN.value_2,
+        OBN.arc_radius,
+        OBN.arc_direction,
+        OBA.value_11 * OBN.acc_multiplier AS chord_bearing_accuracy,
+        OBA.value_22 * OBN.acc_multiplier As arc_length_accuracy,
+        SCO.char_value,
+        COS.name,
+        CASE WHEN SUR.wrk_id IS NULL THEN
+            LDS_GetLandDistict(MRKL.shape)
+        ELSE
+            SUR.land_district
+        END as land_district,
+        OBN.ref_datetime,
+        SUR.survey_reference,
+        LDS.LDS_deg_dms(OBN.value_1, 0) AS chord_bearing_label,
+        to_char(OBN.value_2, 'FM9999999990D00') AS arc_length_label,
+        to_char(OBN.arc_radius, 'FM9999999990D00') AS arc_radius_label,
+        ST_SetSrid(ST_MakeLine(MRKL.shape, MRKR.shape), 4167) AS shape
+    FROM
+        crs_observation OBN
+        JOIN crs_setup STPL ON OBN.stp_id_local = STPL.id
+        JOIN crs_setup STPR ON OBN.stp_id_remote = STPR.id
+        JOIN tmp_cadastral_marks MRKL ON MRKL.id = STPL.nod_id
+        JOIN tmp_cadastral_marks MRKR ON MRKR.id = STPR.nod_id
+        JOIN crs_coordinate_sys COS ON OBN.cos_id = COS.id
+        LEFT JOIN crs_obs_accuracy OBA ON OBN.id = OBA.obn_id1
+        LEFT JOIN crs_sys_code SCO ON OBN.surveyed_class = SCO.code AND SCO.scg_code = 'OBEC'
+        LEFT JOIN tmp_survey_plans SUR ON STPL.wrk_id = SUR.wrk_id
+    WHERE
+        OBN.rdn_id IS NULL AND
+        OBN.obt_type = 'REDC' AND
+        OBN.obt_sub_type = 'ARCO' AND
+        OBN.status = 'AUTH' AND
+        OBN.surveyed_class IN ('ADPT', 'CALC', 'MEAS');
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
