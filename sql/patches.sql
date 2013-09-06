@@ -1335,7 +1335,7 @@ CREATE TABLE title_memorials
     title_no VARCHAR(20) NOT NULL,
     land_district VARCHAR(100) NOT NULL,
     memorial_text VARCHAR(18000),
-    current BOOLEAN NOT NULL,
+    "current" BOOLEAN NOT NULL,
     instrument_number VARCHAR(30),
     instrument_lodged_datetime TIMESTAMP,
     instrument_type VARCHAR(100),
