@@ -1319,3 +1319,72 @@ GRANT SELECT ON TABLE survey_arc_observations TO bde_user;
 SELECT table_version.ver_enable_versioning(''lds'', ''survey_arc_observations'');
 '
 );
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.2: Add Titles Memorial Data',
+    '
+
+SET search_path = lds, bde, public;
+
+--------------------------------------------------------------------------------
+-- LDS table title_memorials
+--------------------------------------------------------------------------------
+CREATE TABLE title_memorials
+(
+    id integer NOT NULL,
+    title_no VARCHAR(20) NOT NULL,
+    land_district VARCHAR(100) NOT NULL,
+    memorial_text VARCHAR(18000),
+    current BOOLEAN NOT NULL,
+    instrument_number VARCHAR(30),
+    instrument_lodged_datetime TIMESTAMP,
+    instrument_type VARCHAR(100),
+    encumbrancees VARCHAR(4096),
+);
+
+ALTER TABLE title_memorials ADD PRIMARY KEY (id);
+
+ALTER TABLE title_memorials OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_memorials FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_memorials TO bde_admin;
+GRANT SELECT ON TABLE title_memorials TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_memorials'');
+
+--------------------------------------------------------------------------------
+-- LDS table title_memorial_additional_text
+--------------------------------------------------------------------------------
+
+-- index required to speed up creation of this table
+CREATE INDEX tmt_col_1_text_idx ON crs_title_mem_text (col_1_text);
+
+CREATE TABLE title_memorial_additional_text
+(
+    id integer NOT NULL,
+    ttm_id integer NOT NULL,
+    new_title_legal_description character varying(2048),
+    new_title_reference character varying(2048),
+    easement_type character varying(2048),
+    servient_tenement character varying(2048),
+    easement_area character varying(2048),
+    dominant_tenement_or_grantee character varying(2048),
+    statutory_restriction character varying(2048),
+    principal_unit character varying(2048),
+    future_development_unit character varying(2048),
+    assessory_unit character varying(2048),
+    title_issued character varying(2048),
+);
+
+ALTER TABLE title_memorial_additional_text ADD PRIMARY KEY (id);
+
+ALTER TABLE title_memorial_additional_text OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE title_memorial_additional_text FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_memorial_additional_text TO bde_admin;
+GRANT SELECT ON TABLE title_memorial_additional_text TO bde_user;
+
+SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_text'');
+'
+);
+

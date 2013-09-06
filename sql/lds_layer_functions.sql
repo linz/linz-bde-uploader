@@ -2678,8 +2678,314 @@ BEGIN
         v_data_diff_sql,
         v_data_insert_sql
     );
-
+    
     DROP TABLE IF EXISTS tmp_title_owners;
+    
+    ----------------------------------------------------------------------------
+    -- title_memorials table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'title_memorials');
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            title_no,
+            land_district,
+            memorial_text,
+            "current",
+            instrument_number,
+            instrument_lodged_datetime,
+            instrument_type,
+            encumbrancees,
+        )
+        WITH tmp_title_memorials(
+            id,
+            title_no,
+            land_district,
+            memorial_text,
+            "current",
+            instrument_number,
+            instrument_lodged_datetime,
+            instrument_type,
+            encumbrancees
+        ) AS
+        (
+        SELECT
+            TTM.id,
+            TTM.ttl_title_no AS title_no,
+            LOC.name AS land_district,
+            -- Aggregate memorial text for records which are otherwise identical and remove line breaks from text
+            string_agg(
+                DISTINCT trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )),
+                '; '
+                ORDER BY trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
+            ) AS memorial_text,
+            CASE
+                WHEN (TTM.curr_hist_flag = 'HIST' OR TTM.status = 'HIST')
+                THEN FALSE
+                ELSE TRUE
+            END AS "current",
+            CASE
+                  WHEN upper(TIN.inst_no) = 'DEFAULT'
+                  THEN NULL
+                  ELSE TIN.inst_no
+            END AS instrument_number,
+            CASE 
+                WHEN upper(TIN.inst_no) = 'DEFAULT'
+                THEN NULL
+                ELSE TIN.lodged_datetime
+            END AS instrument_lodged_datetime,
+            CASE 
+                WHEN upper(TRT.description) = 'DEFAULT'
+                THEN NULL
+                ELSE TRT.description
+            END AS instrument_type,
+            CASE 
+                WHEN (TTM.curr_hist_flag != 'HIST' AND TTM.status != 'HIST' AND TTL.STATUS IN ('LIVE', 'PRTC'))
+                THEN string_agg(
+                    DISTINCT trim(regexp_replace(ENE.name, E'[\\n\\r]+', '', 'g' )),
+                    ','
+                    ORDER BY trim(regexp_replace(ENE.name, E'[\\n\\r]+', '', 'g' )) ASC
+                )
+                ELSE NULL
+            END               AS encumbrancees
+        FROM
+            crs_title_memorial TTM
+            LEFT JOIN crs_title_mem_text TMT ON TTM.id = TMT.ttm_id
+            LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
+            LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
+            LEFT JOIN crs_encumbrance ENC ON TIN.id = ENC.act_tin_id_crt
+            LEFT JOIN crs_enc_share ENS ON ENC.id = ENS.enc_id
+            LEFT JOIN crs_encumbrancee ENE ON ENS.id = ENE.ens_id
+            LEFT JOIN crs_title TTL ON TTM.ttl_title_no = TTL.title_no
+            LEFT JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
+            LEFT JOIN tmp_protected_titles PRO ON TTM.ttl_title_no = PRO.title_no
+        WHERE
+            TTM.status != 'LDGE' AND
+            TTL.status IN ('LIVE','PRTC','UNCV','CNCV','CNCD')
+            AND NOT
+            (
+                TTL.status = 'CNCD' AND 
+                TTM.status = 'HIST' AND 
+                TTM.curr_hist_flag = 'CURR'
+            ) AND
+            trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) != '' AND 
+            PRO.title_no IS NULL
+        GROUP BY
+            TTM.id,
+            TTM.ttl_title_no,
+            land_district,
+            instrument_number,
+            instrument_type,
+            instrument_lodged_datetime,
+            TTM.curr_hist_flag,
+            TTM.status,
+            TTL.status
+    )
+    SELECT DISTINCT ON (
+        title_no,
+        land_district,
+        memorial_text,
+        instrument_number,
+        instrument_lodged_datetime,
+        instrument_type
+    ) 
+        id, 
+        title_no, 
+        land_district::VARCHAR(100),
+        memorial_text::VARCHAR(18000),
+        "current",
+        instrument_number::VARCHAR(30),
+        instrument_lodged_datetime,
+        instrument_type::VARCHAR(100), 
+        encumbrancees::VARCHAR(4096)
+    FROM
+        tmp_title_memorials
+    ORDER BY
+        title_no,
+        instrument_number,
+        memorial_text,
+        instrument_type,
+        land_district,
+        instrument_lodged_datetime,
+        encumbrancees,
+        "current" DESC,
+        id;
+    $sql$;
+    
+    ----------------------------------------------------------------------------
+    -- title_memorial_additional_text table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('lds', 'title_memorial_additional_text');
+
+    v_data_diff_sql := $sql$
+        INSERT INTO %1% (
+            id,
+            ttm_id,
+            new_title_legal_description,
+            new_title_reference,
+            easement_type,
+            servient_tenement,
+            easement_area,
+            dominant_tenement_or_grantee,
+            statutory_restriction,
+            principal_unit,
+            future_development_unit,
+            assessory_unit,
+            title_issued
+        )
+        WITH temp_title_memorial_text (
+            id,
+            ttm_id,
+            curr_hist_flag,
+            easement_type,
+            servient_tenement,
+            easement_area,
+            dominant_tenement_or_grantee,
+            statutory_restriction,
+            new_title_legal_description,
+            new_title_reference,
+            principal_unit,
+            future_development_unit,
+            assessory_unit,
+            title_issued
+        ) AS
+        (
+            SELECT
+                T2.audit_id AS id,
+                T2.ttm_id,
+                T2.curr_hist_flag,
+                T2.col_1_text AS easement_type,
+                T2.col_2_text AS servient_tenement,
+                T2.col_3_text AS easement_area,
+                T2.col_4_text AS dominant_tenement_or_grantee,
+                T2.col_5_text AS statutory_restriction,
+                NULL AS new_title_legal_description,
+                NULL AS new_title_reference,
+                NULL AS principal_unit,
+                NULL AS future_development_unit,
+                NULL AS assessory_unit,
+                NULL AS title_issued
+            FROM
+                crs_title_mem_text T1
+                JOIN crs_title_mem_text T2 ON T1.ttm_id = T2.ttm_id
+                AND T2.sequence_no != 2
+                AND T1.col_1_text = 'Type'
+            WHERE
+                T2.col_1_text IS NOT NULL
+            UNION
+            SELECT 
+                T2.audit_id as id,
+                T2.ttm_id,
+                T2.curr_hist_flag,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                T2.col_1_text AS principal_unit,
+                CASE
+                    WHEN T1.col_2_text = 'FDU' THEN T2.col_2_text
+                END AS future_development_unit,
+                CASE 
+                    WHEN T1.col_2_text = 'Accessory Unit' THEN T2.col_2_text
+                    WHEN T1.col_3_text = 'Accessory Unit' THEN T2.col_3_text
+                END	 AS assessory_unit,
+        
+                CASE 
+                    WHEN T1.col_3_text = 'CT Issued' THEN T2.col_3_text
+                    WHEN T1.col_4_text = 'CT Issued' THEN T2.col_4_text
+                END AS ct_issued
+            FROM
+                crs_title_mem_text T1
+                JOIN crs_title_mem_text T2 ON T1.ttm_id = T2.ttm_id AND
+                T2.sequence_no != 2 AND
+                T1.col_1_text = 'Principal Unit'
+            WHERE
+                T2.col_1_text IS NOT NULL
+            UNION
+            SELECT 
+                T2.audit_id AS id,
+                T2.ttm_id,
+                T2.curr_hist_flag,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                T2.col_1_text AS new_title_legal_description,
+                T2.col_2_text AS new_title_reference,
+                NULL,
+                NULL,
+                NULL,
+                NULL
+            FROM
+                crs_title_mem_text T1
+            JOIN
+                crs_title_mem_text T2 ON T1.ttm_id = T2.ttm_id AND
+                T2.sequence_no != 2 AND
+                T1.col_1_text = 'Legal Description'
+            WHERE
+                T2.col_1_text IS NOT NULL
+        )
+        SELECT DISTINCT ON (
+            TTM.title_no,
+            TXT.new_title_legal_description,
+            TXT.new_title_reference,
+            TXT.easement_type,
+            TXT.servient_tenement,
+            TXT.easement_area,
+            TXT.dominant_tenement_or_grantee,
+            TXT.statutory_restriction,
+            TXT.principal_unit,
+            TXT.future_development_unit,
+            TXT.assessory_unit,
+            TXT.title_issued,
+        )
+            TXT.id,
+            TXT.ttm_id,
+            TXT.new_title_legal_description,
+            TXT.new_title_reference,
+            TXT.easement_type,
+            TXT.servient_tenement,
+            TXT.easement_area,
+            TXT.dominant_tenement_or_grantee,
+            TXT.statutory_restriction,
+            TXT.principal_unit,
+            TXT.future_development_unit,
+            TXT.assessory_unit,
+            TXT.title_issued
+        FROM
+            temp_title_memorial_text TXT
+            JOIN public.title_memorials_2 TTM ON TXT.ttm_id = TTM.id
+        ORDER BY
+            TTM.title_no,
+            TXT.new_title_legal_description,
+            TXT.new_title_reference,
+            TXT.easement_type,
+            TXT.servient_tenement,
+            TXT.easement_area,
+            TXT.dominant_tenement_or_grantee,
+            TXT.statutory_restriction,
+            TXT.principal_unit,
+            TXT.future_development_unit,
+            TXT.assessory_unit,
+            TXT.title_issued,
+            TXT.curr_hist_flag DESC,
+            TXT.ttm_id,
+            TXT.id;
+    $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_diff_sql,
+        v_data_insert_sql
+    );
+    
+
     DROP TABLE IF EXISTS tmp_excluded_titles;
     DROP TABLE IF EXISTS tmp_protected_titles;
 
