@@ -1339,7 +1339,7 @@ CREATE TABLE title_memorials
     instrument_number VARCHAR(30),
     instrument_lodged_datetime TIMESTAMP,
     instrument_type VARCHAR(100),
-    encumbrancees VARCHAR(4096),
+    encumbrancees VARCHAR(4096)
 );
 
 ALTER TABLE title_memorials ADD PRIMARY KEY (id);
@@ -1373,7 +1373,7 @@ CREATE TABLE title_memorial_additional_text
     principal_unit character varying(2048),
     future_development_unit character varying(2048),
     assessory_unit character varying(2048),
-    title_issued character varying(2048),
+    title_issued character varying(2048)
 );
 
 ALTER TABLE title_memorial_additional_text ADD PRIMARY KEY (id);
@@ -1387,4 +1387,3 @@ GRANT SELECT ON TABLE title_memorial_additional_text TO bde_user;
 SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_text'');
 '
 );
-
