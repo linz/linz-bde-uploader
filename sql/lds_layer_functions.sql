@@ -2782,7 +2782,7 @@ BEGIN
                 land_district,
                 -- Aggregate memorial text for records which are otherwise identical and remove line breaks from text
                 string_agg(
-                    DISTINCT trim(regexp_replace(memorial_text, E'[\\n\\r]+', '', 'g' )),
+                    trim(regexp_replace(memorial_text, E'[\\n\\r]+', '', 'g' )),
                     ';;'
                 ) AS memorial_text,
                 "current",
