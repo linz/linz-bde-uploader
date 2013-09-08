@@ -2696,7 +2696,7 @@ BEGIN
             instrument_number,
             instrument_lodged_datetime,
             instrument_type,
-            encumbrancees,
+            encumbrancees
         )
         WITH tmp_title_memorials(
             id,
