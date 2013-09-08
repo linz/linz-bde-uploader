@@ -2841,12 +2841,19 @@ BEGIN
             id;
     $sql$;
     
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
     ----------------------------------------------------------------------------
     -- title_memorial_additional_text table
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'title_memorial_additional_text');
 
-    v_data_diff_sql := $sql$
+    v_data_insert_sql := $sql$
         INSERT INTO %1% (
             id,
             ttm_id,
@@ -3009,11 +3016,10 @@ BEGIN
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
-        v_data_diff_sql,
+        v_data_insert_sql,
         v_data_insert_sql
     );
     
-
     DROP TABLE IF EXISTS tmp_excluded_titles;
     DROP TABLE IF EXISTS tmp_protected_titles;
 
