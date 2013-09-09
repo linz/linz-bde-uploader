@@ -2722,7 +2722,7 @@ BEGIN
                         ';;'
                         ORDER BY '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
                     ),
-                    '{{\d+}}',
+                    E'{{\d+}}',
                     '',
                     'g'
                 ) AS memorial_text,
@@ -2955,7 +2955,7 @@ BEGIN
             TXT.principal_unit,
             TXT.future_development_unit,
             TXT.assessory_unit,
-            TXT.title_issued,
+            TXT.title_issued
         )
             TXT.id,
             TXT.ttm_id,
@@ -2972,7 +2972,7 @@ BEGIN
             TXT.title_issued
         FROM
             temp_title_memorial_text TXT
-            JOIN public.title_memorials_2 TTM ON TXT.ttm_id = TTM.id
+            JOIN title_memorials TTM ON TXT.ttm_id = TTM.id
         ORDER BY
             TTM.title_no,
             TXT.new_title_legal_description,
