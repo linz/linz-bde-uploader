@@ -2707,15 +2707,25 @@ BEGIN
             instrument_number,
             instrument_lodged_datetime,
             instrument_type,
-            encumbrancees,
-            ttl_status
+            encumbrancees
         ) AS
         (
             SELECT
                 TTM.id,
                 TTM.ttl_title_no AS title_no,
                 LOC.name AS land_district,
-                TMT.std_text AS memorial_text,
+                -- Aggregate memorial text for records which are otherwise identical and remove line breaks from text
+                -- bit of hack to force the order of the text aggregate to be in terms of the sequence_no
+                regexp_replace(
+                    string_agg(
+                        DISTINCT '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )),
+                        ';;'
+                        ORDER BY '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
+                    ),
+                    '{{\d+}}',
+                    '',
+                    'g'
+                ) AS memorial_text,
                 CASE
                     WHEN (TTM.curr_hist_flag = 'HIST' OR TTM.status = 'HIST')
                     THEN FALSE
@@ -2736,8 +2746,15 @@ BEGIN
                     THEN NULL
                     ELSE TRT.description
                 END AS instrument_type,
-                ENE.name as encumbrancees,
-                TTL.status as ttl_status
+                CASE 
+                    WHEN (TTM.curr_hist_flag != 'HIST' AND TTM.status != 'HIST' AND TTL.STATUS IN ('LIVE', 'PRTC'))
+                    THEN string_agg(
+                        DISTINCT trim(regexp_replace(ENE.name, E'[\\n\\r]+', '', 'g' )),
+                        ','
+                        ORDER BY trim(regexp_replace(ENE.name, E'[\\n\\r]+', '', 'g' )) ASC
+                    )
+                    ELSE NULL
+                END               AS encumbrancees
             FROM
                 crs_title_memorial TTM
                 LEFT JOIN crs_title_mem_text TMT ON TTM.id = TMT.ttm_id
@@ -2760,55 +2777,16 @@ BEGIN
                 ) AND
                 trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) != '' AND 
                 PRO.title_no IS NULL
-            ORDER BY
-                TTM.id,
-                TMT.sequence_no
-        ),
-        tmp_title_memorials_agg (
-            id,
-            title_no,
-            land_district,
-            memorial_text,
-            "current",
-            instrument_number,
-            instrument_lodged_datetime,
-            instrument_type,
-            encumbrancees
-        ) AS
-        (
-            SELECT
-                id,
-                title_no,
-                land_district,
-                -- Aggregate memorial text for records which are otherwise identical and remove line breaks from text
-                string_agg(
-                    trim(regexp_replace(memorial_text, E'[\\n\\r]+', '', 'g' )),
-                    ';;'
-                ) AS memorial_text,
-                "current",
-                instrument_number,
-                instrument_lodged_datetime,
-                instrument_type,
-                CASE 
-                    WHEN ("current" AND ttl_status IN ('LIVE', 'PRTC'))
-                    THEN string_agg(
-                        DISTINCT trim(regexp_replace(encumbrancees, E'[\\n\\r]+', '', 'g' )),
-                        ','
-                        ORDER BY trim(regexp_replace(encumbrancees, E'[\\n\\r]+', '', 'g' )) ASC
-                    )
-                    ELSE NULL
-                END AS encumbrancees
-            FROM
-                tmp_title_memorials
             GROUP BY
-                id,
-                title_no,
+                TTM.id,
+                TTM.ttl_title_no,
                 land_district,
                 instrument_number,
                 instrument_type,
                 instrument_lodged_datetime,
-                "current",
-                ttl_status
+                TTM.curr_hist_flag,
+                TTM.status,
+                TTL.status
         )
         SELECT DISTINCT ON (
             title_no,
@@ -2828,7 +2806,7 @@ BEGIN
             instrument_type, 
             encumbrancees
         FROM
-            tmp_title_memorials_agg
+            tmp_title_memorials
         ORDER BY
             title_no,
             instrument_number,
