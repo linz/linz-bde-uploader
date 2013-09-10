@@ -2722,7 +2722,7 @@ BEGIN
                         ';;'
                         ORDER BY '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
                     ),
-                    E'{{\d+}}',
+                    E'{{\\d+}}',
                     '',
                     'g'
                 ) AS memorial_text,
