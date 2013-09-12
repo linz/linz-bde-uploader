@@ -2787,15 +2787,50 @@ BEGIN
                 TTM.curr_hist_flag,
                 TTM.status,
                 TTL.status
-        )
-        SELECT DISTINCT ON (
-            title_no,
+        ),
+        tmp_title_memorials_nodups (
+            id, 
+            title_no, 
             land_district,
             memorial_text,
+            "current",
             instrument_number,
             instrument_lodged_datetime,
-            instrument_type
-        ) 
+            instrument_type, 
+            encumbrancees
+        ) AS
+        (
+            SELECT DISTINCT ON (
+                title_no,
+                land_district,
+                memorial_text,
+                instrument_number,
+                instrument_lodged_datetime,
+                instrument_type
+            ) 
+                id, 
+                title_no, 
+                land_district,
+                memorial_text,
+                "current",
+                instrument_number,
+                instrument_lodged_datetime,
+                instrument_type, 
+                encumbrancees
+            FROM
+                tmp_title_memorials
+            ORDER BY
+                title_no,
+                instrument_number,
+                memorial_text,
+                instrument_type,
+                land_district,
+                instrument_lodged_datetime,
+                encumbrancees,
+                "current" DESC,
+                id
+        )
+        SELECT
             id, 
             title_no, 
             land_district,
@@ -2806,17 +2841,8 @@ BEGIN
             instrument_type, 
             encumbrancees
         FROM
-            tmp_title_memorials
-        ORDER BY
-            title_no,
-            instrument_number,
-            memorial_text,
-            instrument_type,
-            land_district,
-            instrument_lodged_datetime,
-            encumbrancees,
-            "current" DESC,
-            id;
+            tmp_title_memorials_nodups
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
