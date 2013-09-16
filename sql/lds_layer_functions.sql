@@ -2718,9 +2718,9 @@ BEGIN
                 -- bit of hack to force the order of the text aggregate to be in terms of the sequence_no
                 regexp_replace(
                     string_agg(
-                        DISTINCT '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )),
+                        DISTINCT '{{' || to_char(sequence_no, 'FM0000D') || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )),
                         ';;'
-                        ORDER BY '{{' || sequence_no || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
+                        ORDER BY '{{' || to_char(sequence_no, 'FM0000D') || '}}' || trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) ASC
                     ),
                     E'{{\\d+}}',
                     '',
