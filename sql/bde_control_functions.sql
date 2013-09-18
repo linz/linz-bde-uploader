@@ -769,7 +769,7 @@ BEGIN
         EXIT;
     END LOOP;
     IF v_failed THEN
-        RAISE DEBUG 'Lock on  acquired', p_bde_table;
+        RAISE DEBUG 'Lock on % acquired', p_bde_table;
     END IF;
 END
 $body$
@@ -2784,7 +2784,7 @@ BEGIN
         EXCEPTION
             WHEN others THEN
                 v_result := 0;
-                RAISE EXCEPTION 'Error in task %. ERROR: %. SQL: ',
+                RAISE EXCEPTION 'Error in task %. ERROR: %. SQL: %',
                     p_task, SQLERRM, v_sql;
         END;
     END LOOP;
