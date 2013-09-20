@@ -1,3 +1,9 @@
+linz-bde-uploader (1.3.4-1) lucid; urgency=low
+
+  * Ensure SQL RAISE messages have the correct number of parameters
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 18 Sep 2013 14:37:58 +1200
+
 linz-bde-uploader (1.3.3-1) lucid; urgency=low
 
   * Fix syntax error for title memorial creation sql
