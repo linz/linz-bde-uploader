@@ -97,6 +97,8 @@ package BdeUploadDatasetDef;
 
 use fields qw{ config_file tables };
 
+use Log::Log4perl qw(:easy);
+
 sub new
 {
     my($class,$config_file) = @_;
