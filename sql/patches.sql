@@ -1243,7 +1243,7 @@ SELECT _patches.apply_patch(
     '
 DO $PATCH$
 DECLARE
-    BOOLEAN v_versioned := false;
+    v_versioned BOOLEAN;
 BEGIN
     --------------------------------------------------------------------------------
     -- LDS table survey_observations
