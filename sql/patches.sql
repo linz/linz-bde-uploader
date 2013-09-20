@@ -18,6 +18,8 @@
 --------------------------------------------------------------------------------
 SET client_min_messages TO WARNING;
 
+SET search_path = lds, bde, public;
+
 SELECT _patches.apply_patch(
     'BDE - 1.0.0: Apply BDE schema indexes',
     '
@@ -1235,88 +1237,102 @@ $PATCH$
 '
 );
 
+
 SELECT _patches.apply_patch(
     'BDE - 1.3.1: Update observation layers to contain the start and end mark name',
     '
-
-SET search_path = lds, bde, public;
-
---------------------------------------------------------------------------------
--- LDS table survey_observations
---------------------------------------------------------------------------------
-
-SELECT table_version.ver_disable_versioning(''lds'', ''survey_observations'');
-
-DROP TABLE IF EXISTS survey_observations CASCADE;
-
-CREATE TABLE survey_observations (
-    id integer NOT NULL,
-    nod_id_start integer NOT NULL,
-    mark_name_start VARCHAR(100), 
-    nod_id_end integer NOT NULL,
-    mark_name_end VARCHAR(100), 
-    obs_type character varying(18) NOT NULL,
-    value numeric(22,12) NOT NULL,
-    value_accuracy numeric(22,12),
-    value_label VARCHAR(10) NOT NULL,
-    surveyed_type VARCHAR(10),
-    coordinate_system VARCHAR(42) NOT NULL,
-    land_district VARCHAR(14) NOT NULL,
-    ref_datetime timestamp without time zone NOT NULL,
-    survey_reference VARCHAR(50)
-);
-SELECT AddGeometryColumn(''survey_observations'', ''shape'', 4167, ''LINESTRING'', 2);
-
-ALTER TABLE survey_observations ADD PRIMARY KEY (id);
-CREATE INDEX shx_sur_obs_shape ON survey_observations USING gist (shape);
-
-ALTER TABLE survey_observations OWNER TO bde_dba;
-
-REVOKE ALL ON TABLE survey_observations FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE survey_observations TO bde_admin;
-GRANT SELECT ON TABLE survey_observations TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''survey_observations'');
-
---------------------------------------------------------------------------------
--- LDS table survey_arc_observations
---------------------------------------------------------------------------------
-SELECT table_version.ver_disable_versioning(''lds'', ''survey_arc_observations'');
-
-DROP TABLE IF EXISTS survey_arc_observations CASCADE;
-CREATE TABLE survey_arc_observations (
-    id INTEGER NOT NULL,
-    nod_id_start integer NOT NULL,
-    mark_name_start VARCHAR(100),
-    nod_id_end integer NOT NULL,
-    mark_name_end VARCHAR(100),
-    chord_bearing NUMERIC(22,12) NOT NULL,
-    arc_length NUMERIC(22,12),
-    arc_radius NUMERIC(22,12),
-    arc_direction VARCHAR(4),
-    chord_bearing_accuracy NUMERIC(22,12),
-    arc_length_accuracy NUMERIC(22,12),
-    surveyed_type VARCHAR(10),
-    coordinate_system VARCHAR(42) NOT NULL,
-    land_district VARCHAR(100) NOT NULL,
-    ref_datetime TIMESTAMP NOT NULL,
-    survey_reference VARCHAR(50),
-    chord_bearing_label VARCHAR(10) NOT NULL,
-    arc_length_label VARCHAR(10),
-    arc_radius_label VARCHAR(10)
-);
-SELECT AddGeometryColumn(''survey_arc_observations'', ''shape'', 4167, ''LINESTRING'', 2);
-
-ALTER TABLE survey_arc_observations ADD PRIMARY KEY (id);
-CREATE INDEX shx_sur_arc_obs_shape ON survey_arc_observations USING gist (shape);
-
-ALTER TABLE survey_arc_observations OWNER TO bde_dba;
-
-REVOKE ALL ON TABLE survey_arc_observations FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE survey_arc_observations TO bde_admin;
-GRANT SELECT ON TABLE survey_arc_observations TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''survey_arc_observations'');
+DO $PATCH$
+DECLARE
+    BOOLEAN v_versioned := false;
+BEGIN
+    --------------------------------------------------------------------------------
+    -- LDS table survey_observations
+    --------------------------------------------------------------------------------
+    IF table_version.ver_is_table_versioned(''lds'', ''survey_observations'') THEN
+        PERFORM table_version.ver_disable_versioning(''lds'', ''survey_observations'');
+        v_versioned := true;
+    END IF;
+        
+    DROP TABLE IF EXISTS lds.survey_observations CASCADE;
+    
+    CREATE TABLE lds.survey_observations (
+        id integer NOT NULL,
+        nod_id_start integer NOT NULL,
+        mark_name_start VARCHAR(100), 
+        nod_id_end integer NOT NULL,
+        mark_name_end VARCHAR(100), 
+        obs_type character varying(18) NOT NULL,
+        value numeric(22,12) NOT NULL,
+        value_accuracy numeric(22,12),
+        value_label VARCHAR(10) NOT NULL,
+        surveyed_type VARCHAR(10),
+        coordinate_system VARCHAR(42) NOT NULL,
+        land_district VARCHAR(14) NOT NULL,
+        ref_datetime timestamp without time zone NOT NULL,
+        survey_reference VARCHAR(50)
+    );
+    PERFORM AddGeometryColumn(''lds'', ''survey_observations'', ''shape'', 4167, ''LINESTRING'', 2);
+    
+    ALTER TABLE lds.survey_observations ADD PRIMARY KEY (id);
+    CREATE INDEX shx_sur_obs_shape ON lds.survey_observations USING gist (shape);
+    
+    ALTER TABLE lds.survey_observations OWNER TO bde_dba;
+    
+    REVOKE ALL ON TABLE lds.survey_observations FROM PUBLIC;
+    GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE lds.survey_observations TO bde_admin;
+    GRANT SELECT ON TABLE lds.survey_observations TO bde_user;
+    
+    IF v_versioned THEN
+        PERFORM table_version.ver_enable_versioning(''lds'', ''survey_observations'');
+    END IF;
+    
+    --------------------------------------------------------------------------------
+    -- LDS table survey_arc_observations
+    --------------------------------------------------------------------------------
+    v_versioned := false;
+    IF table_version.ver_is_table_versioned(''lds'', ''survey_arc_observations'') THEN
+        PERFORM table_version.ver_disable_versioning(''lds'', ''survey_arc_observations'');
+        v_versioned := true;
+    END IF;
+    
+    DROP TABLE IF EXISTS lds.survey_arc_observations CASCADE;
+    CREATE TABLE lds.survey_arc_observations (
+        id INTEGER NOT NULL,
+        nod_id_start integer NOT NULL,
+        mark_name_start VARCHAR(100),
+        nod_id_end integer NOT NULL,
+        mark_name_end VARCHAR(100),
+        chord_bearing NUMERIC(22,12) NOT NULL,
+        arc_length NUMERIC(22,12),
+        arc_radius NUMERIC(22,12),
+        arc_direction VARCHAR(4),
+        chord_bearing_accuracy NUMERIC(22,12),
+        arc_length_accuracy NUMERIC(22,12),
+        surveyed_type VARCHAR(10),
+        coordinate_system VARCHAR(42) NOT NULL,
+        land_district VARCHAR(100) NOT NULL,
+        ref_datetime TIMESTAMP NOT NULL,
+        survey_reference VARCHAR(50),
+        chord_bearing_label VARCHAR(10) NOT NULL,
+        arc_length_label VARCHAR(10),
+        arc_radius_label VARCHAR(10)
+    );
+    PERFORM AddGeometryColumn(''lds'', ''survey_arc_observations'', ''shape'', 4167, ''LINESTRING'', 2);
+    
+    ALTER TABLE lds.survey_arc_observations ADD PRIMARY KEY (id);
+    CREATE INDEX shx_sur_arc_obs_shape ON lds.survey_arc_observations USING gist (shape);
+    
+    ALTER TABLE lds.survey_arc_observations OWNER TO bde_dba;
+    
+    REVOKE ALL ON TABLE lds.survey_arc_observations FROM PUBLIC;
+    GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE lds.survey_arc_observations TO bde_admin;
+    GRANT SELECT ON TABLE lds.survey_arc_observations TO bde_user;
+    
+    IF v_versioned THEN
+        PERFORM table_version.ver_enable_versioning(''lds'', ''survey_arc_observations'');
+    END IF;
+END;
+$PATCH$
 '
 );
 
