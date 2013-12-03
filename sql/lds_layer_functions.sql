@@ -2765,7 +2765,7 @@ BEGIN
                 LEFT JOIN crs_encumbrancee ENE ON ENS.id = ENE.ens_id
                 LEFT JOIN crs_title TTL ON TTM.ttl_title_no = TTL.title_no
                 LEFT JOIN crs_locality LOC ON TTL.ldt_loc_id = LOC.id
-                LEFT JOIN tmp_protected_titles PRO ON TTM.ttl_title_no = PRO.
+                LEFT JOIN tmp_protected_titles PRO ON TTM.ttl_title_no = PRO.title_no
                 LEFT JOIN tmp_excluded_titles EXL ON TTM.ttl_title_no = EXL.title_no
             WHERE
                 TTM.status != 'LDGE' AND
@@ -2778,7 +2778,7 @@ BEGIN
                 ) AND
                 trim(regexp_replace(TMT.std_text, E'[\\n\\r]+', '', 'g' )) != '' AND 
                 PRO.title_no IS NULL AND
-                EXL.title_no IS NULL
+               EXL.title_no IS NULL
             GROUP BY
                 TTM.id,
                 TTM.ttl_title_no,
