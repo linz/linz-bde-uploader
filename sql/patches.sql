@@ -1403,3 +1403,21 @@ GRANT SELECT ON TABLE title_memorial_additional_text TO bde_user;
 SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_text'');
 '
 );
+
+
+-------------------------------------------------------------------------------
+-- crs_statute_column_width_increase patch
+-------------------------------------------------------------------------------
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.3: Alter column width crs_statute/name_and_date from 100 to 200',
+    '
+UPDATE pg_attribute SET atttypmod=200+4
+WHERE attrelid = ''bde.crs_statute''::regclass
+AND attname = ''name_and_date'';
+
+UPDATE pg_attribute SET atttypmod=200+4
+WHERE attrelid = ''table_version.bde_crs_statute_revision''::regclass
+AND attname = ''name_and_date'';
+'
+);
