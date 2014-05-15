@@ -1410,7 +1410,7 @@ SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.3.3: Alter column width crs_statute/name_and_date from 100 to 200',
+    'BDE - 1.3.5: Alter column width crs_statute/name_and_date from 100 to 200',
     '
 UPDATE pg_attribute SET atttypmod=200+4
 WHERE attrelid = ''bde.crs_statute''::regclass
