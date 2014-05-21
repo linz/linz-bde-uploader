@@ -79,6 +79,33 @@ $$
 
 ALTER FUNCTION LDS_deg_dms(DOUBLE PRECISION, INTEGER, CHAR(2)) OWNER TO bde_dba;
 
+CREATE OR REPLACE FUNCTION ST_CreateGrid(
+        nrow integer, ncol integer,
+        xsize float8, ysize float8,
+        x0 float8 DEFAULT 0, y0 float8 DEFAULT 0,
+        OUT row_id bigint,
+        OUT "row" integer, 
+        OUT col integer,
+        OUT geom geometry)
+    RETURNS SETOF record AS
+$$
+
+SELECT row_number() OVER (ORDER BY j, i) AS row_id, i + 1 AS row, j + 1 AS col, ST_Translate(cell, j * $3 + $5, i * $4 + $6) AS geom FROM generate_series(0, $1 - 1) AS i,
+     generate_series(0, $2 - 1) AS j,
+(
+SELECT ('POLYGON((0 0, 0 '||$4||', '||$3||' '||$4||', '||$3||' 0,0 0))')::geometry AS cell
+) AS foo;
+$$ LANGUAGE sql IMMUTABLE STRICT;
+
+ALTER FUNCTION ST_CreateGrid(
+        nrow integer, ncol integer,
+        xsize float8, ysize float8,
+        x0 float8, y0 float8,
+        OUT row_id bigint,
+        OUT "row" integer, 
+        OUT col integer,
+        OUT geom geometry
+    ) OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION LDS_MaintainSimplifiedLayers(
     p_upload_id INTEGER
@@ -3057,7 +3084,70 @@ BEGIN
     -- road_centre_line layer
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('lds', 'road_centre_line');
+
+
+    DROP TABLE IF EXISTS public.tla;
     
+    CREATE TABLE public.tla AS
+    SELECT
+        TLA.name AS tla_name,
+        TLA.shape,
+        ST_Envelope(ST_Force_2d(TLA.shape)) AS bbox FROM
+        crs_statist_area TLA,
+        crs_stat_version TAV
+    WHERE
+        TLA.sav_area_class = TAV.area_class AND
+        TLA.sav_version = TAV.version AND
+        TAV.end_date is null AND
+        TAV.start_date < now() AND
+        TLA.status = 'CURR' AND
+        TLA.sav_area_class = 'TA';
+    
+    CREATE INDEX tmp_tla_bbox on public.tla USING GIST (bbox);
+    
+    ANALYSE public.tla;
+    
+    /*
+    Range for TLA boundary grid
+    166, 185, -33, -48
+    Cell size 0.05 degrees or about 5km x 5km */
+    
+    DROP TABLE IF EXISTS public.grid;
+    
+    CREATE TABLE public.grid AS
+    SELECT row_id, row, col, ST_SetSrid(geom, 4167) as geom FROM ST_CreateGrid(300, 380, 0.05, 0.05, 166, -48) as grid;
+    
+    ALTER TABLE public.grid ADD PRIMARY KEY (row_id); CREATE INDEX idx_grid_geom ON public.grid USING GIST (geom); ANALYSE public.grid;
+    
+    DROP TABLE IF EXISTS public.gridded_tla;
+
+    CREATE TABLE public.gridded_tla AS
+    SELECT
+        GRID.row_id,
+        TA.tla_name,
+        (ST_Dump(ST_Intersection(TA.shape, GRID.geom))).geom AS shape FROM
+        public.tla AS TA LEFT OUTER JOIN public.grid AS GRID ON TA.bbox && GRID.geom AND ST_Intersects(TA.shape, GRID.geom);
+
+    -- Query returned successfully: 17874 rows affected, 880163 ms execution time.
+
+    ALTER TABLE public.gridded_tla ADD PRIMARY KEY (row_id); 
+    
+    CREATE INDEX idx_gridded_tla_geom ON public.gridded_tla USING GIST (shape); 
+    
+    ANALYSE public.gridded_tla;  
+    
+    CREATE TEMP TABLE tmp_road_tla AS
+    SELECT DISTINCT
+        RCL.id AS rcl_id,
+        TLA.tla_name AS tla_name
+    FROM
+        crs_road_ctr_line AS RCL,
+        public.gridded_tla TLA
+    WHERE
+        ST_Intersects(TLA.shape, RCL.shape);
+
+    -- Query returned successfully: 275140 rows affected, 8672 ms execution time.
+
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
             id,
@@ -3075,18 +3165,18 @@ BEGIN
         ) AS
         (
             SELECT DISTINCT
-                    RNA.id,
-                    COALESCE(STR.name, RNA.name) as name,
-                    STR.locality,
-                    TLA.name AS territorial_authority,
-                    encode(shape, 'hex') AS shape_hex
+                    RNA.id AS rna_id,
+                    COALESCE(ARN."utf8_road_name.name", RNA.name) AS name,
+                    COALESCE(ALN."utf8_crs_road_name.location", RNA.location) AS locality,
+                    TLA.tla_name AS territorial_authority,
+                    encode(RCL.shape, 'hex') AS shape_hex
                 FROM
                     crs_road_ctr_line AS RCL
                     JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
                     JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
-                    LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
-                    LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
-                    LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+                    LEFT JOIN road_name_macrons AS ARN ON ARN."crs_road_name.name" = RNA.name
+                    LEFT JOIN loc_name_macrons AS ALN ON ALN."crs_road_name.location" = RNA.location
+                    LEFT JOIN tmp_road_tla AS TLA ON TLA.rcl_id = RCL.id
                 WHERE
                     RCL.status = 'CURR' AND
                     RNA.type = 'ROAD' AND
@@ -3104,7 +3194,7 @@ BEGIN
             roads 
         GROUP BY
             rna_id,
-            name,
+            "name",
             locality
         ORDER BY
             rna_id;
@@ -3132,7 +3222,7 @@ BEGIN
             parcel_derived,
             shape
         )
-        WITH road_names(row_number, rcl_id, parcel_derived, name, location, shape) AS (
+        WITH road_names(row_number, rcl_id, parcel_derived, "name", location, territorial_authority, shape) AS (
             SELECT
                 row_number() OVER (
                     PARTITION BY RCL.id
@@ -3147,14 +3237,17 @@ BEGIN
                 ELSE
                     TRUE
                 END AS parcel_derived,
-                COALESCE(STR.name, RNA.name) as name,
-                RNA.location,
+                COALESCE(ARN."utf8_road_name.name", RNA.name) AS name,
+                COALESCE(ALN."crs_road_name.location", RNA.location),
+                TLA.tla_name as territorial_authority,
                 RCL.shape
             FROM
                 crs_road_ctr_line AS RCL
                 JOIN crs_road_name_asc AS RNS ON RCL.id = RNS.rcl_id
                 JOIN crs_road_name AS RNA ON RNA.id = RNS.rna_id
-                LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
+                LEFT JOIN road_name_macrons AS ARN ON ARN."crs_road_name.name" = RNA.name
+                LEFT JOIN loc_name_macrons AS ALN ON ALN."crs_road_name.location" = RNA.location
+                LEFT JOIN tmp_road_tla AS TLA ON TLA.rcl_id = RCL.id
             WHERE
                 RCL.status = 'CURR' AND
                 RNA.type = 'ROAD' AND
@@ -3164,25 +3257,19 @@ BEGIN
             ROADS.rcl_id as id,
             ROADS.name,
             string_agg(DISTINCT OTHERS.name, ', ' ORDER BY OTHERS.name ASC) as other_names,
-            STR.locality,
-            string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
+            ROADS.location as locality,
+            string_agg(DISTINCT ROADS.territorial_authority, ', ' ORDER BY ROADS.territorial_authority ASC) AS territorial_authority,
             ROADS.parcel_derived,
             ROADS.shape
         FROM
             road_names AS ROADS
-            LEFT JOIN asp.street AS STR ON ROADS.location = STR.sufi::TEXT AND STR.status = 'C'
-            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
-            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
             LEFT JOIN road_names AS OTHERS ON ROADS.rcl_id = OTHERS.rcl_id AND OTHERS.row_number <> 1
-            LEFT JOIN asp.street AS STR1 ON OTHERS.location = STR1.sufi::TEXT AND STR1.status = 'C'
-            LEFT JOIN asp.street_part AS SPT1 ON STR1.sufi = SPT1.street_sufi AND SPT1.status = 'C'
-            LEFT JOIN asp.tla_codes AS TLA1 ON SPT1.tla = TLA1.code
         WHERE
             ROADS.row_number = 1
         GROUP BY
             ROADS.rcl_id,
             ROADS.name,
-            STR.locality,
+            ROADS.location,
             ROADS.parcel_derived,
             ROADS.shape
         ORDER BY
@@ -3195,7 +3282,9 @@ BEGIN
         v_data_insert_sql,
         v_data_insert_sql
     );
-    
+   
+    DROP TABLE IF EXISTS tmp_road_tla;
+
     ----------------------------------------------------------------------------
     -- railway_centre_line layer
     ----------------------------------------------------------------------------
@@ -3255,23 +3344,33 @@ BEGIN
             SAD.house_number || ' ' || RNA.name AS address,
             SAD.house_number,
             RNA.name,
-            STR.locality,
+            RNA.location as locality,
             string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
             SAD.shape
         FROM
             crs_street_address SAD
             JOIN crs_road_name RNA ON RNA.id = SAD.rna_id
-            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
-            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
-            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+            LEFT JOIN crs_mesh_blk AS MB ON MB.code = SAD.meshblock_code
+            LEFT JOIN crs_mesh_blk_area AS MBA ON MB.id = MBA.mbk_id
+            LEFT JOIN (
+                SELECT 
+                    id,name
+                FROM 
+                    crs_statist_area
+                WHERE
+                    status = 'CURR' AND
+                    sav_area_class = 'TA'
+            ) AS TLA ON TLA.id = MBA.stt_id  
         WHERE
-            SAD.status = 'CURR'
+            SAD.status = 'CURR' AND
+            SAD.house_number != 'UNH' AND
+            SAD.range_low != 0
         GROUP BY
             SAD.id,
             RNA.id,
             SAD.house_number,
             RNA.name,
-            STR.locality,
+            RNA.location,
             SAD.shape;
     $sql$;
     
@@ -3310,17 +3409,27 @@ BEGIN
             SAD.range_low,
             SAD.range_high,
             RNA.name,
-            STR.locality,
+            RNA.location AS locality,
             string_agg(DISTINCT TLA.name, ', ' ORDER BY TLA.name ASC) AS territorial_authority,
             SAD.shape
         FROM
             crs_street_address SAD
             JOIN crs_road_name RNA ON RNA.id = SAD.rna_id
-            LEFT JOIN asp.street AS STR ON RNA.location = STR.sufi::TEXT AND STR.status = 'C'
-            LEFT JOIN asp.street_part AS SPT ON STR.sufi = SPT.street_sufi AND SPT.status = 'C'
-            LEFT JOIN asp.tla_codes AS TLA ON SPT.tla = TLA.code
+            LEFT JOIN crs_mesh_blk AS MB ON MB.code = SAD.meshblock_code
+            LEFT JOIN crs_mesh_blk_area AS MBA ON MB.id = MBA.mbk_id
+            LEFT JOIN (
+                SELECT 
+                    id,name
+                FROM 
+                    crs_statist_area
+                WHERE
+                    status = 'CURR' AND
+                    sav_area_class = 'TA'
+            ) AS TLA ON TLA.id = MBA.stt_id 
         WHERE
-            SAD.status = 'CURR'
+            SAD.status = 'CURR' AND
+            SAD.house_number != 'UNH' AND
+            SAD.range_low != 0
         GROUP BY
             SAD.id,
             RNA.id,
@@ -3329,7 +3438,7 @@ BEGIN
             SAD.range_low,
             SAD.range_high,
             RNA.name,
-            STR.locality,
+            RNA.location,
             SAD.shape;
     $sql$;
     
