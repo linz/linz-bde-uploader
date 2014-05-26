@@ -254,7 +254,7 @@ BEGIN
 		    ALS.id,
 		    ALS.prp_id,
 		    -- Mask protected titles
-		    CASE WHEN D2P.title_no IS NOT NULL THEN lds.LDS_GetProtectedText(D2P.title_no::text) ELSE ALS.surname END AS surname,
+		    CASE WHEN D2P.title_no IS NOT NULL THEN lds.LDS_GetProtectedText(D2P.title_no) ELSE ALS.surname END AS surname,
 		    CASE WHEN D2P.title_no IS NOT NULL THEN NULL ELSE ALS.other_names END AS other_names 
 		FROM crs_alias ALS
 		JOIN crs_proprietor PRP ON ALS.prp_id = PRP.id
@@ -333,15 +333,15 @@ BEGIN
 		)
 		SELECT prp.id, prp.ets_id, prp.status, prp.type, 
 		        CASE
-		            WHEN d2p.title_no IS NOT NULL THEN NULL::character varying
+		            WHEN d2p.title_no IS NOT NULL THEN NULL::VARCHAR
 		            ELSE prp.prime_surname
 		        END AS prime_surname, 
 		        CASE
-		            WHEN d2p.title_no IS NOT NULL THEN NULL::character varying
+		            WHEN d2p.title_no IS NOT NULL THEN NULL::VARCHAR
 		            ELSE prp.prime_other_names
 		        END AS prime_other_names, 
 		        CASE
-		            WHEN d2p.title_no IS NOT NULL THEN lds.LDS_GetProtectedText(d2p.title_no::text)::character varying
+		            WHEN d2p.title_no IS NOT NULL THEN lds.LDS_GetProtectedText(d2p.title_no)
 		            ELSE prp.corporate_name
 		        END AS corporate_name, prp.name_suffix, prp.original_flag
 		FROM crs_proprietor prp
@@ -480,7 +480,7 @@ BEGIN
 			NMI.name_type, 
 			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN NULL ELSE NMI.surname END AS surname,
 			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN NULL ELSE NMI.other_names END AS other_names, 
-			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN lds.LDS_GetProtectedText(DVL.ttl_title_no::text) ELSE NMI.corporate_name END as corporate_name
+			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN lds.LDS_GetProtectedText(DVL.ttl_title_no) ELSE NMI.corporate_name END as corporate_name
 		FROM crs_nominal_index NMI
 		LEFT JOIN tmp_protected_titles DVL 
 		ON NMI.ttl_title_no = DVL.title_no 
@@ -666,9 +666,37 @@ BEGIN
 		    JOIN bde.crs_parcel_ring PRI ON PRI.id = PAB.pri_id
 		    JOIN bde.crs_parcel PAR ON PAR.id = PRI.par_id
 		    WHERE PAR.status IN ('CURR','SHST'),
-		LIN_ORD (id, boundary, type, nod_id_end, nod_id_start, arc_radius, arc_direction, arc_length, pnx_id_created, dcdb_feature, se_row_id, audit_id, description, shape)
+		LIN_ORD (
+            id,
+            boundary,
+            type,
+            nod_id_end,
+            nod_id_start,
+            arc_radius,
+            arc_direction,
+            arc_length,
+            pnx_id_created,
+            dcdb_feature,
+            se_row_id,
+            audit_id,
+            description,
+            shape )
 		AS(
-			SELECT id, boundary, type, nod_id_end, nod_id_start, arc_radius, arc_direction, arc_length, pnx_id_created, dcdb_feature, se_row_id, audit_id, description, shape 
+			SELECT
+                id,
+                boundary,
+                type,
+                nod_id_end,
+                nod_id_start,
+                arc_radius,
+                arc_direction,
+                arc_length,
+                pnx_id_created,
+                dcdb_feature,
+                se_row_id,
+                audit_id,
+                description,
+                shape 
 			FROM bde.crs_line 
 			ORDER BY id)
 		SELECT 
@@ -1376,8 +1404,6 @@ BEGIN
         v_data_insert_sql
     );
     
-    
-
     ----------------------------------------------------------------------------
     -- title action layer (2)
     ----------------------------------------------------------------------------
@@ -1539,7 +1565,7 @@ BEGIN
 
     INSERT INTO ttm_ldg
     SELECT TTM.id FROM bde.crs_title_memorial TTM
-    WHERE TTM.status::text <> 'LDGE' 
+    WHERE TTM.status <> 'LDGE' 
     AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
     
     CREATE INDEX ttm_ldg_idx ON ttm_ldg (id);
@@ -1566,7 +1592,7 @@ BEGIN
 			TMT.sequence_no, 
 			TMT.curr_hist_flag, 
 			CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
-				THEN TIN.inst_no::text || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
+				THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
 			ELSE TMT.std_text
 			END AS std_text, 
 			TMT.col_1_text, 
