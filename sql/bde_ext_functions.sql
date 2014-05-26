@@ -41,7 +41,7 @@ $$;
 
 -- ***NOTE*** This function needs to be called in the linz_bde_upload perl script i.e.
 -- """dataset_load_end_sql <<EOT
--- SELECT lds.LDS_MaintainSimplifiedLayers({{id}});
+-- SELECT lds.LDS_MaintainAllFBDELayers({{id}});
 -- SELECT bde_CompleteDatasetRevision({{id}});
 -- EOT"""
 
@@ -665,7 +665,7 @@ BEGIN
 		    FROM bde.crs_parcel_bndry PAB
 		    JOIN bde.crs_parcel_ring PRI ON PRI.id = PAB.pri_id
 		    JOIN bde.crs_parcel PAR ON PAR.id = PRI.par_id
-		    WHERE PAR.status = ANY (ARRAY['CURR','SHST'])),
+		    WHERE PAR.status IN ('CURR','SHST'),
 		LIN_ORD (id, boundary, type, nod_id_end, nod_id_start, arc_radius, arc_direction, arc_length, pnx_id_created, dcdb_feature, se_row_id, audit_id, description, shape)
 		AS(
 			SELECT id, boundary, type, nod_id_end, nod_id_start, arc_radius, arc_direction, arc_length, pnx_id_created, dcdb_feature, se_row_id, audit_id, description, shape 
@@ -1011,8 +1011,8 @@ BEGIN
 			PAR.audit_id, 
 			PAR.shape
 		FROM crs_parcel PAR
-		WHERE PAR.status = ANY (ARRAY['CURR', 'SHST'])
-		AND (PAR.shape IS NULL OR geometrytype(PAR.shape) IN ('MULTIPOLYGON','POLYGON'))	
+		WHERE PAR.status IN ('CURR', 'SHST')
+		AND (PAR.shape IS NULL OR ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon','ST_Polygon'))	
 		;
     $sql$;
     
@@ -1022,7 +1022,6 @@ BEGIN
         v_data_insert_sql,
         v_data_insert_sql
     );
-    
     
     ----------------------------------------------------------------------------
     -- parcel label layer
@@ -1050,7 +1049,7 @@ BEGIN
 				SELECT *
 		        FROM crs_parcel PAR
 		        WHERE PAR.id = PDL.par_id
-		        AND PAR.status = ANY (ARRAY['CURR','SHST'])
+		        AND PAR.status IN ('CURR','SHST')
 		    )
 		);
     $sql$;
@@ -1084,7 +1083,7 @@ BEGIN
 				SELECT PAR.id
 				FROM crs_parcel PAR
 				WHERE PAR.id = PDM.par_id 
-				AND PAR.status = ANY (ARRAY['CURR', 'SHST'])
+				AND PAR.status IN ('CURR', 'SHST')
 				)
 			);
     $sql$;
@@ -1139,62 +1138,8 @@ BEGIN
 			PAR.audit_id, 
 			PAR.shape
 		FROM crs_parcel PAR
-		WHERE PAR.status::text = ANY (ARRAY['CURR', 'SHST'])
-		AND geometrytype(PAR.shape) = 'LINESTRING';
-    $sql$;
-    
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
-        p_upload,
-        v_table,
-        v_data_insert_sql,
-        v_data_insert_sql
-    );
-    
-    ----------------------------------------------------------------------------
-    -- parcel pt layer
-    ----------------------------------------------------------------------------
-    v_table := LDS.LDS_GetTable('bde_ext', 'parcel_pt');
-    
-    v_data_insert_sql := $sql$
-    
-		INSERT INTO %1% (	
-			id, 
-			ldt_loc_id, 
-			img_id, 
-			fen_id, 
-			toc_code, 
-			alt_id, 
-			area, 
-			nonsurvey_def, 
-			appellation_date, 
-			parcel_intent, 
-			status, 
-			total_area, 
-			calculated_area, 
-			se_row_id, 
-			audit_id, 
-			shape
-		)
-		SELECT 
-			PAR.id, 
-			PAR.ldt_loc_id, 
-			PAR.img_id, 
-			PAR.fen_id, 
-			PAR.toc_code, 
-			PAR.alt_id, 
-			PAR.area, 
-			PAR.nonsurvey_def, 
-			PAR.appellation_date, 
-			PAR.parcel_intent, 
-			PAR.status, 
-			PAR.total_area, 
-			PAR.calculated_area, 
-			PAR.se_row_id, 
-			PAR.audit_id, 
-			PAR.shape
-		FROM crs_parcel PAR
-		WHERE PAR.status = ANY (ARRAY['CURR', 'SHST'])
-		AND geometrytype(PAR.shape) = 'POINT';
+		WHERE PAR.status IN ('CURR', 'SHST')
+		AND ST_GeometryType(PAR.shape) = 'ST_LineString';
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1229,7 +1174,7 @@ BEGIN
 			(
 			SELECT PAR.id
 			FROM crs_parcel PAR
-			WHERE PAR.status = ANY (ARRAY['CURR', 'SHST'])
+			WHERE PAR.status IN ('CURR', 'SHST')
 			);
     $sql$;
     
@@ -1762,9 +1707,7 @@ BEGIN
 			TRT.description, 
 			TRT.audit_id
 		FROM crs_transact_type TRT
-		WHERE TRT.grp = ANY (
-			ARRAY['TINT', 'WRKT']
-		);
+		WHERE TRT.grp = IN ('TINT', 'WRKT');
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2000,7 +1943,7 @@ BEGIN
 			VEC.length, 
 			VEC.shape
 		FROM crs_vector VEC
-		WHERE geometrytype(VEC.shape) = 'LINESTRING' OR VEC.shape IS NULL;
+		WHERE ST_GeometryType(VEC.shape) = 'ST_LineString' OR VEC.shape IS NULL;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2039,7 +1982,7 @@ BEGIN
 			VEC.length, 
 			VEC.shape
 		FROM crs_vector VEC
-		WHERE geometrytype(VEC.shape) = 'POINT';
+		WHERE ST_GeometryType(VEC.shape) = 'ST_Point';
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
