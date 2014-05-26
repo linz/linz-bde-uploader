@@ -216,7 +216,7 @@ BEGIN
     
     INSERT INTO dvl_prp
     SELECT
-        DVL.ttl_title_no AS title_no,
+        DVL.title_no AS title_no,
         PRP.id AS prp_id
     FROM
         tmp_protected_titles DVL
@@ -478,9 +478,9 @@ BEGIN
             NMI.id, 
             NMI.status, 
             NMI.name_type, 
-            CASE WHEN DVL.ttl_title_no IS NOT NULL THEN NULL ELSE NMI.surname END AS surname,
-            CASE WHEN DVL.ttl_title_no IS NOT NULL THEN NULL ELSE NMI.other_names END AS other_names, 
-            CASE WHEN DVL.ttl_title_no IS NOT NULL THEN lds.LDS_GetProtectedText(DVL.ttl_title_no) ELSE NMI.corporate_name END as corporate_name
+            CASE WHEN DVL.title_no IS NOT NULL THEN NULL ELSE NMI.surname END AS surname,
+            CASE WHEN DVL.title_no IS NOT NULL THEN NULL ELSE NMI.other_names END AS other_names, 
+            CASE WHEN DVL.title_no IS NOT NULL THEN lds.LDS_GetProtectedText(DVL.title_no) ELSE NMI.corporate_name END as corporate_name
         FROM crs_nominal_index NMI
         LEFT JOIN tmp_protected_titles DVL 
         ON NMI.ttl_title_no = DVL.title_no 
@@ -518,7 +518,7 @@ BEGIN
             SELECT
                 ENS.id AS id
             FROM tmp_training_titles TRN
-            JOIN crs_ttl_enc TTE ON TTE.ttl_title_no = TRN.ttl_title_no
+            JOIN crs_ttl_enc TTE ON TTE.ttl_title_no = TRN.title_no
             JOIN crs_encumbrance ENC ON TTE.enc_id = ENC.id
             JOIN crs_enc_share ENS ON ENS.enc_id = ENC.id
         )
@@ -665,7 +665,8 @@ BEGIN
             FROM bde.crs_parcel_bndry PAB
             JOIN bde.crs_parcel_ring PRI ON PRI.id = PAB.pri_id
             JOIN bde.crs_parcel PAR ON PAR.id = PRI.par_id
-            WHERE PAR.status IN ('CURR','SHST'),
+            WHERE PAR.status IN ('CURR','SHST')
+        ),
         LIN_ORD (
             id,
             boundary,
@@ -1460,10 +1461,10 @@ BEGIN
                     AND TLH.status = 'REGD' 
                     AND NOT (
                     EXISTS ( 
-                        SELECT title_no
-                        FROM trn_ttl
-                        WHERE (title_no = TLH.ttl_title_no_prior 
-                            OR title_no = TLH.ttl_title_no_flw) 
+                        SELECT TRN.title_no
+                        FROM tmp_training_titles TRN
+                        WHERE (TRN.title_no = TLH.ttl_title_no_prior 
+                            OR TRN.title_no = TLH.ttl_title_no_flw) 
                     )
                 )
             )
@@ -1542,7 +1543,7 @@ BEGIN
 
     INSERT INTO dvl_mem
     SELECT
-        DVL.ttl_title_no AS title_no,
+        DVL.title_no AS title_no,
         M.id AS mem_id
     FROM
         tmp_protected_titles DVL
@@ -1603,10 +1604,10 @@ BEGIN
             TMT.col_6_text, 
             TMT.col_7_text,
             TMT.audit_id
-        FROM crs_title_mem_text TMT TMT
+        FROM crs_title_mem_text TMT
         LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id 
-        LEFT JOIN M ON TMT.ttm_id = M.id
-        LEFT JOIN crs_ttl_inst TIN ON M.act_tin_id_crt = TIN.id
+        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
+        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
         LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
         WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg);
     $sql$;
@@ -1733,7 +1734,7 @@ BEGIN
             TRT.description, 
             TRT.audit_id
         FROM crs_transact_type TRT
-        WHERE TRT.grp = IN ('TINT', 'WRKT');
+        WHERE TRT.grp IN ('TINT', 'WRKT');
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(

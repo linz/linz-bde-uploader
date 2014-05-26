@@ -50,7 +50,7 @@ CREATE TABLE adjustment_run
   redundancy NUMERIC(22,12),
   wrk_id INTEGER,
   audit_id INTEGER NOT NULL,
-  CONSTRAINT pkey_crs_street_address PRIMARY KEY (id)
+  CONSTRAINT pkey_adjustment_run PRIMARY KEY (id)
 );
 
 ALTER TABLE adjustment_run OWNER TO bde_dba;
@@ -1028,7 +1028,7 @@ CREATE TABLE street_address
   id INTEGER NOT NULL,
   audit_id INTEGER NOT NULL,
   se_row_id INTEGER,
-  CONSTRAINT pkey_crs_street_address PRIMARY KEY (id)
+  CONSTRAINT pkey_street_address PRIMARY KEY (id)
 );
 
 PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
