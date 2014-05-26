@@ -211,7 +211,7 @@ BEGIN
     RAISE DEBUG 'Started creating temp tables for %', v_table;    
     
 	CREATE TEMPORARY TABLE dvl_prp 
-	(title_no CHARACTER VARYING, prp_id INTEGER)
+	(title_no VARCHAR, prp_id INTEGER)
 	ON COMMIT DROP;
 	
 	INSERT INTO dvl_prp
@@ -223,6 +223,8 @@ BEGIN
 	JOIN crs_title_estate ETT ON DVL.title_no = ETT.ttl_title_no
 	JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id
 	JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id;
+    
+    ANALYSE dvl_prp;
 
 	CREATE TEMPORARY TABLE exclude_prp 
 	(prp_id INTEGER)
@@ -236,6 +238,8 @@ BEGIN
 	JOIN crs_title_estate ETT ON EXL.title_no = ETT.ttl_title_no
 	JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id
 	JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id;
+    
+    ANALYSE exclude_prp;
 
     RAISE DEBUG 'Finished creating temp tables for %', v_table;
 
@@ -636,25 +640,6 @@ BEGIN
     -- line layer
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('bde_ext', 'line');
-    
-    
-    --using indexed tt instead of sub to speed up this query
-    --RAISE DEBUG 'Started creating temp tables for %', v_table;
-	
-    --CREATE TEMPORARY TABLE pab_lin 
-    --(lin_id int)
-    --ON COMMIT DROP;
-
-    --INSERT INTO pab_lin
-    --SELECT PAB.lin_id
-	--FROM crs_parcel_bndry PAB
-	--JOIN crs_parcel_ring PRI ON PRI.id = PAB.pri_id
-	--JOIN crs_parcel PAR ON PAR.id = PRI.par_id
-	--WHERE PAR.status = ANY (ARRAY['CURR','SHST']);
-    
-    --CREATE INDEX pab_lin_idx ON pab_lin (lin_id);
-
-    --RAISE DEBUG 'Finished creating temp tables for %', v_table;
     
     v_data_insert_sql := $sql$
     
@@ -1580,8 +1565,8 @@ BEGIN
     
     RAISE DEBUG 'Started creating temp tables for %', v_table;
 
-﻿CREATE TEMPORARY TABLE dvl_mem 
-	(title_no CHARACTER VARYING, mem_id INTEGER)
+    CREATE TEMPORARY TABLE dvl_mem 
+	(title_no VARCHAR, mem_id INTEGER)
 	ON COMMIT DROP;
 
 	INSERT INTO dvl_mem
@@ -1591,10 +1576,10 @@ BEGIN
 	FROM
 		tmp_protected_titles DVL
 	JOIN crs_title_memorial M ON DVL.title_no = M.ttl_title_no;
-
-
-
- ----------------------------------------------------------------------------
+    
+    ANALYSE dvl_mem;
+    
+    ----------------------------------------------------------------------------
     -- title mem text layer (3) {using temp tables}
     -- this temp tables are used to speed up the query, not because the temp is used elsewhere
     ----------------------------------------------------------------------------
@@ -1614,47 +1599,14 @@ BEGIN
     
     CREATE INDEX ttm_ldg_idx ON ttm_ldg (id);
     
-    CREATE TEMPORARY TABLE crs_tmt_indexed (
-    	ttm_id integer NOT NULL,
-  		sequence_no integer NOT NULL,
-  		curr_hist_flag character varying(4) NOT NULL,
-
-
-  		std_text character varying(18000),
-  		col_1_text character varying(2048),
-  		col_2_text character varying(2048),
-  		col_3_text character varying(2048),
-  		col_4_text character varying(2048),
-  		col_5_text character varying(2048),
-  		col_6_text character varying(2048),
-  		col_7_text character varying(2048),
-  		audit_id integer NOT NULL
-  	)
-    ON COMMIT DROP;
-    
-    INSERT INTO crs_tmt_indexed 
-    SELECT TMT.ttm_id, 
-		   TMT.sequence_no, 
-		   TMT.curr_hist_flag, 
-		   TMT.std_text, 
-		   TMT.col_1_text, 
-		   TMT.col_2_text, 
-		   TMT.col_3_text, 
-		   TMT.col_4_text, 
-		   TMT.col_5_text, 
-		   TMT.col_6_text, 
-		   TMT.col_7_text, 
-		   TMT.audit_id
-    FROM bde.crs_title_mem_text TMT;
-    
-    CREATE INDEX crs_tmt_indexed_idx ON crs_tmt_indexed (ttm_id);
+    ANALYSE ttm_ldg;
     
     v_data_insert_sql := $sql$
 		INSERT INTO %1% (
 			ttm_id, 
 			sequence_no, 
 			curr_hist_flag, 
-		  std_text, 
+		    std_text, 
 			col_1_text, 
 			col_2_text, 
 			col_3_text, 
@@ -1680,14 +1632,12 @@ BEGIN
 			TMT.col_6_text, 
 			TMT.col_7_text,
 			TMT.audit_id
-		FROM crs_tmt_indexed TMT
+		FROM crs_title_mem_text TMT TMT
 		LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id 
 		LEFT JOIN M ON TMT.ttm_id = M.id
 		LEFT JOIN crs_ttl_inst TIN ON M.act_tin_id_crt = TIN.id
 		LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
-		WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg);--Note; change from "not-in excluded list" to "in not-excluded" list as previous
-		--JOIN ttm_ldg TLG
-		--ON TMT.ttm_id = TLG.id
+		WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg);
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1903,22 +1853,6 @@ BEGIN
     -- ttl inst layer (2)
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('bde_ext', 'ttl_inst');
-    
-
-
---    RAISE DEBUG 'Started creating temp tables for %', v_table;
---
---	CREATE TEMPORARY TABLE TIN_IDS 
---	(tin_id INTEGER)
---	ON COMMIT DROP;
---	
---	INSERT INTO TIN_IDS
---	SELECT tin_id FROM crs_action
---	UNION
---	SELECT tin_id FROM crs_ttl_inst_title;
---
---	
---    RAISE DEBUG 'Finished creating temp tables for %', v_table;
 
 
     v_data_insert_sql := $sql$
