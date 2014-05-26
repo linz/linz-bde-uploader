@@ -198,45 +198,10 @@ BEGIN
     END IF;
     
     ----------------------------------------------------------------------------
-    -- DVL Temporary Tables
+    -- temporary titles tables
     ----------------------------------------------------------------------------
     
-    RAISE DEBUG 'Started creating DVL temp tables';    
-    
-    DROP TABLE IF EXISTS cbe_excluded_ttls CASCADE;
-    CREATE TEMPORARY TABLE cbe_excluded_ttls AS  
-    	SELECT ttl.title_no, 'PND' AS type
-		FROM bde.crs_title ttl
-		WHERE ttl.status::text = 'PEND'::text
-    UNION 
-		SELECT ttl.title_no AS title_no, 'DVL' AS type
-		FROM bde.crs_title ttl
-		WHERE ttl.protect_start IS NOT NULL AND ttl.protect_end IS NOT NULL AND ttl.protect_start <= now() AND ttl.protect_end >= now()
-	UNION 
-		SELECT ttl.title_no, 'TRN' AS type
-		FROM bde.crs_title ttl
-		WHERE (ttl.title_no::text ~~ 'WNTRAI%'::text OR ttl.title_no::text ~~ 'WNTEST%'::text); 
-
-    DROP TABLE IF EXISTS cbe_excluded_training_titles CASCADE;
-	CREATE TEMPORARY TABLE cbe_excluded_training_titles AS 
-	 SELECT cbe_excluded_ttls.title_no AS ttl_title_no
-	   FROM cbe_excluded_ttls
-	  WHERE cbe_excluded_ttls.type = 'TRN'::text;
-	  
-	DROP TABLE IF EXISTS cbe_protected_dvl_titles CASCADE;
-	CREATE TEMPORARY TABLE cbe_protected_dvl_titles AS 
-	 SELECT cbe_excluded_ttls.title_no AS ttl_title_no
-	   FROM cbe_excluded_ttls
-	  WHERE cbe_excluded_ttls.type = 'DVL'::text;
-	  
-
-	DROP TABLE IF EXISTS cbe_titles_excluding_dvl CASCADE;
-	CREATE TEMPORARY TABLE cbe_titles_excluding_dvl AS 
-	 SELECT cbe_excluded_ttls.title_no AS ttl_title_no
-	   FROM cbe_excluded_ttls
-	  WHERE cbe_excluded_ttls.type <> 'DVL'::text;
-    
-    RAISE DEBUG 'Finished creating DVL temp tables';
+    PERFORM LDS_CreateTitleExclusionTables(p_upload);
     
     ----------------------------------------------------------------------------
     -- alias layer
@@ -254,21 +219,21 @@ BEGIN
 		DVL.ttl_title_no AS title_no,
 		PRP.id AS prp_id
 	FROM
-		cbe_protected_dvl_titles DVL
-	JOIN crs_title_estate ETT ON DVL.ttl_title_no = ETT.ttl_title_no
+		tmp_protected_titles DVL
+	JOIN crs_title_estate ETT ON DVL.title_no = ETT.ttl_title_no
 	JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id
 	JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id;
 
-	CREATE TEMPORARY TABLE trn_prp 
+	CREATE TEMPORARY TABLE exclude_prp 
 	(prp_id INTEGER)
 	ON COMMIT DROP;
 
-	INSERT INTO trn_prp
+	INSERT INTO exclude_prp
 	SELECT 
 		PRP.id as prp_id
 	FROM
-		cbe_excluded_training_titles TRN
-	JOIN crs_title_estate ETT ON TRN.ttl_title_no = ETT.ttl_title_no
+		tmp_excluded_titles EXL
+	JOIN crs_title_estate ETT ON EXL.title_no = ETT.ttl_title_no
 	JOIN crs_estate_share ETS ON ETT.id = ETS.ett_id
 	JOIN crs_proprietor PRP ON ETS.id = PRP.ets_id;
 
@@ -291,8 +256,8 @@ BEGIN
 		JOIN crs_proprietor PRP ON ALS.prp_id = PRP.id
 		LEFT JOIN DVL_PRP D2P ON PRP.id = D2P.prp_id 
 		WHERE PRP.status <> 'LDGE'
-		-- Completely exclude training titles
-		AND PRP.id NOT IN (SELECT prp_id FROM TRN_PRP)
+		-- Completely exclude training titles and pending titles
+		AND PRP.id NOT IN (SELECT prp_id FROM exclude_prp)
 		ORDER BY ALS.id
     $sql$;
     
@@ -377,8 +342,8 @@ BEGIN
 		        END AS corporate_name, prp.name_suffix, prp.original_flag
 		FROM crs_proprietor prp
 		LEFT JOIN dvl_prp d2p ON prp.id = d2p.prp_id
-		WHERE prp.status::text <> 'LDGE'::text 
-		AND prp.id NOT IN ( SELECT trn_prp.prp_id FROM trn_prp);
+		WHERE prp.status <> 'LDGE' 
+		AND prp.id NOT IN ( SELECT exclude_prp.prp_id FROM exclude_prp);
 	$sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -388,7 +353,6 @@ BEGIN
         v_data_insert_sql
     );
     
-
     ----------------------------------------------------------------------------
     -- encumbrancee layer
     ----------------------------------------------------------------------------
@@ -414,8 +378,8 @@ BEGIN
 	AS (
 		SELECT DISTINCT
 		ENE.id AS id
-		FROM cbe_excluded_training_titles TRN
-		JOIN TTE ON TRN.ttl_title_no = TTE.ttl_title_no
+		FROM tmp_training_titles TRN
+		JOIN TTE ON TRN.title_no = TTE.ttl_title_no
 		JOIN bde.crs_enc_share ENS ON ENS.enc_id = TTE.enc_id
 		JOIN bde.crs_encumbrancee ENE ON ENE.ens_id = ENS.id
 	),
@@ -465,8 +429,8 @@ BEGIN
 	AS (
 		SELECT TTE.enc_id 
 		FROM bde.crs_ttl_enc TTE
-    	JOIN cbe_excluded_training_titles EXT 
-    	ON EXT.ttl_title_no = TTE.ttl_title_no
+    	JOIN tmp_training_titles TRN 
+    	ON TRN.title_no = TTE.ttl_title_no
 	)
 	SELECT            
 		id,
@@ -514,10 +478,10 @@ BEGIN
 			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN NULL ELSE NMI.other_names END AS other_names, 
 			CASE WHEN DVL.ttl_title_no IS NOT NULL THEN lds.LDS_GetProtectedText(DVL.ttl_title_no::text) ELSE NMI.corporate_name END as corporate_name
 		FROM crs_nominal_index NMI
-		LEFT JOIN cbe_protected_dvl_titles DVL 
-		ON NMI.ttl_title_no = DVL.ttl_title_no 
+		LEFT JOIN tmp_protected_titles DVL 
+		ON NMI.ttl_title_no = DVL.title_no 
 		WHERE NMI.status <> 'LDGE'
-		AND NMI.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_titles_excluding_dvl)--***T2***
+		AND NMI.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
 		ORDER BY NMI.id;
     $sql$;
         
@@ -549,8 +513,7 @@ BEGIN
 		AS(
 			SELECT
 				ENS.id AS id
-			--FROM cbe_excluded_training_titles TRN --***T2***
-			FROM cbe_titles_excluding_dvl TRN
+			FROM tmp_training_titles TRN
 			JOIN crs_ttl_enc TTE ON TTE.ttl_title_no = TRN.ttl_title_no
 			JOIN crs_encumbrance ENC ON TTE.enc_id = ENC.id
 			JOIN crs_enc_share ENS ON ENS.enc_id = ENC.id
@@ -597,11 +560,11 @@ BEGIN
 			act_id_crt, 
 			share_memorial
 		)
-		WITH TRN_ETS (id)
+		WITH EXL_ETS (id)
 		AS(
 			SELECT ETS.id
-			FROM cbe_excluded_training_titles TRN
-			JOIN crs_title TTL ON TTL.title_no = TRN.ttl_title_no
+			FROM tmp_excluded_titles EXL
+			JOIN crs_title TTL ON TTL.title_no = EXL.title_no
 			JOIN crs_title_estate ETT ON ETT.ttl_title_no = TTL.title_no
 			JOIN crs_estate_share ETS ON ETS.ett_id = ett.id
 		)
@@ -618,7 +581,7 @@ BEGIN
 			ETS.share_memorial
 		FROM crs_estate_share ETS
 		WHERE ETS.status <> 'LDGE' 
-		AND ETS.id NOT IN (SELECT id FROM TRN_ETS);
+		AND ETS.id NOT IN (SELECT id FROM EXL_ETS);
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -654,11 +617,11 @@ BEGIN
 			LGD.total_area,
 			LGD.legal_desc_text
 		FROM crs_legal_desc LGD
-		WHERE LGD.status <> 'LDGE' --(TTL.status <> 'PEND' OR TTL.status IS NULL) AND--***T2***
+		WHERE LGD.status <> 'LDGE'
 		AND (
 			LGD.ttl_title_no IS NULL 
-			OR LGD.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_titles_excluding_dvl))
-			--cbe_excluded_training_titles)--***T2***				);
+			OR LGD.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        )
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1440,22 +1403,6 @@ BEGIN
     -- title layer (2)
     ----------------------------------------------------------------------------
     v_table := LDS.LDS_GetTable('bde_ext', 'title');
-
-
-
-    RAISE DEBUG 'Started creating temp tables for %', v_table;
-
-	CREATE TEMPORARY TABLE trn_ttl 
-	(title_no CHARACTER VARYING)
-	ON COMMIT DROP;
-	
-	INSERT INTO trn_ttl
-	SELECT TTL.title_no
-	FROM cbe_excluded_training_titles TRN 
-	JOIN crs_title TTL ON TRN.ttl_title_no = TTL.title_no;
-	
-    RAISE DEBUG 'Finished creating temp tables for %', v_table;
-
     
     v_data_insert_sql := $sql$
 		INSERT INTO %1% (
@@ -1486,9 +1433,9 @@ BEGIN
 			TTL.provisional, 
 			TTL.sur_wrk_id, 
 			TTL.ttl_title_no_srs,
-            NULL --TTL.ttl_title_no_head_srs
+            NULL --TODO: add column to crs_title for TTL.ttl_title_no_head_srs
 		FROM crs_title TTL
-		WHERE TTL.title_no NOT IN (SELECT title_no FROM TRN_TTL)
+		WHERE TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
 		AND TTL.status <> 'PEND';
     $sql$;
     
@@ -1520,8 +1467,7 @@ BEGIN
 			TTA.audit_id
 		FROM crs_title_action TTA
 		LEFT OUTER JOIN crs_title TTL ON TTA.ttl_title_no = TTL.title_no
-		WHERE TTA.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_excluded_training_titles)
-		AND (TTL.status <> 'PEND' OR TTL.status IS NULL);
+		WHERE TTA.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1614,8 +1560,7 @@ BEGIN
 		LEFT OUTER JOIN crs_title TTL
 			ON ETT.ttl_title_no = TTL.title_no 
 		WHERE ETT.status <> 'LDGE' 
-			AND ETT.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_excluded_training_titles)
-			AND (TTL.status <> 'PEND' OR TTL.status IS NULL);
+			AND ETT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1644,8 +1589,8 @@ BEGIN
 		DVL.ttl_title_no AS title_no,
 		M.id AS mem_id
 	FROM
-		cbe_protected_dvl_titles DVL
-	JOIN crs_title_memorial M ON DVL.ttl_title_no = M.ttl_title_no;
+		tmp_protected_titles DVL
+	JOIN crs_title_memorial M ON DVL.title_no = M.ttl_title_no;
 
 
 
@@ -1663,12 +1608,9 @@ BEGIN
     ON COMMIT DROP;
 
     INSERT INTO ttm_ldg
-    --SELECT TTM.id FROM bde.crs_title_memorial TTM
-    --WHERE TTM.status::text = 'LDGE' 
-    --OR TTM.ttl_title_no IN (SELECT ttl_title_no FROM cbe_excluded_training_titles);
     SELECT TTM.id FROM bde.crs_title_memorial TTM
     WHERE TTM.status::text <> 'LDGE' 
-    AND TTM.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_titles_excluding_dvl);
+    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
     
     CREATE INDEX ttm_ldg_idx ON ttm_ldg (id);
     
@@ -1814,7 +1756,7 @@ BEGIN
 			TTM.act_tin_id_ext
 		FROM crs_title_memorial TTM
 		WHERE TTM.status <> 'LDGE' 
-		AND TTM.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_titles_excluding_dvl)
+		AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1906,8 +1848,7 @@ BEGIN
 		FROM crs_ttl_enc TLE
 		LEFT OUTER JOIN crs_title T ON TLE.ttl_title_no = T.title_no
 		WHERE TLE.status <> 'LDGE'
-		AND T.status <> 'PEND'
-		AND TLE.ttl_title_no NOT IN	(SELECT ttl_title_no FROM cbe_excluded_training_titles);
+		AND TLE.ttl_title_no NOT IN	(SELECT title_no FROM tmp_excluded_titles);
 
     $sql$;
     
@@ -1947,10 +1888,8 @@ BEGIN
 		LEFT OUTER JOIN crs_title PRI 
 			ON TLH.ttl_title_no_prior = PRI.title_no OR TLH.ttl_title_no_prior = PRI.title_no
 		WHERE TLH.status = 'REGD'
-		AND (FLW.status <> 'PEND' OR FLW.status IS NULL)
-		AND (PRI.status <> 'PEND' OR PRI.status IS NULL)
-		AND (FLW.title_no NOT IN (SELECT ttl_title_no FROM cbe_excluded_training_titles) OR FLW.title_no IS NULL)
-		AND (PRI.title_no NOT IN (SELECT ttl_title_no FROM cbe_excluded_training_titles) OR PRI.title_no IS NULL);
+		AND (FLW.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles) OR FLW.title_no IS NULL)
+		AND (PRI.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles) OR PRI.title_no IS NULL);
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2040,7 +1979,7 @@ BEGIN
 			TIT.ttl_title_no,
 			TIT.audit_id
 		FROM bde.crs_ttl_inst_title TIT
-		WHERE TIT.ttl_title_no NOT IN (SELECT ttl_title_no FROM cbe_titles_excluding_dvl);
+		WHERE TIT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2292,6 +2231,8 @@ BEGIN
         v_data_insert_sql
     );
     
+    PERFORM LDS_DropTitleExclusionTables(p_upload);
+        
     RAISE INFO 'Finished maintenance on FBDE layers';
     
     RETURN 1;
@@ -2309,7 +2250,7 @@ DO $$
 DECLARE
     v_comment TEXT;
     v_pcid    TEXT;
-    v_schema  TEXT = 'lds';
+    v_schema  TEXT = 'bde_ext';
 BEGIN
     FOR v_comment, v_pcid IN
         SELECT
