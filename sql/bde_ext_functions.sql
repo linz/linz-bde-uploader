@@ -101,18 +101,17 @@ BEGIN
                     'enc_share',
                     'estate_share',
                     'legal_desc',
+                    'line',
                     'maintenance',
                     'mark',
                     'mark_name',
                     'mark_phys_state',
                     'node',
                     'node_prp_order',
-                    'nominal_index',
                     'parcel',
                     'parcel_dimen',
                     'parcel_label',
                     'parcel_ls',
-                    'parcel_pt',
                     'parcel_ring',
                     'stat_version',
                     'statist_area',
@@ -123,11 +122,7 @@ BEGIN
                     'title_estate',
                     'title_memorial',
                     'title',
-                    'title_action',
-                    'title_doc_ref',
-                    'title_estate',
                     'title_mem_text',
-                    'title_memorial',
                     'title_parcel_association',
                     'transact_type',
                     'ttl_enc',
@@ -152,18 +147,17 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'enc_share')
         AND LDS.LDS_TableHasData('bde_ext', 'estate_share')
         AND LDS.LDS_TableHasData('bde_ext', 'legal_desc')
+        AND LDS.LDS_TableHasData('bde_ext', 'line')
         AND LDS.LDS_TableHasData('bde_ext', 'maintenance')
         AND LDS.LDS_TableHasData('bde_ext', 'mark')
         AND LDS.LDS_TableHasData('bde_ext', 'mark_name')
         AND LDS.LDS_TableHasData('bde_ext', 'mark_phys_state')
         AND LDS.LDS_TableHasData('bde_ext', 'node')
         AND LDS.LDS_TableHasData('bde_ext', 'node_prp_order')
-        AND LDS.LDS_TableHasData('bde_ext', 'nominal_index')
         AND LDS.LDS_TableHasData('bde_ext', 'parcel')
         AND LDS.LDS_TableHasData('bde_ext', 'parcel_dimen')
         AND LDS.LDS_TableHasData('bde_ext', 'parcel_label')
         AND LDS.LDS_TableHasData('bde_ext', 'parcel_ls')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel_pt')
         AND LDS.LDS_TableHasData('bde_ext', 'parcel_ring')
         AND LDS.LDS_TableHasData('bde_ext', 'stat_version')
         AND LDS.LDS_TableHasData('bde_ext', 'statist_area')
@@ -174,11 +168,7 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'title_estate')
         AND LDS.LDS_TableHasData('bde_ext', 'title_memorial')
         AND LDS.LDS_TableHasData('bde_ext', 'title')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_action')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_doc_ref')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_estate')
         AND LDS.LDS_TableHasData('bde_ext', 'title_mem_text')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_memorial')
         AND LDS.LDS_TableHasData('bde_ext', 'title_parcel_association')
         AND LDS.LDS_TableHasData('bde_ext', 'transact_type')
         AND LDS.LDS_TableHasData('bde_ext', 'ttl_enc')
