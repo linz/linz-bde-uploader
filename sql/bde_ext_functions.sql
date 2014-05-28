@@ -364,8 +364,8 @@ BEGIN
     AS (
         SELECT DISTINCT
         ttl_title_no,enc_id 
-        FROM bde.crs_ttl_enc TE
-        JOIN bde.crs_title T ON TE.ttl_title_no = T.title_no
+        FROM crs_ttl_enc TE
+        JOIN crs_title T ON TE.ttl_title_no = T.title_no
         WHERE T.status <> 'PEND'
     ),
     TRN_ENC(id) 
@@ -374,14 +374,14 @@ BEGIN
         ENE.id AS id
         FROM tmp_training_titles TRN
         JOIN TTE ON TRN.title_no = TTE.ttl_title_no
-        JOIN bde.crs_enc_share ENS ON ENS.enc_id = TTE.enc_id
-        JOIN bde.crs_encumbrancee ENE ON ENE.ens_id = ENS.id
+        JOIN crs_enc_share ENS ON ENS.enc_id = TTE.enc_id
+        JOIN crs_encumbrancee ENE ON ENE.ens_id = ENS.id
     ),
     ENE(id,ens_id,status,name)
     AS (
         SELECT
         id,ens_id,status,name 
-        FROM bde.crs_encumbrancee 
+        FROM crs_encumbrancee 
         WHERE status <> 'LDGE'
         AND id NOT IN (SELECT id FROM TRN_ENC)
     )
@@ -391,7 +391,7 @@ BEGIN
         ENE.status,  
         ENE.name
     FROM ENE
-    JOIN bde.crs_enc_share ENS ON ENS.id = ENE.ens_id
+    JOIN crs_enc_share ENS ON ENS.id = ENE.ens_id
     JOIN TTE ON TTE.enc_id = ENS.enc_id
     $sql$;
         
@@ -422,7 +422,7 @@ BEGIN
     WITH TRN(enc_id)
     AS (
         SELECT TTE.enc_id 
-        FROM bde.crs_ttl_enc TTE
+        FROM crs_ttl_enc TTE
         JOIN tmp_training_titles TRN 
         ON TRN.title_no = TTE.ttl_title_no
     )
@@ -434,7 +434,7 @@ BEGIN
         act_id_crt,
         act_id_orig,
         term
-    FROM bde.crs_encumbrance
+    FROM crs_encumbrance
     WHERE id NOT IN (SELECT enc_id FROM TRN)
     AND status <> 'LDGE'
     $sql$;
@@ -652,9 +652,9 @@ BEGIN
         WITH PAB_LIN (lin_id)
         AS(
             SELECT pab.lin_id
-            FROM bde.crs_parcel_bndry PAB
-            JOIN bde.crs_parcel_ring PRI ON PRI.id = PAB.pri_id
-            JOIN bde.crs_parcel PAR ON PAR.id = PRI.par_id
+            FROM crs_parcel_bndry PAB
+            JOIN crs_parcel_ring PRI ON PRI.id = PAB.pri_id
+            JOIN crs_parcel PAR ON PAR.id = PRI.par_id
             WHERE PAR.status IN ('CURR','SHST')
         ),
         LIN_ORD (
@@ -688,7 +688,7 @@ BEGIN
                 audit_id,
                 description,
                 shape 
-            FROM bde.crs_line 
+            FROM crs_line 
             ORDER BY id)
         SELECT 
             LIN_ORD.id, 
@@ -1555,7 +1555,7 @@ BEGIN
     ON COMMIT DROP;
 
     INSERT INTO ttm_ldg
-    SELECT TTM.id FROM bde.crs_title_memorial TTM
+    SELECT TTM.id FROM crs_title_memorial TTM
     WHERE TTM.status <> 'LDGE' 
     AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
     
@@ -1872,7 +1872,7 @@ BEGIN
             TIT.tin_id, 
             TIT.ttl_title_no,
             TIT.audit_id
-        FROM bde.crs_ttl_inst_title TIT
+        FROM crs_ttl_inst_title TIT
         WHERE TIT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
     $sql$;
     
