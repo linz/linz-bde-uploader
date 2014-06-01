@@ -30,7 +30,7 @@ GRANT USAGE ON SCHEMA bde_ext TO bde_user;
 
 COMMENT ON SCHEMA bde_ext IS 'Schema for LDS full Landonline layers that require public filtering';
 
-SET search_path = bde_ext, lds, bde, public;
+SET search_path = bde_ext, public;
 
 -- =============================================================================
 -- A D J U S T M E N T   R U N
