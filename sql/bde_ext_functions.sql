@@ -1028,10 +1028,14 @@ BEGIN
             PAR.calculated_area, 
             PAR.se_row_id, 
             PAR.audit_id, 
-            PAR.shape
+            CASE WHEN ST_IsValid(PAR.shape) THEN
+                PAR.shape
+            ELSE 
+                ST_Buffer(PAR.shape, 0)
+            END AS shape
         FROM crs_parcel PAR
         WHERE PAR.status IN ('CURR', 'SHST')
-        AND (PAR.shape IS NULL OR ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon','ST_Polygon'))   
+        AND (PAR.shape IS NULL OR ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon','ST_Polygon'))
         ;
     $sql$;
     
