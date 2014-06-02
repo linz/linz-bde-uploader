@@ -133,7 +133,7 @@ BEGIN
                     'vector_ls',
                     'vector_pt',
                     'work',
-                    'street_address'
+                    'street_address_ext'
                 ],
                 'any affected'
             )
@@ -179,7 +179,7 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'vector_ls')
         AND LDS.LDS_TableHasData('bde_ext', 'vector_pt')
         AND LDS.LDS_TableHasData('bde_ext', 'work')
-        AND LDS.LDS_TableHasData('bde_ext', 'street_address')
+        AND LDS.LDS_TableHasData('bde_ext', 'street_address_ext')
     )
     THEN
         RAISE INFO
@@ -2087,7 +2087,7 @@ BEGIN
     -- street address layer
     ----------------------------------------------------------------------------
     
-    v_table := LDS.LDS_GetTable('bde_ext', 'street_address');
+    v_table := LDS.LDS_GetTable('bde_ext', 'street_address_ext');
     
     v_data_insert_sql := $sql$
     INSERT INTO %1% (

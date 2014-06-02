@@ -1011,11 +1011,11 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE work TO bde_admin;
 GRANT SELECT ON TABLE work TO bde_user;
 
 -- =============================================================================
--- S T R E E T   A D D R E S S
+-- S T R E E T   A D D R E S S   E X T E R N A L
 -- =============================================================================
 
-DROP TABLE IF EXISTS street_address CASCADE;
-CREATE TABLE street_address
+DROP TABLE IF EXISTS street_address_ext CASCADE;
+CREATE TABLE street_address_ext
 (
   house_number VARCHAR(25) NOT NULL,
   range_low INTEGER NOT NULL,
@@ -1028,16 +1028,16 @@ CREATE TABLE street_address
   id INTEGER NOT NULL,
   audit_id INTEGER NOT NULL,
   se_row_id INTEGER,
-  CONSTRAINT pkey_street_address PRIMARY KEY (id)
+  CONSTRAINT pkey_street_address_ext PRIMARY KEY (id)
 );
 
-PERFORM AddGeometryColumn('street_address', 'shape', 4167, 'POINT', 2);
-CREATE INDEX shx_street_address_shape ON street_address USING gist (shape);
+PERFORM AddGeometryColumn('street_address_ext', 'shape', 4167, 'POINT', 2);
+CREATE INDEX shx_street_address_ext_shape ON street_address_ext USING gist (shape);
 
-ALTER TABLE street_address OWNER TO bde_dba;
-REVOKE ALL ON TABLE street_address FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address TO bde_admin;
-GRANT SELECT ON TABLE street_address TO bde_user;
+ALTER TABLE street_address_ext OWNER TO bde_dba;
+REVOKE ALL ON TABLE street_address_ext FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address_ext TO bde_admin;
+GRANT SELECT ON TABLE street_address_ext TO bde_user;
 
 END
 $SCHEMA$;
