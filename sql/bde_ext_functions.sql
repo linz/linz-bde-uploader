@@ -133,7 +133,10 @@ BEGIN
                     'vector_ls',
                     'vector_pt',
                     'work',
-                    'street_address_ext'
+                    'street_address_ext',
+                    'feature_name_pt',
+                    'feature_name_poly',
+                    'coordinate'
                 ],
                 'any affected'
             )
@@ -180,6 +183,9 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'vector_pt')
         AND LDS.LDS_TableHasData('bde_ext', 'work')
         AND LDS.LDS_TableHasData('bde_ext', 'street_address_ext')
+        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_pt')
+        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
+        AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
     )
     THEN
         RAISE INFO
@@ -2121,6 +2127,134 @@ BEGIN
     WHERE SAD.house_number != 'UNH' 
     AND SAD.range_low != 0
     $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    ----------------------------------------------------------------------------
+    -- feature name pt layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('bde_ext', 'feature_name_pt');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+		id,
+		type,
+		name,
+		status,
+		other_details,
+		se_row_id,
+		audit_id,
+		shape
+	)
+	SELECT 
+		FEN.id,
+		FEN.type,
+		FEN.name,
+		FEN.status,
+		FEN.other_details,
+		FEN.se_row_id,
+		FEN.audit_id,
+		FEN.shape
+	FROM crs_feature_name FEN
+   WHERE (FEN.shape IS NULL OR ST_GeometryType(FEN.shape) = 'ST_Point');
+     $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+
+    ----------------------------------------------------------------------------
+    -- feature name poly layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('bde_ext', 'feature_name_poly');
+    
+    v_data_insert_sql := $sql$
+    
+      INSERT INTO %1% (
+		id,
+		type,
+		name,
+		status,
+		other_details,
+		se_row_id,
+		audit_id,
+		shape
+	)
+	SELECT 
+		FEN.id,
+		FEN.type,
+		FEN.name,
+		FEN.status,
+		FEN.other_details,
+		FEN.se_row_id,
+		FEN.audit_id,
+		FEN.shape
+	FROM crs_feature_name FEN
+   WHERE ST_GeometryType(FEN.shape) = 'ST_Polygon';
+     $sql$;
+    
+    PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+
+
+    ----------------------------------------------------------------------------
+    -- coordinate layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('bde_ext', 'coordinate');
+    
+    v_data_insert_sql := $sql$
+    
+      INSERT INTO %1% (
+		id,
+		cos_id,
+		nod_id,
+		ort_type_1,
+		ort_type_2,
+		ort_type_3,
+		status,
+		sdc_status,
+		source,
+		value1,
+		value2,
+		value3,
+		wrk_id_created,
+		cor_id,
+		audit_id
+	)
+	SELECT
+		COO.id,
+		COO.cos_id,
+		COO.nod_id,
+		COO.ort_type_1,
+		COO.ort_type_2,
+		COO.ort_type_3,
+		COO.status,
+		COO.sdc_status,
+		COO.source,
+		COO.value1,
+		COO.value2,
+		COO.value3,
+		COO.wrk_id_created,
+		COO.cor_id,
+		COO.audit_id
+	FROM
+		crs_coordinate COO
+	WHERE
+		COO.cos_id = 109
+		AND COO.status = 'AUTH';
+ $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
