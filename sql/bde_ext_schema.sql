@@ -1039,5 +1039,85 @@ REVOKE ALL ON TABLE street_address_ext FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address_ext TO bde_admin;
 GRANT SELECT ON TABLE street_address_ext TO bde_user;
 
+-- =============================================================================
+-- F E A T U R E   N A M E   P T
+-- =============================================================================
+
+DROP TABLE IF EXISTS feature_name_pt CASCADE;
+CREATE TABLE feature_name_pt
+(
+  id integer NOT NULL,
+  type character varying(4) NOT NULL,
+  name character varying(100) NOT NULL,
+  status character varying(4) NOT NULL,
+  other_details character varying(100),
+  audit_id integer NOT NULL,
+  se_row_id integer,
+  CONSTRAINT pkey_crs_feature_name_pt PRIMARY KEY (id)
+);
+
+PERFORM AddGeometryColumn('feature_name_pt', 'shape', 4167, 'POINT', 2);
+
+ALTER TABLE feature_name_pt OWNER TO bde_dba;
+REVOKE ALL ON TABLE feature_name_pt FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE feature_name_pt TO bde_admin;
+GRANT SELECT ON TABLE feature_name_pt TO bde_user;
+
+
+-- =============================================================================
+-- F E A T U R E   N A M E   P O L Y
+-- =============================================================================
+
+DROP TABLE IF EXISTS feature_name_poly CASCADE;
+CREATE TABLE feature_name_poly
+(
+  id integer NOT NULL,
+  type character varying(4) NOT NULL,
+  name character varying(100) NOT NULL,
+  status character varying(4) NOT NULL,
+  other_details character varying(100),
+  audit_id integer NOT NULL,
+  se_row_id integer,
+  CONSTRAINT pkey_crs_feature_name_poly PRIMARY KEY (id)
+);
+
+PERFORM AddGeometryColumn('feature_name_poly', 'shape', 4167, 'GEOMETRY', 2);
+
+ALTER TABLE feature_name_poly OWNER TO bde_dba;
+REVOKE ALL ON TABLE feature_name_poly FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE feature_name_poly TO bde_admin;
+GRANT SELECT ON TABLE feature_name_poly TO bde_user;
+
+
+-- =============================================================================
+-- C O O R D I N A T E
+-- =============================================================================
+
+DROP TABLE IF EXISTS coordinate CASCADE;
+CREATE TABLE coordinate
+(
+  id integer NOT NULL,
+  cos_id integer NOT NULL,
+  nod_id integer NOT NULL,
+  ort_type_1 character varying(4),
+  ort_type_2 character varying(4),
+  ort_type_3 character varying(4),
+  status character varying(4) NOT NULL,
+  sdc_status character(1) NOT NULL,
+  source character varying(4),
+  value1 numeric(22,12),
+  value2 numeric(22,12),
+  value3 numeric(22,12),
+  wrk_id_created integer,
+  cor_id integer,
+  audit_id integer NOT NULL,
+  CONSTRAINT pkey_coordinate PRIMARY KEY (id)
+);
+
+ALTER TABLE coordinate OWNER TO bde_dba;
+REVOKE ALL ON TABLE coordinate FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE coordinate TO bde_admin;
+GRANT SELECT ON TABLE coordinate TO bde_user;
+
 END
 $SCHEMA$;
