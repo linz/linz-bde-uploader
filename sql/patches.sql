@@ -1426,7 +1426,7 @@ SELECT _patches.apply_patch(
     'BDE - 1.4.0: Add support for full landonline data release',
     '
 
-CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
+--CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
 
 DO $$
 DECLARE
