@@ -1426,7 +1426,7 @@ SELECT _patches.apply_patch(
     'BDE - 1.4.0: Add support for full landonline data release',
     '
 
---CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
+CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
 
 DO $$
 DECLARE
@@ -1435,6 +1435,7 @@ DECLARE
    v_msg       TEXT;
    v_rev_table TEXT;
 BEGIN
+	SET search_path=bde_ext, lds, bde, bde_control, public;
 	PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
     PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
     
