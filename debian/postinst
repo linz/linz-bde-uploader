@@ -94,6 +94,7 @@ if ! su -l $PG_USER -c "psql --list | grep $DB"; then
     fi
 fi
 
+#ensure patches.sql is the last file in this array
 SQL_FILES="
     $LDS_SHARE_DIR/sql/bde_roles.sql
     $LDS_SHARE_DIR/sql/bde_schema.sql

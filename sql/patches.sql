@@ -1435,6 +1435,7 @@ DECLARE
    v_msg       TEXT;
    v_rev_table TEXT;
 BEGIN
+	PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
     PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
     
     FOR v_schema, v_table IN 
