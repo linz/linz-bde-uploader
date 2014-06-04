@@ -1081,7 +1081,7 @@ CREATE TABLE feature_name_poly
   CONSTRAINT pkey_crs_feature_name_poly PRIMARY KEY (id)
 );
 
-PERFORM AddGeometryColumn('feature_name_poly', 'shape', 4167, 'GEOMETRY', 2);
+PERFORM AddGeometryColumn('feature_name_poly', 'shape', 4167, 'POLYGON', 2);
 
 ALTER TABLE feature_name_poly OWNER TO bde_dba;
 REVOKE ALL ON TABLE feature_name_poly FROM PUBLIC;
