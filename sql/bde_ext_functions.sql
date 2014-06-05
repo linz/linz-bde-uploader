@@ -92,100 +92,96 @@ BEGIN
             SELECT bde_control.bde_TablesAffected(
                 p_upload,
                 ARRAY[
-                    'alias',
-                    'adjustment_run',
-                    'proprietor',
-                    'encumbrancee',
-                    'encumbrance',
-                    'nominal_index',
-                    'enc_share',
-                    'estate_share',
-                    'legal_desc',
-                    'line',
-                    'maintenance',
-                    'mark',
-                    'mark_name',
-                    'mark_phys_state',
-                    'node',
-                    'node_prp_order',
-                    'parcel',
-                    'parcel_dimen',
-                    'parcel_label',
-                    'parcel_ls',
-                    'parcel_ring',
-                    'stat_version',
-                    'statist_area',
-                    'survey',
-                    'title',
-                    'title_action',
-                    'title_doc_ref',
-                    'title_estate',
-                    'title_memorial',
-                    'title',
-                    'title_mem_text',
-                    'title_parcel_association',
-                    'transact_type',
-                    'ttl_enc',
-                    'ttl_hierarchy',
-                    'ttl_inst',
-                    'ttl_inst_title',
-                    'user',
-                    'vector_ls',
-                    'vector_pt',
-                    'work',
-                    'street_address_ext',
-                    'feature_name_pt',
-                    'feature_name_poly',
-                    'coordinate'
+                    'crs_alias',
+                    'crs_adjustment_run',
+                    'crs_proprietor',
+                    'crs_encumbrancee',
+                    'crs_encumbrance',
+                    'crs_nominal_index',
+                    'crs_action',
+                    'crs_enc_share',
+                    'crs_estate_share',
+                    'crs_legal_desc',
+                    'crs_line',
+                    'crs_maintenance',
+                    'crs_mark',
+                    'crs_mark_name',
+                    'crs_mrk_phys_state',
+                    'crs_node',
+                    'crs_node_prp_order',
+                    'crs_parcel',
+                    'crs_parcel_dimen',
+                    'crs_parcel_label',
+                    'crs_parcel_ring',
+                    'crs_parcel_bndry',
+                    'crs_stat_version',
+                    'crs_statist_area',
+                    'crs_survey',
+                    'crs_title',
+                    'crs_title_action',
+                    'crs_title_doc_ref',
+                    'crs_title_estate',
+                    'crs_title_memorial',
+                    'crs_title_mem_text',
+                    'crs_transact_type',
+                    'crs_ttl_enc',
+                    'crs_ttl_hierarchy',
+                    'crs_ttl_inst',
+                    'crs_ttl_inst_title',
+                    'crs_user',
+                    'crs_vector',
+                    'crs_work',
+                    'crs_street_address',
+                    'crs_feature_name',
+                    'crs_coordinate',
+                    'cbe_title_parcel_association'
                 ],
                 'any affected'
             )
-        )
-        AND LDS.LDS_TableHasData('bde_ext', 'alias')
-        AND LDS.LDS_TableHasData('bde_ext', 'adjustment_run')
-        AND LDS.LDS_TableHasData('bde_ext', 'proprietor')
-        AND LDS.LDS_TableHasData('bde_ext', 'encumbrancee')
-        AND LDS.LDS_TableHasData('bde_ext', 'encumbrance')
-        AND LDS.LDS_TableHasData('bde_ext', 'nominal_index')
-        AND LDS.LDS_TableHasData('bde_ext', 'enc_share')
-        AND LDS.LDS_TableHasData('bde_ext', 'estate_share')
-        AND LDS.LDS_TableHasData('bde_ext', 'legal_desc')
-        AND LDS.LDS_TableHasData('bde_ext', 'line')
-        AND LDS.LDS_TableHasData('bde_ext', 'maintenance')
-        AND LDS.LDS_TableHasData('bde_ext', 'mark')
-        AND LDS.LDS_TableHasData('bde_ext', 'mark_name')
-        AND LDS.LDS_TableHasData('bde_ext', 'mark_phys_state')
-        AND LDS.LDS_TableHasData('bde_ext', 'node')
-        AND LDS.LDS_TableHasData('bde_ext', 'node_prp_order')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel_dimen')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel_label')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel_ls')
-        AND LDS.LDS_TableHasData('bde_ext', 'parcel_ring')
-        AND LDS.LDS_TableHasData('bde_ext', 'stat_version')
-        AND LDS.LDS_TableHasData('bde_ext', 'statist_area')
-        AND LDS.LDS_TableHasData('bde_ext', 'survey')
-        AND LDS.LDS_TableHasData('bde_ext', 'title')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_action')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_doc_ref')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_estate')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_memorial')
-        AND LDS.LDS_TableHasData('bde_ext', 'title')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_mem_text')
-        AND LDS.LDS_TableHasData('bde_ext', 'title_parcel_association')
-        AND LDS.LDS_TableHasData('bde_ext', 'transact_type')
-        AND LDS.LDS_TableHasData('bde_ext', 'ttl_enc')
-        AND LDS.LDS_TableHasData('bde_ext', 'ttl_hierarchy')
-        AND LDS.LDS_TableHasData('bde_ext', 'ttl_inst')
-        AND LDS.LDS_TableHasData('bde_ext', 'ttl_inst_title')
-        AND LDS.LDS_TableHasData('bde_ext', 'user')
-        AND LDS.LDS_TableHasData('bde_ext', 'vector_ls')
-        AND LDS.LDS_TableHasData('bde_ext', 'vector_pt')
-        AND LDS.LDS_TableHasData('bde_ext', 'work')
-        AND LDS.LDS_TableHasData('bde_ext', 'street_address_ext')
-        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_pt')
-        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
-        AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
+        )                    
+        AND LDS.LDS_TableHasData('bde', 'crs_alias')
+        AND LDS.LDS_TableHasData('bde', 'crs_adjustment_run')
+        AND LDS.LDS_TableHasData('bde', 'crs_proprietor')
+        AND LDS.LDS_TableHasData('bde', 'crs_encumbrancee')
+        AND LDS.LDS_TableHasData('bde', 'crs_encumbrance')
+        AND LDS.LDS_TableHasData('bde', 'crs_nominal_index')
+        AND LDS.LDS_TableHasData('bde', 'crs_action')
+        AND LDS.LDS_TableHasData('bde', 'crs_enc_share')
+        AND LDS.LDS_TableHasData('bde', 'crs_estate_share')
+        AND LDS.LDS_TableHasData('bde', 'crs_legal_desc')
+        AND LDS.LDS_TableHasData('bde', 'crs_line')
+        AND LDS.LDS_TableHasData('bde', 'crs_maintenance')
+        AND LDS.LDS_TableHasData('bde', 'crs_mark')
+        AND LDS.LDS_TableHasData('bde', 'crs_mark_name')
+        AND LDS.LDS_TableHasData('bde', 'crs_mrk_phys_state')
+        AND LDS.LDS_TableHasData('bde', 'crs_node')
+        AND LDS.LDS_TableHasData('bde', 'crs_node_prp_order')
+        AND LDS.LDS_TableHasData('bde', 'crs_parcel')
+        AND LDS.LDS_TableHasData('bde', 'crs_parcel_dimen')
+        AND LDS.LDS_TableHasData('bde', 'crs_parcel_label')
+        AND LDS.LDS_TableHasData('bde', 'crs_parcel_ring')
+        AND LDS.LDS_TableHasData('bde', 'crs_parcel_bndry')
+        AND LDS.LDS_TableHasData('bde', 'crs_stat_version')
+        AND LDS.LDS_TableHasData('bde', 'crs_statist_area')
+        AND LDS.LDS_TableHasData('bde', 'crs_survey')
+        AND LDS.LDS_TableHasData('bde', 'crs_title')
+        AND LDS.LDS_TableHasData('bde', 'crs_title_action')
+        AND LDS.LDS_TableHasData('bde', 'crs_title_doc_ref')
+        AND LDS.LDS_TableHasData('bde', 'crs_title_estate')
+        AND LDS.LDS_TableHasData('bde', 'crs_title_memorial')
+        AND LDS.LDS_TableHasData('bde', 'crs_title_mem_text')
+        AND LDS.LDS_TableHasData('bde', 'crs_transact_type')
+        AND LDS.LDS_TableHasData('bde', 'crs_ttl_enc')
+        AND LDS.LDS_TableHasData('bde', 'crs_ttl_hierarchy')
+        AND LDS.LDS_TableHasData('bde', 'crs_ttl_inst')
+        AND LDS.LDS_TableHasData('bde', 'crs_ttl_inst_title')
+        AND LDS.LDS_TableHasData('bde', 'crs_user')
+        AND LDS.LDS_TableHasData('bde', 'crs_vector')
+        AND LDS.LDS_TableHasData('bde', 'crs_work')
+        AND LDS.LDS_TableHasData('bde', 'crs_street_address')
+        AND LDS.LDS_TableHasData('bde', 'crs_feature_name')
+        AND LDS.LDS_TableHasData('bde', 'crs_coordinate')
+        AND LDS.LDS_TableHasData('bde', 'cbe_title_parcel_association')
     )
     THEN
         RAISE INFO
