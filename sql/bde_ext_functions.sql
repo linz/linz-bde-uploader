@@ -254,7 +254,7 @@ BEGIN
         WHERE PRP.status <> 'LDGE'
         -- Completely exclude training titles and pending titles
         AND PRP.id NOT IN (SELECT prp_id FROM exclude_prp)
-        ORDER BY ALS.id
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -296,7 +296,8 @@ BEGIN
             ADJ.wrk_id,
             ADJ.audit_id
         FROM
-            crs_adjustment_run ADJ;
+            crs_adjustment_run ADJ
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -339,7 +340,8 @@ BEGIN
         FROM crs_proprietor prp
         LEFT JOIN dvl_prp d2p ON prp.id = d2p.prp_id
         WHERE prp.status <> 'LDGE' 
-        AND prp.id NOT IN ( SELECT exclude_prp.prp_id FROM exclude_prp);
+        AND prp.id NOT IN ( SELECT exclude_prp.prp_id FROM exclude_prp)
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -395,6 +397,7 @@ BEGIN
     FROM ENE
     JOIN crs_enc_share ENS ON ENS.id = ENE.ens_id
     JOIN TTE ON TTE.enc_id = ENS.enc_id
+    ORDER BY id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -439,6 +442,7 @@ BEGIN
     FROM crs_encumbrance
     WHERE id NOT IN (SELECT enc_id FROM TRN)
     AND status <> 'LDGE'
+    ORDER BY id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -478,7 +482,7 @@ BEGIN
         ON NMI.ttl_title_no = DVL.title_no 
         WHERE NMI.status <> 'LDGE'
         AND NMI.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-        ORDER BY NMI.id;
+        ORDER BY id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -526,7 +530,8 @@ BEGIN
             ENS.system_ext
         FROM crs_enc_share ENS
         WHERE ENS.status <> 'LDGE' 
-        AND ENS.id NOT IN (SELECT id FROM TRN_ENS);
+        AND ENS.id NOT IN (SELECT id FROM TRN_ENS)
+        ORDER BY id;
     $sql$;
         
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -577,7 +582,8 @@ BEGIN
             ETS.share_memorial
         FROM crs_estate_share ETS
         WHERE ETS.status <> 'LDGE' 
-        AND ETS.id NOT IN (SELECT id FROM EXL_ETS);
+        AND ETS.id NOT IN (SELECT id FROM EXL_ETS)
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -618,6 +624,7 @@ BEGIN
             LGD.ttl_title_no IS NULL 
             OR LGD.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
         )
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -690,8 +697,7 @@ BEGIN
                 audit_id,
                 description,
                 shape 
-            FROM crs_line 
-            ORDER BY id)
+            FROM crs_line)
         SELECT 
             LIN_ORD.id, 
             LIN_ORD.boundary, 
@@ -708,7 +714,8 @@ BEGIN
             LIN_ORD.description, 
             LIN_ORD.shape
         FROM LIN_ORD
-        WHERE LIN_ORD.id IN (SELECT lin_id FROM PAB_LIN);
+        WHERE LIN_ORD.id IN (SELECT lin_id FROM PAB_LIN
+        ORDER BY id);
         
     $sql$;
     
@@ -750,7 +757,8 @@ BEGIN
             MNT.audit_id, 
             MNT."desc"
         FROM crs_maintenance MNT
-        WHERE MNT.mrk_id in (SELECT id FROM MNT_MRK);
+        WHERE MNT.mrk_id in (SELECT id FROM MNT_MRK)
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -808,7 +816,8 @@ BEGIN
             MRK.audit_id, 
             MRK."desc"
         FROM crs_mark MRK
-        WHERE MRK.status <> 'PEND';
+        WHERE MRK.status <> 'PEND'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -839,7 +848,8 @@ BEGIN
             MKN.audit_id
         FROM crs_mark_name MKN
         JOIN crs_mark MRK ON MKN.mrk_id = MRK.id
-        WHERE MRK.status <> 'PEND';
+        WHERE MRK.status <> 'PEND'
+        ORDER BY audit_id;;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -905,7 +915,8 @@ BEGIN
         FROM crs_mrk_phys_state MPS
         JOIN crs_mark MRK ON MRK.id = MPS.mrk_id 
         WHERE MPS.status <> 'PROV'
-        AND MRK.status <> 'PEND';
+        AND MRK.status <> 'PEND'
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -949,7 +960,8 @@ BEGIN
             NOD.audit_id, 
             NOD.shape
         FROM crs_node NOD
-        WHERE NOD.status <> 'PEND';
+        WHERE NOD.status <> 'PEND'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -979,7 +991,8 @@ BEGIN
             NPO.audit_id
         FROM crs_node_prp_order NPO
         JOIN crs_mark MRK ON NPO.nod_id = MRK.nod_id
-        WHERE MRK.status <> 'PEND';
+        WHERE MRK.status <> 'PEND'
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1038,7 +1051,7 @@ BEGIN
         FROM crs_parcel PAR
         WHERE PAR.status IN ('CURR', 'SHST')
         AND (PAR.shape IS NULL OR ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon','ST_Polygon'))
-        ;
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1076,7 +1089,8 @@ BEGIN
                 WHERE PAR.id = PDL.par_id
                 AND PAR.status IN ('CURR','SHST')
             )
-        );
+        )
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1103,14 +1117,15 @@ BEGIN
             PDM.par_id, 
             PDM.audit_id
         FROM crs_parcel_dimen PDM
-        wHERE (
+        WHERE (
             EXISTS ( 
                 SELECT PAR.id
                 FROM crs_parcel PAR
                 WHERE PAR.id = PDM.par_id 
                 AND PAR.status IN ('CURR', 'SHST')
                 )
-            );
+            )
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1164,7 +1179,8 @@ BEGIN
             PAR.shape
         FROM crs_parcel PAR
         WHERE PAR.status IN ('CURR', 'SHST')
-        AND ST_GeometryType(PAR.shape) = 'ST_LineString';
+        AND ST_GeometryType(PAR.shape) = 'ST_LineString'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1200,7 +1216,8 @@ BEGIN
             SELECT PAR.id
             FROM crs_parcel PAR
             WHERE PAR.status IN ('CURR', 'SHST')
-            );
+            )
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1234,7 +1251,8 @@ BEGIN
             SVR.end_date, 
             SVR.audit_id
         FROM crs_stat_version SVR
-        WHERE SVR.area_class= 'TA';
+        WHERE SVR.area_class= 'TA'
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1275,7 +1293,8 @@ BEGIN
             STA.se_row_id,
             STA.audit_id
         FROM crs_statist_area STA
-        WHERE STA.sav_area_class = 'TA';
+        WHERE STA.sav_area_class = 'TA'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1345,7 +1364,8 @@ BEGIN
                 SELECT WRK.id
                 FROM crs_work WRK
                 WHERE WRK.restricted = 'N'
-        );
+        )
+        ORDER BY wrk_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1391,7 +1411,8 @@ BEGIN
             NULL --TODO: add column to crs_title for TTL.ttl_title_no_head_srs
         FROM crs_title TTL
         WHERE TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-        AND TTL.status <> 'PEND';
+        AND TTL.status <> 'PEND'
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1421,6 +1442,7 @@ BEGIN
         FROM crs_title_action TTA
         LEFT OUTER JOIN crs_title TTL ON TTA.ttl_title_no = TTL.title_no
         WHERE TTA.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1464,7 +1486,8 @@ BEGIN
                     )
                 )
             )
-        );
+        )
+        ORDER BY id;;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1514,6 +1537,7 @@ BEGIN
             ON ETT.ttl_title_no = TTL.title_no 
         WHERE ETT.status <> 'LDGE' 
             AND ETT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1605,7 +1629,8 @@ BEGIN
         LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
         LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
         LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
-        WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg);
+        WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg)
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1675,6 +1700,7 @@ BEGIN
         FROM crs_title_memorial TTM
         WHERE TTM.status <> 'LDGE' 
         AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1702,7 +1728,8 @@ BEGIN
             TPA.par_id, 
             TPA.source
         FROM cbe_title_parcel_association TPA
-        WHERE TPA.status = 'VALD';
+        WHERE TPA.status = 'VALD'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1730,7 +1757,8 @@ BEGIN
             TRT.description, 
             TRT.audit_id
         FROM crs_transact_type TRT
-        WHERE TRT.grp IN ('TINT', 'WRKT');
+        WHERE TRT.grp IN ('TINT', 'WRKT')
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1764,7 +1792,8 @@ BEGIN
         FROM crs_ttl_enc TLE
         LEFT OUTER JOIN crs_title T ON TLE.ttl_title_no = T.title_no
         WHERE TLE.status <> 'LDGE'
-        AND TLE.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
+        AND TLE.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ORDER BY id;
 
     $sql$;
     
@@ -1805,7 +1834,8 @@ BEGIN
             ON TLH.ttl_title_no_prior = PRI.title_no OR TLH.ttl_title_no_prior = PRI.title_no
         WHERE TLH.status = 'REGD'
         AND (FLW.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles) OR FLW.title_no IS NULL)
-        AND (PRI.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles) OR PRI.title_no IS NULL);
+        AND (PRI.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles) OR PRI.title_no IS NULL)
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1853,7 +1883,8 @@ BEGIN
                 UNION
                 SELECT tin_id FROM crs_ttl_inst_title
             ) TIN_IDS 
-            ON TIN_IDS.tin_id = TIN.id;
+            ON TIN_IDS.tin_id = TIN.id
+        ORDER BY id;
         $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1879,7 +1910,8 @@ BEGIN
             TIT.ttl_title_no,
             TIT.audit_id
         FROM crs_ttl_inst_title TIT
-        WHERE TIT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
+        WHERE TIT.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1928,6 +1960,7 @@ BEGIN
             USR.audit_id
         FROM crs_user USR
         WHERE USR.id IN (SELECT id FROM WRK_3ID)
+        ORDER BY audit_id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -1966,7 +1999,8 @@ BEGIN
             VEC.length, 
             VEC.shape
         FROM crs_vector VEC
-        WHERE ST_GeometryType(VEC.shape) = 'ST_LineString' OR VEC.shape IS NULL;
+        WHERE ST_GeometryType(VEC.shape) = 'ST_LineString' OR VEC.shape IS NULL
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2005,7 +2039,8 @@ BEGIN
             VEC.length, 
             VEC.shape
         FROM crs_vector VEC
-        WHERE ST_GeometryType(VEC.shape) = 'ST_Point';
+        WHERE ST_GeometryType(VEC.shape) = 'ST_Point'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2075,7 +2110,8 @@ BEGIN
             WRK.audit_id, 
             WRK.usr_id_prin_firm
         FROM crs_work WRK
-        WHERE WRK.restricted = 'N';
+        WHERE WRK.restricted = 'N'
+        ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2122,6 +2158,7 @@ BEGIN
     FROM crs_street_address SAD
     WHERE SAD.house_number != 'UNH' 
     AND SAD.range_low != 0
+    ORDER BY id;
     $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
@@ -2157,8 +2194,9 @@ BEGIN
 		FEN.audit_id,
 		FEN.shape
 	FROM crs_feature_name FEN
-   WHERE (FEN.shape IS NULL OR ST_GeometryType(FEN.shape) = 'ST_Point');
-     $sql$;
+    WHERE (FEN.shape IS NULL OR ST_GeometryType(FEN.shape) = 'ST_Point')
+    ORDER BY id;
+    $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
@@ -2183,8 +2221,8 @@ BEGIN
 		se_row_id,
 		audit_id,
 		shape
-	)
-	SELECT 
+	 )
+	 SELECT 
 		FEN.id,
 		FEN.type,
 		FEN.name,
@@ -2193,9 +2231,10 @@ BEGIN
 		FEN.se_row_id,
 		FEN.audit_id,
 		FEN.shape
-	FROM crs_feature_name FEN
-   WHERE ST_GeometryType(FEN.shape) = 'ST_Polygon';
-     $sql$;
+	 FROM crs_feature_name FEN
+     WHERE ST_GeometryType(FEN.shape) = 'ST_Polygon'
+     ORDER BY id;
+    $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
@@ -2249,7 +2288,8 @@ BEGIN
 		crs_coordinate COO
 	WHERE
 		COO.cos_id = 109
-		AND COO.status = 'AUTH';
+		AND COO.status = 'AUTH'
+    ORDER BY id;
  $sql$;
     
     PERFORM LDS.LDS_UpdateSimplifiedTable(
