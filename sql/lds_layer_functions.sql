@@ -96,7 +96,7 @@ BEGIN
     RAISE INFO 'Maintaining simplified layers for dataset %', v_dataset;
     
     PERFORM LDS.LDS_MaintainSimplifiedGeodeticLayers(p_upload_id);
-    PERFORM LDS.LDS_MaintainSimplifiedElectoralLayers(p_upload_id);
+    --PERFORM LDS.LDS_MaintainSimplifiedElectoralLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedParcelLayers(p_upload_id);
     PERFORM LDS.LDS_MaintainSimplifiedSurveyLayers(p_upload_id);
     
