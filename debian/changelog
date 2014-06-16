@@ -1,3 +1,13 @@
+linz-bde-uploader (1.3.6-1) lucid; urgency=low
+
+  * added support for adding columns to versioned tables
+  * Add street addressing columns for Landonline 3.10
+  * fix patch
+  * Temporarily turn off electoral layer updates until TA script is in
+    place
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Mon, 16 Jun 2014 14:32:33 +1200
+
 linz-bde-uploader (1.3.5-1) precise; urgency=low
 
   [ Jeremy Palmer ]
