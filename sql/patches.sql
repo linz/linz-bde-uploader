@@ -1421,3 +1421,14 @@ WHERE attrelid = ''table_version.bde_crs_statute_revision''::regclass
 AND attname = ''name_and_date'';
 '
 );
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.6: Add street addressing columns for Landonline 3.10',
+    '
+    PERFORM ver_versioned_table_add_column(''bde'', ''crs_road_name'', ''sufi'', ''INTEGER'');
+    PERFORM ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''sufi'', ''INTEGER'');
+    PERFORM ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''overridden_mbk_code'', ''CHAR(1)'');
+    PERFORM ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''mbk_code'', ''VARCHAR(7)'');
+'
+);
+
