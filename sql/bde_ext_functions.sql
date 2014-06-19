@@ -139,49 +139,50 @@ BEGIN
                 'any affected'
             )
         )                    
-        AND LDS.LDS_TableHasData('bde', 'crs_alias')
-        AND LDS.LDS_TableHasData('bde', 'crs_adjustment_run')
-        AND LDS.LDS_TableHasData('bde', 'crs_proprietor')
-        AND LDS.LDS_TableHasData('bde', 'crs_encumbrancee')
-        AND LDS.LDS_TableHasData('bde', 'crs_encumbrance')
-        AND LDS.LDS_TableHasData('bde', 'crs_nominal_index')
-        AND LDS.LDS_TableHasData('bde', 'crs_action')
-        AND LDS.LDS_TableHasData('bde', 'crs_enc_share')
-        AND LDS.LDS_TableHasData('bde', 'crs_estate_share')
-        AND LDS.LDS_TableHasData('bde', 'crs_legal_desc')
-        AND LDS.LDS_TableHasData('bde', 'crs_line')
-        AND LDS.LDS_TableHasData('bde', 'crs_maintenance')
-        AND LDS.LDS_TableHasData('bde', 'crs_mark')
-        AND LDS.LDS_TableHasData('bde', 'crs_mark_name')
-        AND LDS.LDS_TableHasData('bde', 'crs_mrk_phys_state')
-        AND LDS.LDS_TableHasData('bde', 'crs_node')
-        AND LDS.LDS_TableHasData('bde', 'crs_node_prp_order')
-        AND LDS.LDS_TableHasData('bde', 'crs_parcel')
-        AND LDS.LDS_TableHasData('bde', 'crs_parcel_dimen')
-        AND LDS.LDS_TableHasData('bde', 'crs_parcel_label')
-        AND LDS.LDS_TableHasData('bde', 'crs_parcel_ring')
-        AND LDS.LDS_TableHasData('bde', 'crs_parcel_bndry')
-        AND LDS.LDS_TableHasData('bde', 'crs_stat_version')
-        AND LDS.LDS_TableHasData('bde', 'crs_statist_area')
-        AND LDS.LDS_TableHasData('bde', 'crs_survey')
-        AND LDS.LDS_TableHasData('bde', 'crs_title')
-        AND LDS.LDS_TableHasData('bde', 'crs_title_action')
-        AND LDS.LDS_TableHasData('bde', 'crs_title_doc_ref')
-        AND LDS.LDS_TableHasData('bde', 'crs_title_estate')
-        AND LDS.LDS_TableHasData('bde', 'crs_title_memorial')
-        AND LDS.LDS_TableHasData('bde', 'crs_title_mem_text')
-        AND LDS.LDS_TableHasData('bde', 'crs_transact_type')
-        AND LDS.LDS_TableHasData('bde', 'crs_ttl_enc')
-        AND LDS.LDS_TableHasData('bde', 'crs_ttl_hierarchy')
-        AND LDS.LDS_TableHasData('bde', 'crs_ttl_inst')
-        AND LDS.LDS_TableHasData('bde', 'crs_ttl_inst_title')
-        AND LDS.LDS_TableHasData('bde', 'crs_user')
-        AND LDS.LDS_TableHasData('bde', 'crs_vector')
-        AND LDS.LDS_TableHasData('bde', 'crs_work')
-        AND LDS.LDS_TableHasData('bde', 'crs_street_address')
-        AND LDS.LDS_TableHasData('bde', 'crs_feature_name')
-        AND LDS.LDS_TableHasData('bde', 'crs_coordinate')
-        AND LDS.LDS_TableHasData('bde', 'cbe_title_parcel_association')
+        AND LDS.LDS_TableHasData('bde_ext', 'alias')
+        AND LDS.LDS_TableHasData('bde_ext', 'adjustment_run')
+        AND LDS.LDS_TableHasData('bde_ext', 'proprietor')
+        AND LDS.LDS_TableHasData('bde_ext', 'encumbrancee')
+        AND LDS.LDS_TableHasData('bde_ext', 'encumbrance')
+        AND LDS.LDS_TableHasData('bde_ext', 'nominal_index')
+        AND LDS.LDS_TableHasData('bde_ext', 'enc_share')
+        AND LDS.LDS_TableHasData('bde_ext', 'estate_share')
+        AND LDS.LDS_TableHasData('bde_ext', 'legal_desc')
+        AND LDS.LDS_TableHasData('bde_ext', 'line')
+        AND LDS.LDS_TableHasData('bde_ext', 'maintenance')
+        AND LDS.LDS_TableHasData('bde_ext', 'mark')
+        AND LDS.LDS_TableHasData('bde_ext', 'mark_name')
+        AND LDS.LDS_TableHasData('bde_ext', 'mark_phys_state')
+        AND LDS.LDS_TableHasData('bde_ext', 'node')
+        AND LDS.LDS_TableHasData('bde_ext', 'node_prp_order')
+        AND LDS.LDS_TableHasData('bde_ext', 'parcel')
+        AND LDS.LDS_TableHasData('bde_ext', 'parcel_dimen')
+        AND LDS.LDS_TableHasData('bde_ext', 'parcel_label')
+        AND LDS.LDS_TableHasData('bde_ext', 'parcel_ls')
+        AND LDS.LDS_TableHasData('bde_ext', 'parcel_ring')
+        AND LDS.LDS_TableHasData('bde_ext', 'stat_version')
+        AND LDS.LDS_TableHasData('bde_ext', 'statist_area')
+        AND LDS.LDS_TableHasData('bde_ext', 'survey')
+        AND LDS.LDS_TableHasData('bde_ext', 'title')
+        AND LDS.LDS_TableHasData('bde_ext', 'title_action')
+        AND LDS.LDS_TableHasData('bde_ext', 'title_doc_ref')
+        AND LDS.LDS_TableHasData('bde_ext', 'title_estate')
+        AND LDS.LDS_TableHasData('bde_ext', 'title_memorial')
+        AND LDS.LDS_TableHasData('bde_ext', 'title_mem_text') 
+        AND LDS.LDS_TableHasData('bde_ext', 'title_parcel_association')
+        AND LDS.LDS_TableHasData('bde_ext', 'transact_type')
+        AND LDS.LDS_TableHasData('bde_ext', 'ttl_enc')
+        AND LDS.LDS_TableHasData('bde_ext', 'ttl_hierarchy')
+        AND LDS.LDS_TableHasData('bde_ext', 'ttl_inst')
+        AND LDS.LDS_TableHasData('bde_ext', 'ttl_inst_title')
+        AND LDS.LDS_TableHasData('bde_ext', 'user')
+        AND LDS.LDS_TableHasData('bde_ext', 'vector_pt')
+        AND LDS.LDS_TableHasData('bde_ext', 'vector_ls')
+        AND LDS.LDS_TableHasData('bde_ext', 'work')
+        AND LDS.LDS_TableHasData('bde_ext', 'street_address_ext')
+        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_pt') 
+        AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
+        AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
     )
     THEN
         RAISE INFO
@@ -202,6 +203,7 @@ BEGIN
 
     RAISE DEBUG 'Started creating temp tables for %', v_table;    
     
+    DROP TABLE IF EXISTS dvl_prp;
     CREATE TEMPORARY TABLE dvl_prp 
     (title_no VARCHAR, prp_id INTEGER)
     ON COMMIT DROP;
@@ -218,6 +220,7 @@ BEGIN
     
     ANALYSE dvl_prp;
 
+    DROP TABLE IF EXISTS exclude_prp;
     CREATE TEMPORARY TABLE exclude_prp 
     (prp_id INTEGER)
     ON COMMIT DROP;
@@ -257,6 +260,7 @@ BEGIN
         ORDER BY id;
     $sql$;
     
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
@@ -300,6 +304,7 @@ BEGIN
         ORDER BY id;
     $sql$;
     
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
     PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
@@ -344,7 +349,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -400,7 +406,8 @@ BEGIN
     ORDER BY id;
     $sql$;
         
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -445,7 +452,8 @@ BEGIN
     ORDER BY id;
     $sql$;
         
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -485,7 +493,8 @@ BEGIN
         ORDER BY id;
     $sql$;
         
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -534,7 +543,8 @@ BEGIN
         ORDER BY id;
     $sql$;
         
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -586,7 +596,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -627,7 +638,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -660,11 +672,12 @@ BEGIN
         )
         WITH PAB_LIN (lin_id)
         AS(
-            SELECT pab.lin_id
+            SELECT DISTINCT pab.lin_id
             FROM crs_parcel_bndry PAB
             JOIN crs_parcel_ring PRI ON PRI.id = PAB.pri_id
             JOIN crs_parcel PAR ON PAR.id = PRI.par_id
             WHERE PAR.status IN ('CURR','SHST')
+            ORDER BY lin_id
         ),
         LIN_ORD (
             id,
@@ -697,7 +710,8 @@ BEGIN
                 audit_id,
                 description,
                 shape 
-            FROM crs_line)
+            FROM crs_line
+            ORDER BY id)
         SELECT 
             LIN_ORD.id, 
             LIN_ORD.boundary, 
@@ -714,12 +728,13 @@ BEGIN
             LIN_ORD.description, 
             LIN_ORD.shape
         FROM LIN_ORD
-        WHERE LIN_ORD.id IN (SELECT lin_id FROM PAB_LIN
-        ORDER BY id);
+        WHERE LIN_ORD.id IN (SELECT lin_id FROM PAB_LIN)
+        ORDER BY id;
         
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -761,7 +776,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -820,7 +836,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -852,7 +869,8 @@ BEGIN
         ORDER BY audit_id;;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -919,7 +937,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -964,7 +983,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -995,7 +1015,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1054,7 +1075,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1093,7 +1115,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1128,7 +1151,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1183,7 +1207,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1220,7 +1245,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1255,7 +1281,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1297,7 +1324,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1368,7 +1396,8 @@ BEGIN
         ORDER BY wrk_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1415,7 +1444,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1445,7 +1475,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1490,7 +1521,8 @@ BEGIN
         ORDER BY id;;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1540,7 +1572,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1557,11 +1590,12 @@ BEGIN
     
     RAISE DEBUG 'Started creating temp tables for %', v_table;
 
-    CREATE TEMPORARY TABLE dvl_mem 
+    DROP TABLE IF EXISTS DVL_MEM;
+    CREATE TEMPORARY TABLE DVL_MEM 
     (title_no VARCHAR, mem_id INTEGER)
     ON COMMIT DROP;
 
-    INSERT INTO dvl_mem
+    INSERT INTO DVL_MEM
     SELECT
         DVL.title_no AS title_no,
         M.id AS mem_id
@@ -1569,29 +1603,145 @@ BEGIN
         tmp_protected_titles DVL
     JOIN crs_title_memorial M ON DVL.title_no = M.ttl_title_no;
     
-    ANALYSE dvl_mem;
+    ANALYSE DVL_MEM;
     
     ----------------------------------------------------------------------------
     -- title mem text layer (3) {using temp tables}
     -- this temp tables are used to speed up the query, not because the temp is used elsewhere
     ----------------------------------------------------------------------------
     
+--    v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
+--    
+--    RAISE DEBUG 'Started creating temp tables for %', v_table;
+
+--    DROP TABLE IF EXISTS TTM_LDG;
+--    CREATE TEMPORARY TABLE TTM_LDG 
+--    (id int)
+--    ON COMMIT DROP;
+
+--    INSERT INTO TTM_LDG
+--    SELECT TTM.id FROM crs_title_memorial TTM
+--    WHERE TTM.status <> 'LDGE' 
+--    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+--    ORDER BY id;
+    
+--    CREATE INDEX TTM_LDG_idx ON TTM_LDG (id);
+    
+--    ANALYSE TTM_LDG;
+    
+--    v_data_insert_sql := $sql$
+--        INSERT INTO %1% (
+--            ttm_id, 
+--            sequence_no, 
+--            curr_hist_flag, 
+--            std_text, 
+--            col_1_text, 
+--            col_2_text, 
+--            col_3_text, 
+--            col_4_text, 
+--            col_5_text, 
+--            col_6_text, 
+--            col_7_text,
+--            audit_id
+--        )
+--        SELECT 
+--            TMT.ttm_id, 
+--            TMT.sequence_no, 
+--            TMT.curr_hist_flag, 
+--            CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
+--                THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
+--            ELSE TMT.std_text
+--            END AS std_text, 
+--            TMT.col_1_text, 
+--            TMT.col_2_text, 
+--            TMT.col_3_text, 
+--            TMT.col_4_text, 
+--            TMT.col_5_text, 
+--            TMT.col_6_text, 
+--            TMT.col_7_text,
+--            TMT.audit_id
+--        FROM crs_title_mem_text TMT
+--        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id 
+--        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
+--        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
+--        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
+--        WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG)
+--        ORDER BY audit_id;
+--    $sql$;
+    
+--    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+--	  PERFORM LDS.LDS_UpdateSimplifiedTable(
+--        p_upload,
+--        v_table,
+--        v_data_insert_sql,
+--        v_data_insert_sql
+--    );
+
+    ----------------------------------------------------------------------------
+    -- title mem text layer (4) {using temp tables and splitting filter/join}
+    ----------------------------------------------------------------------------
+    
     v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
     
     RAISE DEBUG 'Started creating temp tables for %', v_table;
 
-    CREATE TEMPORARY TABLE ttm_ldg 
+    DROP TABLE IF EXISTS TTM_LDG;
+    CREATE TEMPORARY TABLE TTM_LDG 
     (id int)
     ON COMMIT DROP;
 
-    INSERT INTO ttm_ldg
+    INSERT INTO TTM_LDG
     SELECT TTM.id FROM crs_title_memorial TTM
     WHERE TTM.status <> 'LDGE' 
-    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles);
+    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+    ORDER BY id;
     
-    CREATE INDEX ttm_ldg_idx ON ttm_ldg (id);
+    CREATE INDEX TTM_LDG_idx ON TTM_LDG (id);
+    ANALYSE TTM_LDG;
     
-    ANALYSE ttm_ldg;
+    -- -------------------------------
+    -- Filter Subsection
+    
+    DROP TABLE IF EXISTS TMT_INL;
+    CREATE TEMPORARY TABLE TMT_INL
+    (
+		ttm_id integer,
+		sequence_no integer, 
+		curr_hist_flag character varying(4), 
+		std_text character varying(18000),
+		col_1_text character varying(2048), 
+		col_2_text character varying(2048),
+		col_3_text character varying(2048), 
+		col_4_text character varying(2048), 
+		col_5_text character varying(2048), 
+		col_6_text character varying(2048), 
+		col_7_text character varying(2048),
+		audit_id integer  
+    )
+    ON COMMIT DROP;
+	
+    SELECT
+	    TMT.ttm_id, 
+	    TMT.sequence_no, 
+	    TMT.curr_hist_flag, 
+	    TMT.std_text, 
+	    TMT.col_1_text, 
+	    TMT.col_2_text, 
+	    TMT.col_3_text, 
+	    TMT.col_4_text, 
+	    TMT.col_5_text, 
+	    TMT.col_6_text, 
+	    TMT.col_7_text,
+	    TMT.audit_id   
+	FROM crs_title_mem_text TMT
+	WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG)
+	ORDER BY ttm_id;
+
+    CREATE INDEX TMT_INL_IDX ON TMT_INL (ttm_id);
+    ANALYSE TMT_INL;
+    
+    -- ------------------------------------
+    -- Join Subsection
     
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
@@ -1608,38 +1758,38 @@ BEGIN
             col_7_text,
             audit_id
         )
-        SELECT 
-            TMT.ttm_id, 
-            TMT.sequence_no, 
-            TMT.curr_hist_flag, 
-            CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
-                THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
-            ELSE TMT.std_text
-            END AS std_text, 
-            TMT.col_1_text, 
-            TMT.col_2_text, 
-            TMT.col_3_text, 
-            TMT.col_4_text, 
-            TMT.col_5_text, 
-            TMT.col_6_text, 
-            TMT.col_7_text,
-            TMT.audit_id
-        FROM crs_title_mem_text TMT
-        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id 
-        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
-        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
-        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
-        WHERE TMT.ttm_id IN (SELECT id FROM ttm_ldg)
-        ORDER BY audit_id;
-    $sql$;
+	    SELECT 
+		    TMT.ttm_id, 
+		    TMT.sequence_no, 
+		    TMT.curr_hist_flag, 
+		    CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
+			THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
+		    ELSE TMT.std_text
+		    END AS std_text, 
+		    TMT.col_1_text, 
+		    TMT.col_2_text, 
+		    TMT.col_3_text, 
+		    TMT.col_4_text, 
+		    TMT.col_5_text, 
+		    TMT.col_6_text, 
+		    TMT.col_7_text,
+		    TMT.audit_id   
+	        FROM TMT_INL TMT
+	        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id
+	        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
+	        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
+	        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
+	    ORDER BY ttm_id;
+	    $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
         v_data_insert_sql
     );
-
+    
     ----------------------------------------------------------------------------
     -- title memorial layer (2)
     ----------------------------------------------------------------------------
@@ -1703,7 +1853,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1732,7 +1883,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1761,7 +1913,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1797,7 +1950,8 @@ BEGIN
 
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1838,7 +1992,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1887,7 +2042,8 @@ BEGIN
         ORDER BY id;
         $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1914,7 +2070,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -1963,7 +2120,8 @@ BEGIN
         ORDER BY audit_id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2003,7 +2161,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2043,7 +2202,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2114,7 +2274,8 @@ BEGIN
         ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2161,7 +2322,8 @@ BEGIN
     ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2198,7 +2360,8 @@ BEGIN
     ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2236,7 +2399,8 @@ BEGIN
      ORDER BY id;
     $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
@@ -2292,7 +2456,8 @@ BEGIN
     ORDER BY id;
  $sql$;
     
-    PERFORM LDS.LDS_UpdateSimplifiedTable(
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
         v_data_insert_sql,
