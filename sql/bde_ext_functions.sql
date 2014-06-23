@@ -1684,7 +1684,8 @@ BEGIN
     v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
     
     RAISE DEBUG 'Started creating temp tables for %', v_table;
-
+    
+	RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB1(TTM_LDG) % ***',clock_timestamp();
     DROP TABLE IF EXISTS TTM_LDG;
     CREATE TEMPORARY TABLE TTM_LDG 
     (id int)
@@ -1701,6 +1702,7 @@ BEGIN
     
     -- -------------------------------
     -- Filter Subsection
+    RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB2(TMT_INL) % ***',clock_timestamp();
     
     DROP TABLE IF EXISTS TMT_INL;
     CREATE TEMPORARY TABLE TMT_INL
@@ -1720,6 +1722,7 @@ BEGIN
     )
     ON COMMIT DROP;
 	
+    INSERT INTO TMT_INL
     SELECT
 	    TMT.ttm_id, 
 	    TMT.sequence_no, 
@@ -1742,6 +1745,7 @@ BEGIN
     
     -- ------------------------------------
     -- Join Subsection
+    RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB3(TITLE_MEM_TEXT) % ***',clock_timestamp();
     
     v_data_insert_sql := $sql$
         INSERT INTO %1% (
@@ -1783,6 +1787,7 @@ BEGIN
 	    $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+    
 	PERFORM LDS.LDS_UpdateSimplifiedTable(
         p_upload,
         v_table,
@@ -2299,6 +2304,7 @@ BEGIN
         rna_id,
         alt_id,
         id,
+        sufi,
         audit_id,
         se_row_id,
         shape
@@ -2313,6 +2319,7 @@ BEGIN
         SAD.rna_id,
         SAD.alt_id,
         SAD.id,
+        SAD.sufi,
         SAD.audit_id,
         SAD.se_row_id,
         SAD.shape
