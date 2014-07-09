@@ -20,6 +20,7 @@ SET client_min_messages TO WARNING;
 BEGIN;
 
 SET SEARCH_PATH = bde_ext, lds, bde, bde_control, public;
+SET default_tablespace = data1;
 
 DO $$
 DECLARE
@@ -195,6 +196,195 @@ BEGIN
     ----------------------------------------------------------------------------
     
     PERFORM LDS_CreateTitleExclusionTables(p_upload);
+    
+    ----------------------------------------------------------------------------
+    -- street address layer
+    ----------------------------------------------------------------------------
+    
+    v_table := LDS.LDS_GetTable('bde_ext', 'street_address_ext');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        house_number,
+        range_low,
+        range_high,
+        status,
+        unofficial_flag,
+        rcl_id,
+        rna_id,
+        alt_id,
+        id,
+        sufi,
+        audit_id,
+        se_row_id,
+        shape
+    )
+    SELECT 
+        SAD.house_number,
+        SAD.range_low,
+        SAD.range_high,
+        SAD.status,
+        SAD.unofficial_flag,
+        SAD.rcl_id,
+        SAD.rna_id,
+        SAD.alt_id,
+        SAD.id,
+        SAD.sufi,
+        SAD.audit_id,
+        SAD.se_row_id,
+        SAD.shape
+    FROM crs_street_address SAD
+    WHERE SAD.house_number != 'UNH' 
+    AND SAD.range_low != 0
+    ORDER BY id;
+    $sql$;
+    
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+
+    ----------------------------------------------------------------------------
+    -- title mem text layer (4) {using temp tables and splitting filter/join}
+    ----------------------------------------------------------------------------
+    
+    v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
+    
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+    
+    RAISE DEBUG 'Started creating temp tables for %', v_table;
+    
+    DROP TABLE IF EXISTS DVL_MEM;
+    CREATE TEMPORARY TABLE DVL_MEM 
+    (title_no VARCHAR, mem_id INTEGER)
+    ON COMMIT DROP;
+
+    INSERT INTO DVL_MEM
+    SELECT
+        DVL.title_no AS title_no,
+        M.id AS mem_id
+    FROM
+        tmp_protected_titles DVL
+    JOIN crs_title_memorial M ON DVL.title_no = M.ttl_title_no;
+    
+    ANALYSE DVL_MEM;
+
+    RAISE NOTICE '*** TEMP TABLE UPDATE END TMT_SUB1(DVL_MEM) % ***',clock_timestamp();
+    
+    DROP TABLE IF EXISTS TTM_LDG;
+    CREATE TEMPORARY TABLE TTM_LDG 
+    (id int)
+    ON COMMIT DROP;
+
+    INSERT INTO TTM_LDG
+    SELECT TTM.id FROM crs_title_memorial TTM
+    WHERE TTM.status <> 'LDGE' 
+    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
+    ORDER BY id;
+    
+    CREATE INDEX TTM_LDG_idx ON TTM_LDG (id);
+    ANALYSE TTM_LDG;
+    
+    -- -------------------------------
+    -- Filter Subsection
+    RAISE NOTICE '*** TEMP TABLE UPDATE END TMT_SUB2(TMT_LDG) % ***',clock_timestamp();
+    
+    DROP TABLE IF EXISTS TMT_INL;
+    CREATE TEMPORARY TABLE TMT_INL
+    (
+		ttm_id integer,
+		sequence_no integer, 
+		curr_hist_flag character varying(4), 
+		std_text character varying(18000),
+		col_1_text character varying(2048), 
+		col_2_text character varying(2048),
+		col_3_text character varying(2048), 
+		col_4_text character varying(2048), 
+		col_5_text character varying(2048), 
+		col_6_text character varying(2048), 
+		col_7_text character varying(2048),
+		audit_id integer  
+    )
+    ON COMMIT DROP;
+	
+    INSERT INTO TMT_INL
+    SELECT
+	    TMT.ttm_id, 
+	    TMT.sequence_no, 
+	    TMT.curr_hist_flag, 
+	    TMT.std_text, 
+	    TMT.col_1_text, 
+	    TMT.col_2_text, 
+	    TMT.col_3_text, 
+	    TMT.col_4_text, 
+	    TMT.col_5_text, 
+	    TMT.col_6_text, 
+	    TMT.col_7_text,
+	    TMT.audit_id   
+	FROM crs_title_mem_text TMT
+	--LEFT JOIN TTM_LDG ON TTM_LDG.id = TTM_LDG.id AND TTM_LDG.id IS NOT NULL  -- temp file write error
+	--WHERE EXISTS (SELECT id FROM TTM_LDG WHERE id = ttm_id) -- untested
+	WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG) -- *slow
+	ORDER BY ttm_id;
+
+    CREATE INDEX TMT_INL_IDX ON TMT_INL (ttm_id);
+    ANALYSE TMT_INL;
+    
+    -- ------------------------------------
+    -- Join Subsection
+    RAISE NOTICE '*** TEMP TABLE UPDATE END TMT_SUB3(TMT_INL) % ***',clock_timestamp();
+    
+    v_data_insert_sql := $sql$
+        INSERT INTO %1% (
+            ttm_id, 
+            sequence_no, 
+            curr_hist_flag, 
+            std_text, 
+            col_1_text, 
+            col_2_text, 
+            col_3_text, 
+            col_4_text, 
+            col_5_text, 
+            col_6_text, 
+            col_7_text,
+            audit_id
+        )
+	    SELECT 
+		    TMT.ttm_id, 
+		    TMT.sequence_no, 
+		    TMT.curr_hist_flag, 
+		    CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
+			THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
+		    ELSE TMT.std_text
+		    END AS std_text, 
+		    TMT.col_1_text, 
+		    TMT.col_2_text, 
+		    TMT.col_3_text, 
+		    TMT.col_4_text, 
+		    TMT.col_5_text, 
+		    TMT.col_6_text, 
+		    TMT.col_7_text,
+		    TMT.audit_id   
+	        FROM TMT_INL TMT
+	        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id
+	        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
+	        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
+	        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
+	    ORDER BY ttm_id;
+	    $sql$;
+    
+    RAISE NOTICE '***  TABLE UPDATE END TMT_SUB4(TMT)% - % ***',v_table,clock_timestamp();
+    
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
     
     ----------------------------------------------------------------------------
     -- alias layer
@@ -1581,220 +1771,8 @@ BEGIN
     );
         
     
-    ----------------------------------------------------------------------------
-    -- title mem text layer (3) {using temp tables}
-    -- this temp tables are used to speed up the query, not because the temp is used elsewhere
-    ----------------------------------------------------------------------------
-    
-    v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
-    
-    RAISE DEBUG 'Started creating temp tables for %', v_table;
 
-    DROP TABLE IF EXISTS DVL_MEM;
-    CREATE TEMPORARY TABLE DVL_MEM 
-    (title_no VARCHAR, mem_id INTEGER)
-    ON COMMIT DROP;
 
-    INSERT INTO DVL_MEM
-    SELECT
-        DVL.title_no AS title_no,
-        M.id AS mem_id
-    FROM
-        tmp_protected_titles DVL
-    JOIN crs_title_memorial M ON DVL.title_no = M.ttl_title_no;
-    
-    ANALYSE DVL_MEM;
-    
-    ----------------------------------------------------------------------------
-    -- title mem text layer (3) {using temp tables}
-    -- this temp tables are used to speed up the query, not because the temp is used elsewhere
-    ----------------------------------------------------------------------------
-    
---    v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
---    
---    RAISE DEBUG 'Started creating temp tables for %', v_table;
-
---    DROP TABLE IF EXISTS TTM_LDG;
---    CREATE TEMPORARY TABLE TTM_LDG 
---    (id int)
---    ON COMMIT DROP;
-
---    INSERT INTO TTM_LDG
---    SELECT TTM.id FROM crs_title_memorial TTM
---    WHERE TTM.status <> 'LDGE' 
---    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
---    ORDER BY id;
-    
---    CREATE INDEX TTM_LDG_idx ON TTM_LDG (id);
-    
---    ANALYSE TTM_LDG;
-    
---    v_data_insert_sql := $sql$
---        INSERT INTO %1% (
---            ttm_id, 
---            sequence_no, 
---            curr_hist_flag, 
---            std_text, 
---            col_1_text, 
---            col_2_text, 
---            col_3_text, 
---            col_4_text, 
---            col_5_text, 
---            col_6_text, 
---            col_7_text,
---            audit_id
---        )
---        SELECT 
---            TMT.ttm_id, 
---            TMT.sequence_no, 
---            TMT.curr_hist_flag, 
---            CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
---                THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
---            ELSE TMT.std_text
---            END AS std_text, 
---            TMT.col_1_text, 
---            TMT.col_2_text, 
---            TMT.col_3_text, 
---            TMT.col_4_text, 
---            TMT.col_5_text, 
---            TMT.col_6_text, 
---            TMT.col_7_text,
---            TMT.audit_id
---        FROM crs_title_mem_text TMT
---        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id 
---        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
---        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
---        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
---        WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG)
---        ORDER BY audit_id;
---    $sql$;
-    
---    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
---	  PERFORM LDS.LDS_UpdateSimplifiedTable(
---        p_upload,
---        v_table,
---        v_data_insert_sql,
---        v_data_insert_sql
---    );
-
-    ----------------------------------------------------------------------------
-    -- title mem text layer (4) {using temp tables and splitting filter/join}
-    ----------------------------------------------------------------------------
-    
-    v_table := LDS.LDS_GetTable('bde_ext', 'title_mem_text');
-    
-    RAISE DEBUG 'Started creating temp tables for %', v_table;
-    
-	RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB1(TTM_LDG) % ***',clock_timestamp();
-    DROP TABLE IF EXISTS TTM_LDG;
-    CREATE TEMPORARY TABLE TTM_LDG 
-    (id int)
-    ON COMMIT DROP;
-
-    INSERT INTO TTM_LDG
-    SELECT TTM.id FROM crs_title_memorial TTM
-    WHERE TTM.status <> 'LDGE' 
-    AND TTM.ttl_title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
-    ORDER BY id;
-    
-    CREATE INDEX TTM_LDG_idx ON TTM_LDG (id);
-    ANALYSE TTM_LDG;
-    
-    -- -------------------------------
-    -- Filter Subsection
-    RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB2(TMT_INL) % ***',clock_timestamp();
-    
-    DROP TABLE IF EXISTS TMT_INL;
-    CREATE TEMPORARY TABLE TMT_INL
-    (
-		ttm_id integer,
-		sequence_no integer, 
-		curr_hist_flag character varying(4), 
-		std_text character varying(18000),
-		col_1_text character varying(2048), 
-		col_2_text character varying(2048),
-		col_3_text character varying(2048), 
-		col_4_text character varying(2048), 
-		col_5_text character varying(2048), 
-		col_6_text character varying(2048), 
-		col_7_text character varying(2048),
-		audit_id integer  
-    )
-    ON COMMIT DROP;
-	
-    INSERT INTO TMT_INL
-    SELECT
-	    TMT.ttm_id, 
-	    TMT.sequence_no, 
-	    TMT.curr_hist_flag, 
-	    TMT.std_text, 
-	    TMT.col_1_text, 
-	    TMT.col_2_text, 
-	    TMT.col_3_text, 
-	    TMT.col_4_text, 
-	    TMT.col_5_text, 
-	    TMT.col_6_text, 
-	    TMT.col_7_text,
-	    TMT.audit_id   
-	FROM crs_title_mem_text TMT
-	WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG)
-	ORDER BY ttm_id;
-
-    CREATE INDEX TMT_INL_IDX ON TMT_INL (ttm_id);
-    ANALYSE TMT_INL;
-    
-    -- ------------------------------------
-    -- Join Subsection
-    RAISE NOTICE '*** PERFORM TABLE UPDATE TMT_SUB3(TITLE_MEM_TEXT) % ***',clock_timestamp();
-    
-    v_data_insert_sql := $sql$
-        INSERT INTO %1% (
-            ttm_id, 
-            sequence_no, 
-            curr_hist_flag, 
-            std_text, 
-            col_1_text, 
-            col_2_text, 
-            col_3_text, 
-            col_4_text, 
-            col_5_text, 
-            col_6_text, 
-            col_7_text,
-            audit_id
-        )
-	    SELECT 
-		    TMT.ttm_id, 
-		    TMT.sequence_no, 
-		    TMT.curr_hist_flag, 
-		    CASE WHEN DVL_MEM.title_no IS NOT NULL AND TRT.grp = 'TINT' AND TRT.type IN ('JFH','DD','CN','UAPP','X','T','TSM')
-			THEN TIN.inst_no || ' ' || TRT.description || ' - '|| to_char(TIN.lodged_datetime, 'DD.MM.YYYY') || ' at ' || to_char(TIN.lodged_datetime, 'HH:MI am')
-		    ELSE TMT.std_text
-		    END AS std_text, 
-		    TMT.col_1_text, 
-		    TMT.col_2_text, 
-		    TMT.col_3_text, 
-		    TMT.col_4_text, 
-		    TMT.col_5_text, 
-		    TMT.col_6_text, 
-		    TMT.col_7_text,
-		    TMT.audit_id   
-	        FROM TMT_INL TMT
-	        LEFT JOIN DVL_MEM ON DVL_MEM.mem_id = TMT.ttm_id
-	        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
-	        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
-	        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
-	    ORDER BY ttm_id;
-	    $sql$;
-    
-    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
-    
-	PERFORM LDS.LDS_UpdateSimplifiedTable(
-        p_upload,
-        v_table,
-        v_data_insert_sql,
-        v_data_insert_sql
-    );
-    
     ----------------------------------------------------------------------------
     -- title memorial layer (2)
     ----------------------------------------------------------------------------
@@ -2277,56 +2255,6 @@ BEGIN
         FROM crs_work WRK
         WHERE WRK.restricted = 'N'
         ORDER BY id;
-    $sql$;
-    
-    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
-	PERFORM LDS.LDS_UpdateSimplifiedTable(
-        p_upload,
-        v_table,
-        v_data_insert_sql,
-        v_data_insert_sql
-    );
-    
-    ----------------------------------------------------------------------------
-    -- street address layer
-    ----------------------------------------------------------------------------
-    
-    v_table := LDS.LDS_GetTable('bde_ext', 'street_address_ext');
-    
-    v_data_insert_sql := $sql$
-    INSERT INTO %1% (
-        house_number,
-        range_low,
-        range_high,
-        status,
-        unofficial_flag,
-        rcl_id,
-        rna_id,
-        alt_id,
-        id,
-        sufi,
-        audit_id,
-        se_row_id,
-        shape
-    )
-    SELECT 
-        SAD.house_number,
-        SAD.range_low,
-        SAD.range_high,
-        SAD.status,
-        SAD.unofficial_flag,
-        SAD.rcl_id,
-        SAD.rna_id,
-        SAD.alt_id,
-        SAD.id,
-        SAD.sufi,
-        SAD.audit_id,
-        SAD.se_row_id,
-        SAD.shape
-    FROM crs_street_address SAD
-    WHERE SAD.house_number != 'UNH' 
-    AND SAD.range_low != 0
-    ORDER BY id;
     $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();

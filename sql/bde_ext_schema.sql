@@ -1026,7 +1026,7 @@ CREATE TABLE street_address_ext
   rna_id INTEGER NOT NULL,
   alt_id INTEGER,
   id INTEGER NOT NULL,
-  sufi INTEGER NOT NULL,
+  sufi INTEGER,
   audit_id INTEGER NOT NULL,
   se_row_id INTEGER,
   CONSTRAINT pkey_street_address_ext PRIMARY KEY (id)
