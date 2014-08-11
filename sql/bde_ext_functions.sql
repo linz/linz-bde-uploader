@@ -1611,6 +1611,7 @@ BEGIN
             guarantee_status, 
             provisional, 
             sur_wrk_id, 
+            maori_land,
             ttl_title_no_srs,
             ttl_title_no_head_srs
         )
@@ -1626,8 +1627,9 @@ BEGIN
             TTL.guarantee_status, 
             TTL.provisional, 
             TTL.sur_wrk_id, 
+            TTL.maori_land,
             TTL.ttl_title_no_srs,
-            NULL --TODO: add column to crs_title for TTL.ttl_title_no_head_srs
+            TTL.ttl_title_no_head_srs
         FROM crs_title TTL
         WHERE TTL.title_no NOT IN (SELECT title_no FROM tmp_excluded_titles)
         AND TTL.status <> 'PEND'
