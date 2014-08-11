@@ -1260,7 +1260,7 @@ BEGIN
                 ST_Buffer(PAR.shape, 0)
             END AS shape
         FROM crs_parcel PAR
-        WHERE PAR.status IN ('CURR', 'SHST')
+        WHERE PAR.status != 'PEND'
         AND (PAR.shape IS NULL OR ST_GeometryType(PAR.shape) IN ('ST_MultiPolygon','ST_Polygon'))
         ORDER BY id;
     $sql$;
@@ -1392,7 +1392,7 @@ BEGIN
             PAR.audit_id, 
             PAR.shape
         FROM crs_parcel PAR
-        WHERE PAR.status IN ('CURR', 'SHST')
+        WHERE PAR.status != 'PEND'
         AND ST_GeometryType(PAR.shape) = 'ST_LineString'
         ORDER BY id;
     $sql$;
