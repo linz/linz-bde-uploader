@@ -866,7 +866,7 @@ BEGIN
             FROM crs_parcel_bndry PAB
             JOIN crs_parcel_ring PRI ON PRI.id = PAB.pri_id
             JOIN crs_parcel PAR ON PAR.id = PRI.par_id
-            WHERE PAR.status IN ('CURR','SHST')
+            WHERE PAR.status != 'PEND'
             ORDER BY lin_id
         ),
         LIN_ORD (
@@ -1299,7 +1299,7 @@ BEGIN
                 SELECT *
                 FROM crs_parcel PAR
                 WHERE PAR.id = PDL.par_id
-                AND PAR.status IN ('CURR','SHST')
+                AND PAR.status != 'PEND'
             )
         )
         ORDER BY id;
@@ -1335,7 +1335,7 @@ BEGIN
                 SELECT PAR.id
                 FROM crs_parcel PAR
                 WHERE PAR.id = PDM.par_id 
-                AND PAR.status IN ('CURR', 'SHST')
+                AND PAR.status != 'PEND'
                 )
             )
         ORDER BY audit_id;
@@ -1430,7 +1430,7 @@ BEGIN
             (
             SELECT PAR.id
             FROM crs_parcel PAR
-            WHERE PAR.status IN ('CURR', 'SHST')
+            WHERE PAR.status != 'PEND'
             )
         ORDER BY id;
     $sql$;
