@@ -191,7 +191,7 @@ CREATE TABLE estate_share
 (
   id INTEGER NOT NULL,
   ett_id INTEGER NOT NULL,
-  share CHAR(100) NOT NULL,
+  share VARCHAR(100) NOT NULL,
   status VARCHAR(4) NOT NULL,
   share_memorial VARCHAR(17500),
   act_tin_id_crt INTEGER,
@@ -696,7 +696,7 @@ CREATE TABLE title_estate
   type VARCHAR(4) NOT NULL,
   status VARCHAR(4) NOT NULL,
   lgd_id INTEGER NOT NULL,
-  share CHAR(100) NOT NULL,
+  share VARCHAR(100) NOT NULL,
   timeshare_week_no VARCHAR(20),
   purpose VARCHAR(255),
   act_tin_id_crt INTEGER,
