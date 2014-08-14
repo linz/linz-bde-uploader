@@ -2858,6 +2858,7 @@ CREATE TABLE crs_title (
     sur_wrk_id INTEGER,
     sur_wrk_id_preallc INTEGER,
     ttl_title_no_srs VARCHAR(20),
+    ttl_title_no_head_srs VARCHAR(20),
     conversion_reason VARCHAR(4),
     protect_start DATE,
     protect_end DATE,
