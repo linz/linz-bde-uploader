@@ -2379,7 +2379,7 @@ BEGIN
         TTLG.char_value AS guarantee_status,
         TTL.provisional,
         TTL.ttl_title_no_srs as title_no_srs,
-        NULL::VARCHAR(20) as title_no_head_srs,
+        TTL.ttl_title_no_head_srs as title_no_head_srs,
         SUR.survey_reference::VARCHAR(50),
         TTL.maori_land,
         string_agg(
