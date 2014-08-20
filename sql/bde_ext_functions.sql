@@ -2425,7 +2425,7 @@ BEGIN
 		OFF.cis_name,
 		OFF.alloc_source_table,
 		OFF.audit_id
-	FROM crs_OFFICE OFF;
+	FROM crs_office OFF;
     $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
