@@ -135,7 +135,8 @@ BEGIN
                     'crs_street_address',
                     'crs_feature_name',
                     'crs_coordinate',
-                    'cbe_title_parcel_association'
+                    'cbe_title_parcel_association',
+                    'crs_office'
                 ],
                 'any affected'
             )
@@ -184,6 +185,7 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'feature_name_pt') 
         AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
         AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
+        AND LDS.LDS_TableHasData('bde_ext', 'crs_office')
     )
     THEN
         RAISE INFO
@@ -2392,6 +2394,39 @@ BEGIN
 		AND COO.status = 'AUTH'
     ORDER BY id;
  $sql$;
+    
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    
+    ----------------------------------------------------------------------------
+    -- office layer
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('bde_ext', 'office');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+		code,
+		name,
+		rcs_name,
+		cis_name,
+		alloc_source_table,
+		audit_id
+	)
+	SELECT 
+		OFF.code,
+		OFF.name,
+		OFF.rcs_name,
+		OFF.cis_name,
+		OFF.alloc_source_table,
+		OFF.audit_id
+	FROM crs_OFFICE OFF;
+    $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
 	PERFORM LDS.LDS_UpdateSimplifiedTable(
