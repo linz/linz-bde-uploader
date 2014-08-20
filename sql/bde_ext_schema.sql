@@ -1120,5 +1120,25 @@ REVOKE ALL ON TABLE coordinate FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE coordinate TO bde_admin;
 GRANT SELECT ON TABLE coordinate TO bde_user;
 
+-- =============================================================================
+-- O F F I C E
+-- =============================================================================
+DROP TABLE IF EXISTS office CASCADE;
+CREATE TABLE office
+(
+  code VARCHAR(4) NOT NULL,
+  name VARCHAR(50) NOT NULL,
+  rcs_name VARCHAR(50) NOT NULL,
+  cis_name VARCHAR(50) NOT NULL,
+  alloc_source_table VARCHAR(50) NOT NULL,
+  audit_id integer NOT NULL,
+  CONSTRAINT crs_office_pkey PRIMARY KEY (audit_id),
+  CONSTRAINT crs_office_code_key UNIQUE (code)
+);
+ALTER TABLE office OWNER TO bde_dba;
+REVOKE ALL ON TABLE office FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE office TO bde_admin;
+GRANT SELECT ON TABLE office TO bde_user;
+
 END
 $SCHEMA$;
