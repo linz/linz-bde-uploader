@@ -19,18 +19,18 @@ SET client_min_messages TO WARNING;
 DO $SCHEMA$
 BEGIN
 
-IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'lds') THEN
+IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'lds_ext') THEN
     RETURN;
 END IF;
 
-CREATE SCHEMA lds AUTHORIZATION bde_dba;
+CREATE SCHEMA lds_ext AUTHORIZATION bde_dba;
 
 GRANT USAGE ON SCHEMA lds TO bde_admin;
 GRANT USAGE ON SCHEMA lds TO bde_user;
 
-COMMENT ON SCHEMA lds IS 'Schema for LDS simplified Landonline layers';
+COMMENT ON SCHEMA lds IS 'Schema for LDS pending simplified Landonline layers';
 
-SET search_path = lds, bde, public;
+SET search_path = lds_ext, lds, bde, public;
 
 --------------------------------------------------------------------------------
 -- LDS table pending_parcels

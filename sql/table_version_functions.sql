@@ -797,6 +797,62 @@ REVOKE ALL ON FUNCTION ver_is_table_versioned(NAME, NAME) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_is_table_versioned(NAME, NAME) TO bde_admin;
 GRANT EXECUTE ON FUNCTION ver_is_table_versioned(NAME, NAME) TO bde_user;
 
+DROP FUNCTION IF EXISTS ver_versioned_table_add_column(NAME, NAME, NAME, TEXT);
+/**
+* Add a column to a versioned table. Column can not have a default value.
+*
+* @param p_schema          The table schema
+* @param p_table           The table name
+* @param p_column_name     The name of the column to add
+* @param p_column_datatype The datatype of column to add
+* @return                  If the column was added successful
+* @throws RAISE_EXCEPTION If the table is not versioned
+*/
+CREATE OR REPLACE FUNCTION ver_versioned_table_add_column(
+    p_schema_name NAME,
+    p_table_name  NAME,
+    p_column_name NAME,
+    p_column_datatype TEXT
+)
+RETURNS BOOLEAN AS 
+$$
+DECLARE
+    v_key_col NAME;
+    v_trigger_name TEXT;
+    v_revision_table TEXT;
+BEGIN
+    IF NOT table_version.ver_is_table_versioned(p_schema_name, p_table_name) THEN
+        RAISE EXCEPTION 'Table %.% is not versioned', quote_ident(p_schema_name), quote_ident(p_table_name);
+    END IF;
+    
+    v_revision_table := table_version.ver_get_version_table_full(p_schema_name, p_table_name);
+    v_trigger_name := table_version._ver_get_version_trigger(p_schema_name, p_table_name);
+    
+    EXECUTE 'ALTER TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' DISABLE TRIGGER ' || v_trigger_name;
+    EXECUTE 'ALTER TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' ADD COLUMN ' || quote_ident(p_column_name) || ' ' || p_column_datatype;
+    EXECUTE 'ALTER TABLE ' || v_revision_table      || ' ADD COLUMN ' || quote_ident(p_column_name) || ' ' || p_column_datatype;
+    EXECUTE 'ALTER TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' ENABLE TRIGGER ' || v_trigger_name;
+    
+    SELECT
+        key_column
+    INTO
+        v_key_col
+    FROM 
+        table_version.versioned_tables
+    WHERE
+        schema_name = p_schema_name AND
+        table_name = p_table_name;
+    
+    PERFORM table_version.ver_create_table_functions(p_schema_name, p_table_name, v_key_col);
+    PERFORM table_version.ver_create_version_trigger(p_schema_name, p_table_name, v_key_col);
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+ALTER FUNCTION ver_versioned_table_add_column(NAME, NAME, NAME, TEXT) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION ver_versioned_table_add_column(NAME, NAME, NAME, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ver_versioned_table_add_column(NAME, NAME, NAME, TEXT) TO bde_admin;
+
 DROP FUNCTION IF EXISTS ver_get_versioned_tables();
 /**
 * Get all versioned tables
@@ -999,11 +1055,13 @@ $FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%select_columns%', v_select_columns_diff);
     v_sql := REPLACE(v_sql, '%key_col%',        quote_ident(p_key_col));
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
+    
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version._ver_get_diff_function(p_schema, p_table);
     EXECUTE v_sql;
     
-    EXECUTE 'REVOKE ALL ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' FROM PUBLIC;';
-	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_admin;';
-	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_user;';
+    EXECUTE 'REVOKE ALL ON FUNCTION ' || table_version._ver_get_diff_function(p_schema, p_table)||' FROM PUBLIC;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION ' || table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_admin;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION ' || table_version._ver_get_diff_function(p_schema, p_table)||' TO bde_user;';
 
     -- Create get version function for table called: 
     -- ver_get_$schema$_$table$_revision(p_revision integer)
@@ -1039,11 +1097,13 @@ $FUNC$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%table_columns%', v_table_columns);
     v_sql := REPLACE(v_sql, '%select_columns%', v_select_columns_rev);
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
+    
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || table_version._ver_get_revision_function(p_schema, p_table);
     EXECUTE v_sql;
     
-	EXECUTE 'REVOKE ALL ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' FROM PUBLIC;';
-	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' TO bde_admin;';
-	EXECUTE 'GRANT EXECUTE ON FUNCTION '||table_version._ver_get_revision_function(p_schema, p_table)||' TO bde_user;';
+	EXECUTE 'REVOKE ALL ON FUNCTION ' || table_version._ver_get_revision_function(p_schema, p_table) || ' FROM PUBLIC;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION ' || table_version._ver_get_revision_function(p_schema, p_table) || ' TO bde_admin;';
+	EXECUTE 'GRANT EXECUTE ON FUNCTION ' || table_version._ver_get_revision_function(p_schema, p_table) || ' TO bde_user;';
 
     RETURN TRUE;
 END;
@@ -1206,6 +1266,7 @@ $TRIGGER$ LANGUAGE plpgsql SECURITY DEFINER;
     v_sql := REPLACE(v_sql, '%key_col%',        quote_ident(p_key_col));
     v_sql := REPLACE(v_sql, '%revision_table%', v_revision_table);
     v_sql := REPLACE(v_sql, '%revision_update_cols%', v_column_update);
+    
     EXECUTE v_sql;
 
     SELECT table_version._ver_get_version_trigger(p_schema, p_table)

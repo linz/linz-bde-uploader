@@ -17,7 +17,7 @@
 SET client_min_messages TO WARNING;
 BEGIN;
 
-SET SEARCH_PATH = lds, bde, bde_control, public;
+SET SEARCH_PATH = lds_ext, lds, bde, bde_control, public;
 
 DO $$
 DECLARE
@@ -72,8 +72,8 @@ BEGIN
                 'any affected'
             )
         )
-        AND LDS.LDS_TableHasData('lds', 'pending_parcels')
-        AND LDS.LDS_TableHasData('lds', 'pending_linear_parcels')
+        AND LDS_EXT.LDS_TableHasData('lds_ext', 'pending_parcels')
+        AND LDS_EXT.LDS_TableHasData('lds_ext', 'pending_linear_parcels')
     )
     THEN
         RAISE INFO
@@ -194,7 +194,7 @@ BEGIN
     ALTER TABLE tmp_par_stat_action_agg ADD PRIMARY KEY (par_id);
     ANALYSE tmp_par_stat_action_agg;
 
-    SELECT LDS.LDS_CreateSurveyPlansTable(-1);
+    perform LDS.LDS_CreateSurveyPlansTable(p_upload);
     
     -- make region data for determining how to calc areas
     DROP TABLE IF EXISTS tmp_world_regions;
@@ -285,7 +285,7 @@ BEGIN
 	-- LDS table pending_parcels
 	--------------------------------------------------------------------------------
 	
-	v_table := LDS.LDS_GetTable('lds', 'pending_parcels');
+	v_table := LDS_EXT.LDS_GetTable('lds_ext', 'pending_parcels');
     
     v_data_insert_sql := $sql$
 	INSERT INTO %1%(
@@ -336,7 +336,7 @@ BEGIN
 	-- LDS table pending_linear_parcels
 	--------------------------------------------------------------------------------
 
-	v_table := LDS.LDS_GetTable('lds', 'pending_linear_parcels');
+	v_table := LDS_EXT.LDS_GetTable('lds_ext', 'pending_linear_parcels');
     
     v_data_insert_sql := $sql$
 	INSERT INTO %1%(
@@ -399,7 +399,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
-ALTER FUNCTION LDS_MaintainSimplifiedParcelLayers(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION LDS_MaintainSimplifiedPendingLayers(INTEGER) OWNER TO bde_dba;
 
 
 --###########################################################################################################

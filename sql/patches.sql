@@ -1423,58 +1423,12 @@ AND attname = ''name_and_date'';
 );
 
 SELECT _patches.apply_patch(
-    'BDE - 1.4.0: Add support for full landonline data release',
+    'BDE - 1.3.6: Add street addressing columns for Landonline 3.10',
     '
-
-CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
-
-DO $$
-DECLARE
-   v_schema    NAME;
-   v_table     NAME;
-   v_msg       TEXT;
-   v_rev_table TEXT;
-BEGIN
-	SET search_path=bde_ext, lds, bde, bde_control, public;
-	PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
-    PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
-    
-    FOR v_schema, v_table IN 
-        SELECT
-            NSP.nspname,
-            CLS.relname
-        FROM
-            pg_class CLS,
-            pg_namespace NSP
-        WHERE
-            CLS.relnamespace = NSP.oid AND
-            NSP.nspname IN (''bde_ext'') AND
-            CLS.relkind = ''r''
-        ORDER BY
-            1, 2
-    LOOP
-        v_msg := ''Versioning table '' ||  v_schema || ''.'' || v_table;
-        RAISE NOTICE ''%'', v_msg;
-        
-        BEGIN
-            PERFORM table_version.ver_enable_versioning(v_schema, v_table);
-        EXCEPTION
-            WHEN others THEN
-                RAISE EXCEPTION ''Error versioning %.%. ERROR: %'', v_schema, v_table, SQLERRM;
-        END;
-        
-        SELECT table_version.ver_get_version_table_full(v_schema, v_table)
-        INTO   v_rev_table;
-        
-        EXECUTE ''GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE '' || v_rev_table || '' TO bde_admin'';
-        EXECUTE ''GRANT SELECT ON TABLE '' || v_rev_table || '' TO bde_user'';
-    END LOOP;
-    
-    PERFORM table_version.ver_complete_revision();
-END
-$$;
+    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_road_name'', ''sufi'', ''INTEGER'');
+    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''sufi'', ''INTEGER'');
+    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''overridden_mbk_code'', ''CHAR(1)'');
+    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''mbk_code'', ''VARCHAR(7)'');
 '
 );
-
-
 
