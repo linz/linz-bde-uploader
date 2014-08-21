@@ -1432,3 +1432,84 @@ SELECT _patches.apply_patch(
 '
 );
 
+-------------------------------------------------------------------------------
+-- crs_title ttl_title_no_head_srs + crs_land_district usr_tm_id column add patch
+-------------------------------------------------------------------------------
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.7: Add ttl_title_no_head_srs column to crs_title and usr_tm_id to crs_land_district',
+    '
+	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_title'', ''ttl_title_no_head_srs'', ''VARCHAR(20)'');
+	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
+'
+);
+
+
+-------------------------------------------------------------------------------
+-- change column type for crs_estate_share, crs_title_estate and crs_legal_desc_prl
+-------------------------------------------------------------------------------
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.8: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
+    '
+	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_estate_share'', ''share'', ''varchar(100)'');
+	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_title_estate'', ''share'', ''varchar(100)'');
+	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_legal_desc_prl'', ''share'', ''varchar(100)'');
+  '
+);
+
+-------------------------------------------------------------------------------
+-- index and revision patch to be run last in update FBDE block
+-------------------------------------------------------------------------------
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.9: Post FBDE index and revision build operation',
+    '
+	CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
+
+	DO $$
+	DECLARE
+		v_schema NAME;
+		v_table NAME;
+		v_msg TEXT;
+		v_rev_table TEXT;
+	BEGIN
+		SET search_path=bde_ext, lds, bde, bde_control, public;
+		PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
+		PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
+
+		FOR v_schema, v_table IN
+			SELECT
+				NSP.nspname,
+				CLS.relname
+			FROM
+				pg_class CLS,
+				pg_namespace NSP
+			WHERE
+				CLS.relnamespace = NSP.oid AND
+				NSP.nspname IN (''bde_ext'') AND
+				CLS.relkind = ''r''
+			ORDER BY
+				1, 2
+		LOOP
+			v_msg := ''Versioning table '' || v_schema || ''.'' || v_table;
+			RAISE NOTICE ''%'', v_msg;
+
+			BEGIN
+				PERFORM table_version.ver_enable_versioning(v_schema, v_table);
+			EXCEPTION
+				WHEN others THEN
+					RAISE EXCEPTION ''Error versioning %.%. ERROR: %'', v_schema, v_table, SQLERRM;
+			END;
+
+			SELECT table_version.ver_get_version_table_full(v_schema, v_table)
+			INTO v_rev_table;
+
+			EXECUTE ''GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE '' || v_rev_table || '' TO bde_admin'';
+			EXECUTE ''GRANT SELECT ON TABLE '' || v_rev_table || '' TO bde_user'';
+		END LOOP;
+
+		PERFORM table_version.ver_complete_revision();
+	END
+	$$;
+');
