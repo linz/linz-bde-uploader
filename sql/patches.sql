@@ -1448,7 +1448,7 @@ SELECT _patches.apply_patch(
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.4.1: Add usr_tm_id to crs_land_district',
+    'BDE - 1.4.0: Add usr_tm_id to crs_land_district',
     '
 	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
 '
@@ -1458,11 +1458,58 @@ SELECT _patches.apply_patch(
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.4.2: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
+    'BDE - 1.4.0: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
     '
 	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_estate_share'', ''share'', ''varchar(100)'');
 	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_title_estate'', ''share'', ''varchar(100)'');
 	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_legal_desc_prl'', ''share'', ''varchar(100)'');
+  '
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.4.0: Add crs_image_history table',
+    '
+    SET search_path = bde, public;
+    
+    CREATE TABLE crs_image_history  (
+        id INTEGER NOT NULL,
+        img_id INTEGER NOT NULL,
+        ims_id DECIMAL(32),
+        ims_date DATE,
+        pages INTEGER,
+        centera_id VARCHAR(65),
+        centera_datetime TIMESTAMP,
+        usr_id VARCHAR(20)
+    );
+
+    ALTER TABLE ONLY crs_image_history
+        ADD CONSTRAINT pkey_crs_image_history PRIMARY KEY (id);
+
+    ALTER TABLE crs_image_history OWNER TO bde_dba;
+
+    REVOKE ALL ON TABLE crs_image_history FROM PUBLIC;
+    GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image_history TO bde_admin;
+    GRANT SELECT ON TABLE crs_image_history TO bde_user;
+'
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.4.0: Add index on ttm_id for crs_title_mem_text',
+    '
+    DO $$
+    BEGIN
+        SET search_path = bde, public;
+        IF EXISTS (
+            SELECT true
+            FROM
+                pg_class C, pg_namespace N
+            WHERE C.relname = ''fk_tmt_ttm''
+            and C.relnamespace = N.oid and N.nspname = ''bde''
+        ) THEN
+            CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
+        END IF;
+	END
+	$$;
   '
 );
 
@@ -1471,9 +1518,8 @@ SELECT _patches.apply_patch(
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.4.3: Post FBDE index and revision build operation',
+    'BDE - 1.4.0: Post FBDE index and revision build operation',
     '
-	CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
 
 	DO $$
 	DECLARE

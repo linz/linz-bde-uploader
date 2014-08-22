@@ -916,6 +916,30 @@ REVOKE ALL ON TABLE crs_image FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image TO bde_admin;
 GRANT SELECT ON TABLE crs_image TO bde_user;
 
+--------------------------------------------------------------------------------
+-- BDE table crs_image
+--------------------------------------------------------------------------------
+
+CREATE TABLE crs_image_history  (
+    id INTEGER NOT NULL,
+    img_id INTEGER NOT NULL,
+    ims_id DECIMAL(32),
+    ims_date DATE,
+    pages INTEGER,
+    centera_id VARCHAR(65),
+    centera_datetime TIMESTAMP,
+    usr_id VARCHAR(20)
+);
+
+ALTER TABLE ONLY crs_image_history
+    ADD CONSTRAINT pkey_crs_image_history PRIMARY KEY (id);
+
+ALTER TABLE crs_image_history OWNER TO bde_dba;
+
+REVOKE ALL ON TABLE crs_image_history FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image_history TO bde_admin;
+GRANT SELECT ON TABLE crs_image_history TO bde_user;
+
 /*
 --------------------------------------------------------------------------------
 -- BDE table crs_inst_role
