@@ -1499,7 +1499,7 @@ SELECT _patches.apply_patch(
     DO $$
     BEGIN
         SET search_path = bde, public;
-        IF EXISTS (
+        IF NOT EXISTS (
             SELECT true
             FROM
                 pg_class C, pg_namespace N
@@ -1518,7 +1518,7 @@ SELECT _patches.apply_patch(
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.4.0: Post FBDE index and revision build operation',
+    'BDE - 1.4.0: Post Full Landonline revision build operation',
     '
 
 	DO $$
@@ -1529,7 +1529,9 @@ SELECT _patches.apply_patch(
 		v_rev_table TEXT;
 	BEGIN
 		SET search_path=bde_ext, lds, bde, bde_control, public;
+        
 		PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
+        
 		PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
 
 		FOR v_schema, v_table IN
