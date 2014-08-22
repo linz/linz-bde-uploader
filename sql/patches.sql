@@ -1433,24 +1433,32 @@ SELECT _patches.apply_patch(
 );
 
 -------------------------------------------------------------------------------
--- crs_title ttl_title_no_head_srs + crs_land_district usr_tm_id column add patch
+-- crs_title ttl_title_no_head_srs column add patch
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.3.7: Add ttl_title_no_head_srs column to crs_title and usr_tm_id to crs_land_district',
+    'BDE - 1.4.0: Add ttl_title_no_head_srs column to crs_title',
     '
 	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_title'', ''ttl_title_no_head_srs'', ''VARCHAR(20)'');
-	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
 '
 );
 
+-------------------------------------------------------------------------------
+-- crs_land_district usr_tm_id column add patch
+-------------------------------------------------------------------------------
 
+SELECT _patches.apply_patch(
+    'BDE - 1.4.1: Add usr_tm_id to crs_land_district',
+    '
+	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
+'
+);
 -------------------------------------------------------------------------------
 -- change column type for crs_estate_share, crs_title_estate and crs_legal_desc_prl
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.3.8: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
+    'BDE - 1.4.2: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
     '
 	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_estate_share'', ''share'', ''varchar(100)'');
 	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_title_estate'', ''share'', ''varchar(100)'');
@@ -1463,7 +1471,7 @@ SELECT _patches.apply_patch(
 -------------------------------------------------------------------------------
 
 SELECT _patches.apply_patch(
-    'BDE - 1.3.9: Post FBDE index and revision build operation',
+    'BDE - 1.4.3: Post FBDE index and revision build operation',
     '
 	CREATE INDEX fk_tmt_ttm ON crs_title_mem_text USING btree (ttm_id);
 

@@ -185,7 +185,7 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'feature_name_pt') 
         AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
         AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
-        AND LDS.LDS_TableHasData('bde_ext', 'crs_office')
+        AND LDS.LDS_TableHasData('bde_ext', 'office')
     )
     THEN
         RAISE INFO
