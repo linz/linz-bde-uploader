@@ -816,12 +816,12 @@ DECLARE
     v_trigger_name TEXT;
     v_revision_table TEXT;
 BEGIN
-    IF NOT ver_is_table_versioned(p_schema_name, p_table_name) THEN
+    IF NOT table_version.ver_is_table_versioned(p_schema_name, p_table_name) THEN
         RAISE EXCEPTION 'Table %.% is not versioned', quote_ident(p_schema_name), quote_ident(p_table_name);
     END IF;
     
-    v_revision_table := ver_get_version_table_full(p_schema_name, p_table_name);
-    v_trigger_name := _ver_get_version_trigger(p_schema_name, p_table_name);
+    v_revision_table := table_version.ver_get_version_table_full(p_schema_name, p_table_name);
+    v_trigger_name := table_version._ver_get_version_trigger(p_schema_name, p_table_name);
     
     EXECUTE 'ALTER TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' DISABLE TRIGGER ' || v_trigger_name;
     --EXECUTE 'ALTER TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' ADD COLUMN ' || quote_ident(p_column_name) || ' ' || p_column_datatype;
@@ -840,13 +840,13 @@ BEGIN
         schema_name = p_schema_name AND
         table_name = p_table_name;
     
-    PERFORM ver_create_table_functions(p_schema_name, p_table_name, v_key_col);
-    PERFORM ver_create_version_trigger(p_schema_name, p_table_name, v_key_col);
+    PERFORM table_version.ver_create_table_functions(p_schema_name, p_table_name, v_key_col);
+    PERFORM table_version.ver_create_version_trigger(p_schema_name, p_table_name, v_key_col);
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
   
-ALTER FUNCTION ver_versioned_table_change_column_type(NAME, NAME, NAME, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION  ver_versioned_table_change_column_type(NAME, NAME, NAME, TEXT) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION ver_versioned_table_change_column_type(NAME, NAME, NAME, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ver_versioned_table_change_column_type(NAME, NAME, NAME, TEXT) TO bde_admin;
 GRANT EXECUTE ON FUNCTION ver_versioned_table_change_column_type(NAME, NAME, NAME, TEXT) TO bde_user;
