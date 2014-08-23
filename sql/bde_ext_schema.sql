@@ -638,6 +638,7 @@ CREATE TABLE title
   sur_wrk_id INTEGER,
   ttl_title_no_srs VARCHAR(20),
   ttl_title_no_head_srs VARCHAR(20),
+  maori_land CHAR(1),
   audit_id INTEGER NOT NULL,
   CONSTRAINT title_pkey PRIMARY KEY (audit_id),
   CONSTRAINT title_title_no_key UNIQUE (title_no)
