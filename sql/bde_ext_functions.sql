@@ -330,8 +330,7 @@ BEGIN
 	FROM crs_title_mem_text TMT
 	--LEFT JOIN TTM_LDG ON TTM_LDG.id = TTM_LDG.id AND TTM_LDG.id IS NOT NULL  -- temp file write error
 	--WHERE EXISTS (SELECT id FROM TTM_LDG WHERE id = ttm_id) -- untested
-	WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG) -- *slow
-	ORDER BY ttm_id;
+	WHERE TMT.ttm_id IN (SELECT id FROM TTM_LDG);
 
     CREATE INDEX TMT_INL_IDX ON TMT_INL (ttm_id);
     ANALYSE TMT_INL;
@@ -376,7 +375,7 @@ BEGIN
 	        LEFT JOIN crs_title_memorial TTM ON TMT.ttm_id = TTM.id
 	        LEFT JOIN crs_ttl_inst TIN ON TTM.act_tin_id_crt = TIN.id
 	        LEFT JOIN crs_transact_type TRT ON (TRT.grp = TIN.trt_grp AND TRT.type = TIN.trt_type)
-	    ORDER BY ttm_id;
+	    ORDER BY audit_id;
 	    $sql$;
     
     RAISE NOTICE '***  TABLE UPDATE END TMT_SUB4(TMT)% - % ***',v_table,clock_timestamp();
@@ -2425,7 +2424,10 @@ BEGIN
 		OFF.cis_name,
 		OFF.alloc_source_table,
 		OFF.audit_id
-	FROM crs_office OFF;
+	FROM
+        crs_office OFF
+    ORDER BY
+        audit_id;
     $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
