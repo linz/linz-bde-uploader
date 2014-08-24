@@ -1490,6 +1490,8 @@ SELECT _patches.apply_patch(
     REVOKE ALL ON TABLE crs_image_history FROM PUBLIC;
     GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image_history TO bde_admin;
     GRANT SELECT ON TABLE crs_image_history TO bde_user;
+    
+    SELECT table_version.ver_enable_versioning(''bde'', ''crs_image_history'');
 '
 );
 
