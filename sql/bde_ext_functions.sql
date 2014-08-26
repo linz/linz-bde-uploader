@@ -135,7 +135,11 @@ BEGIN
                     'crs_feature_name',
                     'crs_coordinate',
                     'cbe_title_parcel_association',
-                    'crs_office'
+                    'crs_office',
+                    'crs_image',
+                    'crs_survey_image',
+                    'crs_image_history',
+                    'crs_sys_code'
                 ],
                 'any affected'
             )
@@ -185,6 +189,7 @@ BEGIN
         AND LDS.LDS_TableHasData('bde_ext', 'feature_name_poly')
         AND LDS.LDS_TableHasData('bde_ext', 'coordinate')
         AND LDS.LDS_TableHasData('bde_ext', 'office')
+        AND LDS.LDS_TableHasData('bde_ext', 'survey_plan_image_revision')
     )
     THEN
         RAISE INFO
