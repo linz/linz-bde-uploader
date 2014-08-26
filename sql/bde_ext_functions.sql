@@ -20,7 +20,6 @@ SET client_min_messages TO WARNING;
 BEGIN;
 
 SET SEARCH_PATH = bde_ext, lds, bde, bde_control, public;
-SET default_tablespace = data1;
 
 DO $$
 DECLARE
@@ -2428,6 +2427,75 @@ BEGIN
         crs_office OFF
     ORDER BY
         audit_id;
+    $sql$;
+    
+    RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();
+	PERFORM LDS.LDS_UpdateSimplifiedTable(
+        p_upload,
+        v_table,
+        v_data_insert_sql,
+        v_data_insert_sql
+    );
+    
+    ----------------------------------------------------------------------------
+    -- survey plan image revision table
+    ----------------------------------------------------------------------------
+    v_table := LDS.LDS_GetTable('bde_ext', 'survey_plan_image_revision');
+    
+    v_data_insert_sql := $sql$
+    INSERT INTO %1% (
+        id,
+        sur_wrk_id,
+        survey_reference,
+        land_district,
+        plan_type,
+        pages,
+        last_updated
+    )
+    WITH survey_plan_image_history (row_number, id, sur_wrk_id, survey_reference, land_district, plan_type, pages, last_updated) AS (
+        SELECT
+            row_number() OVER (PARTITION BY IMH.img_id ORDER BY IMH.id DESC) AS row_number,
+            IMH.img_id as id,
+            SUR.wrk_id as sur_wrk_id,
+            CASE WHEN SUR.dataset_suffix IS NULL THEN
+                SUR.dataset_series || ' ' || SUR.dataset_id
+            ELSE
+                SUR.dataset_series || ' ' || SUR.dataset_id || '/' || SUR.dataset_suffix
+            END AS survey_reference,
+            LOC.name AS land_district,
+            -- TODO: remove this once Brian fixes the Landonline system code spelling
+            CASE WHEN SIMT.desc = 'Digitial Title Diagram' THEN
+                'Digital Title Diagram'
+            ELSE
+                SIMT.desc 
+            END AS plan_type,
+            IMH.pages,
+            COALESCE(IMH.ims_date, IMH.centera_datetime) AS last_updated
+        FROM
+            crs_image_history IMH
+            JOIN crs_image IMG ON IMH.img_id  = IMG.id
+            JOIN crs_survey_image SIMG ON IMG.id = SIMG.img_id
+            JOIN crs_survey SUR ON SIMG.sur_wrk_id = SUR.wrk_id
+            JOIN crs_work WRK ON SUR.wrk_id = WRK.id
+            JOIN crs_locality LOC ON SUR.ldt_loc_id = LOC.id
+            LEFT JOIN crs_sys_code SIMT ON SIMT.code = SIMG.type AND SIMT.scg_code = 'SIMT'
+        WHERE
+            WRK.restricted = 'N'
+    )
+    SELECT
+        id,
+        sur_wrk_id,
+        survey_reference,
+        land_district,
+        plan_type,
+        pages,
+        last_updated
+    FROM
+        survey_plan_image_history
+    WHERE
+        row_number = 1
+    ORDER BY
+        id;
     $sql$;
     
     RAISE NOTICE '*** PERFORM TABLE UPDATE % - % ***',v_table,clock_timestamp();

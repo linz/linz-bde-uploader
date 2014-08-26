@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+﻿--------------------------------------------------------------------------------
 --
 -- $Id$
 --
@@ -1055,7 +1055,7 @@ CREATE TABLE feature_name_pt
   other_details character varying(100),
   audit_id integer NOT NULL,
   se_row_id integer,
-  CONSTRAINT pkey_crs_feature_name_pt PRIMARY KEY (id)
+  CONSTRAINT pkey_feature_name_pt PRIMARY KEY (id)
 );
 
 PERFORM AddGeometryColumn('feature_name_pt', 'shape', 4167, 'POINT', 2);
@@ -1080,7 +1080,7 @@ CREATE TABLE feature_name_poly
   other_details character varying(100),
   audit_id integer NOT NULL,
   se_row_id integer,
-  CONSTRAINT pkey_crs_feature_name_poly PRIMARY KEY (id)
+  CONSTRAINT pkey_feature_name_poly PRIMARY KEY (id)
 );
 
 PERFORM AddGeometryColumn('feature_name_poly', 'shape', 4167, 'POLYGON', 2);
@@ -1133,13 +1133,32 @@ CREATE TABLE office
   cis_name VARCHAR(50) NOT NULL,
   alloc_source_table VARCHAR(50) NOT NULL,
   audit_id integer NOT NULL,
-  CONSTRAINT crs_office_pkey PRIMARY KEY (audit_id),
-  CONSTRAINT crs_office_code_key UNIQUE (code)
+  CONSTRAINT office_pkey PRIMARY KEY (audit_id),
+  CONSTRAINT office_code_key UNIQUE (code)
 );
 ALTER TABLE office OWNER TO bde_dba;
 REVOKE ALL ON TABLE office FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE office TO bde_admin;
 GRANT SELECT ON TABLE office TO bde_user;
+
+-- =============================================================================
+-- SURVEY PLAN IMAGE REVISION
+-- =============================================================================
+DROP TABLE IF EXISTS survey_plan_image_revision CASCADE;
+CREATE TABLE survey_plan_image_revision (
+    ID INTEGER NOT NULL,
+    SUR_WRK_ID INTEGER NOT NULL,
+    SURVEY_REFERENCE VARCHAR(100) NOT NULL,
+    LAND_DISTRICT VARCHAR(100) NOT NULL,
+    PLAN_TYPE VARCHAR(100) NOT NULL,
+    PAGES INTEGER NOT NULL,
+    LAST_UPDATED TIMESTAMP,
+    CONSTRAINT survey_plan_image_revision_pkey PRIMARY KEY (id)
+);
+ALTER TABLE survey_plan_image_revision OWNER TO bde_dba;
+REVOKE ALL ON TABLE survey_plan_image_revision FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE survey_plan_image_revision TO bde_admin;
+GRANT SELECT ON TABLE survey_plan_image_revision TO bde_user;
 
 END
 $SCHEMA$;
