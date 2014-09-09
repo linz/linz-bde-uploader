@@ -2311,6 +2311,7 @@ GRANT SELECT ON TABLE crs_road_ctr_line TO bde_user;
 
 CREATE TABLE crs_road_name (
     id INTEGER NOT NULL,
+    sufi INTEGER NOT NULL,
     alt_id INTEGER,
     type VARCHAR(4) NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -2576,6 +2577,9 @@ GRANT SELECT ON TABLE crs_statute_action TO bde_user;
 --------------------------------------------------------------------------------
 
 CREATE TABLE crs_street_address (
+    sufi INTEGER NOT NULL,
+    meshblock_code varchar(7),
+    overidden_mb_code char(1),
     house_number VARCHAR(25) NOT NULL,
     range_low INTEGER NOT NULL,
     range_high INTEGER,

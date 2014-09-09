@@ -390,6 +390,7 @@ CREATE UNIQUE INDEX idx_rsu_aud_id ON crs_ref_survey USING btree (audit_id);
 -- crs_road_ctr_line
 -------------------------------------------------------------------------------
 CREATE UNIQUE INDEX idx_rcl_aud_id ON crs_road_ctr_line USING btree (audit_id);
+CREATE INDEX shx_rcl_shape ON crs_road_ctr_line USING gist (shape);
 
 -------------------------------------------------------------------------------
 -- crs_road_name
@@ -434,6 +435,7 @@ CREATE UNIQUE INDEX idx_sav_aud_id ON crs_stat_version USING btree (audit_id);
 -- crs_statist_area
 -------------------------------------------------------------------------------
 CREATE UNIQUE INDEX idx_stt_aud_id ON crs_statist_area USING btree (audit_id);
+CREATE INDEX shx_stt_shape ON crs_statist_area USING gist (shape);
 
 -------------------------------------------------------------------------------
 -- crs_statute
