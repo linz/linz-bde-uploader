@@ -1432,6 +1432,62 @@ SELECT _patches.apply_patch(
 '
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.3.7: UTF8 mapping data for new street address layers',
+    '
+    SET search_path=lds,public;
+
+    CREATE TABLE lds_export_config
+    (
+      id SERIAL NOT NULL PRIMARY KEY,
+      parameter TEXT NOT NULL,
+      "key" TEXT,
+      "value" TEXT
+    );
+    
+    INSERT INTO lds_export_config (parameter, "value", "key") VALUES
+    (''utf8_road_name.name'', ''Pōtaka Lane'', ''Potaka Lane [Spelling not official]''),
+    (''utf8_road_name.name'', ''Pūrākaunui Road'', ''Purakaunui Road [Spelling not official]''),
+    (''utf8_road_name.name'', ''Pūrākaunui School Road'', ''Purakaunui School Road [Spelling not official]''),
+    (''utf8_road_name.name'', ''Pūrākaunui Station Road'', ''Purakaunui Station Road [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Plimmerton-Pāuatahanui'', ''Plimmerton-Pauatahanui [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Pāuatahanui-Judgeford'', ''Pauatahanui [Spelling not official]-Judgeford''),
+    (''utf8_crs_road_name.location'', ''Paremata-Pāuatahanui'', ''Paremata-Pauatahanui [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Pāuatahanui-Haywards'', ''Pauatahanui [Spelling not official]-Haywards''),
+    (''utf8_crs_road_name.location'', ''Takapūwāhia'', ''Takapuwahia [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Pāuatahanui'', ''Pauatahanui [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Rānui'', ''Ranui [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Pūrākaunui'', ''Purakaunui [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Pūrākaunui-Mihiwaka'', ''Purakaunui [Spelling not official]-Mihiwaka''),
+    (''utf8_crs_road_name.location'', ''Rānui-Cannons Creek'', ''Ranui [Spelling not official]-Cannons Creek''),
+    (''utf8_crs_road_name.location'', ''Tītahi Bay'', ''Titahi Bay [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Papakōwhai'', ''Papakowhai [Spelling not official]''),
+    (''utf8_crs_road_name.location'', ''Porirua City-Titahi Bay [Spelling not official]'',''Porirua-Tītahi Bay'');
+    
+    ANALYSE lds_export_config;
+'
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.3.7: Add admin_bdys schema for TA boundaries layers',
+    '
+    DO $PATCH$
+    BEGIN
+        IF NOT EXISTS(
+            SELECT 1 FROM pg_namespace WHERE nspname = ''admin_bdys''
+        )
+        THEN
+            EXECUTE ''CREATE SCHEMA admin_bdys AUTHORIZATION bde_dba'';
+        END IF;
+        
+        GRANT ALL ON SCHEMA admin_bdys TO bde_dba;
+        GRANT USAGE ON SCHEMA admin_bdys TO bde_admin;
+        GRANT USAGE ON SCHEMA admin_bdys TO bde_user;
+    END;
+    $PATCH$;
+'
+);
+
 -------------------------------------------------------------------------------
 -- crs_title ttl_title_no_head_srs column add patch
 -------------------------------------------------------------------------------
