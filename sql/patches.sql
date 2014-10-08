@@ -1435,6 +1435,8 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.3.7: UTF8 mapping data for new street address layers',
     '
+DO $PATCH$
+BEGIN
     SET search_path=lds,public;
 
     CREATE TABLE lds_export_config
@@ -1465,6 +1467,8 @@ SELECT _patches.apply_patch(
     (''utf8_crs_road_name.location'', ''Porirua City-Titahi Bay [Spelling not official]'',''Porirua-Tītahi Bay'');
     
     ANALYSE lds_export_config;
+END;
+$PATCH$
 '
 );
 
