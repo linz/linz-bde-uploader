@@ -74,6 +74,10 @@ BEGIN
         RAISE EXCEPTION 'Table %.% does not exists',
             quote_ident(p_schema_name), quote_ident(p_table_name);
     END IF;
+    
+    IF p_res_x <= 0 OR p_res_x <= 0 THEN
+        RAISE EXCEPTION 'X or Y grid resolution must be greater than 0';
+    END IF;
 
     IF NOT EXISTS (
         SELECT
@@ -190,17 +194,17 @@ BEGIN
     v_output_fkey := quote_ident(p_table_name) || '_' || v_table_key_column;
     
     -- create grid table
-    EXECUTE 'DROP TABLE IF EXISTS ' || v_output_table;
+    EXECUTE 'DROP TABLE IF EXISTS ' || v_full_output_table;
     
-    v_sql := 'CREATE TABLE ' || v_output_table || ' ('
+    v_sql := 'CREATE TABLE ' || v_full_output_table || ' ('
         || 'id INTEGER NOT NULL, '
         || v_output_fkey || ' ' || v_table_key_type || ' NOT NULL )';
     EXECUTE v_sql;
-    
-    PERFORM AddGeometryColumn(p_schema_name, v_output_table ,'geom', v_srid, 'MULTIPOLYGON', 2);
+
+    PERFORM AddGeometryColumn(p_schema_name::VARCHAR, v_output_table ,'geom'::VARCHAR, v_srid, 'MULTIPOLYGON'::VARCHAR, 2);
 
     -- set table permissions
-    v_sql := 'ALTER TABLE ' || v_output_table || ' OWNER TO ' || 
+    v_sql := 'ALTER TABLE ' || v_full_output_table || ' OWNER TO ' || 
         quote_ident((
             SELECT rolname 
             FROM pg_authid
@@ -246,7 +250,7 @@ BEGIN
                 v_sql := v_right;
             END IF;
             IF v_sql <> '' THEN
-                v_sql := 'GRANT ' || v_sql || ' ON TABLE ' || v_output_table || 
+                v_sql := 'GRANT ' || v_sql || ' ON TABLE ' || v_full_output_table || 
                     ' TO ' || v_rolename || v_grant;
                 EXECUTE v_sql;
             END IF;
@@ -254,7 +258,7 @@ BEGIN
     END LOOP;
     
     -- insert the gridded data
-    v_sql := 'INSERT INTO ' || v_output_table || '(id, ' || v_output_fkey || ', geom) ' 
+    v_sql := 'INSERT INTO ' || v_full_output_table || '(id, ' || v_output_fkey || ', geom) ' 
         || 'SELECT row_number() OVER () AS id, t.fkey, t.geom FROM '
         || '(SELECT SRC.' || v_table_key_column || ' AS fkey, '
         || 'ST_Multi((ST_Dump(ST_Intersection(' || quote_ident(p_column_name)
@@ -265,15 +269,15 @@ BEGIN
         || 'ST_Intersects(SRC.' || quote_ident(p_column_name) || ', GRID.cell) ) AS t';
     EXECUTE v_sql;
 
-    EXECUTE 'ALTER TABLE ' || v_output_table || ' ADD PRIMARY KEY (id)';
+    EXECUTE 'ALTER TABLE ' || v_full_output_table || ' ADD PRIMARY KEY (id)';
     EXECUTE 'CREATE INDEX idx_' || p_table_name || '_' || quote_ident(p_column_name)
-        || ' ON ' || v_output_table || ' USING GIST (geom)';
+        || ' ON ' || v_full_output_table || ' USING GIST (geom)';
     
-    EXECUTE 'ANALYSE ' || v_output_table;
+    EXECUTE 'ANALYSE ' || v_full_output_table;
 
     DROP TABLE tmp_grid;
 
-    RETURN v_output_table::REGCLASS;
+    RETURN v_full_output_table::REGCLASS;
 END;
 $$
     LANGUAGE plpgsql;
