@@ -234,8 +234,6 @@ BEGIN
         WHERE  DEP.objid = v_table_oid
         AND    AUTH.oid = DEP.refobjid
         AND    DEP.deptype='a'
-        UNION
-        SELECT 'public'
     LOOP
         FOR v_right IN SELECT * FROM unnest(v_rights)
         LOOP
