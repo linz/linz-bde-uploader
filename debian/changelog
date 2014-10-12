@@ -1,3 +1,10 @@
+linz-bde-uploader (1.4.1-1) precise; urgency=low
+
+  [ iharrison ]
+  * Update lds_layer_functions.sql to fix typo in meshblock layer check
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Mon, 13 Oct 2014 07:19:00 +1300
+
 linz-bde-uploader (1.4.0-1) lucid; urgency=low
 
   [ Jeremy Palmer ]
