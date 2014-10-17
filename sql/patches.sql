@@ -1631,3 +1631,21 @@ SELECT _patches.apply_patch(
 	END
 	$$;
 ');
+
+
+SELECT _patches.apply_patch(
+    'BDE - 1.4.2: Increase field width for street address and road layers, fix bad UTF8 config entry',
+    '
+	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''street_address2'', ''locality'', ''varchar(100)'');
+	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line_subsection'', ''locality'', ''varchar(100)'');
+	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line'', ''locality'', ''varchar(100)'');
+    
+    DELETE FROM lds_export_config
+    WHERE parameter = ''utf8_crs_road_name.location''
+    AND   "value" = ''Porirua City-Titahi Bay [Spelling not official]''
+    AND   "key" = ''Porirua-Tītahi Bay'';
+    
+    INSERT INTO lds_export_config (parameter, "key", "value") VALUES
+    (''utf8_crs_road_name.location'', ''Porirua City-Titahi Bay [Spelling not official]'',''Porirua-Tītahi Bay'');
+  '
+);
