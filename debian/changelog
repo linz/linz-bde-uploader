@@ -1,3 +1,10 @@
+linz-bde-uploader (1.4.2-1) lucid; urgency=low
+
+  * Increase field width for street address and road layers, fix bad
+    UTF8 config entry
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Fri, 17 Oct 2014 16:53:31 +1300
+
 linz-bde-uploader (1.4.1-1) precise; urgency=low
 
   [ iharrison ]
