@@ -36,11 +36,16 @@ BEGIN
             pg_namespace NSP
         WHERE
             CLS.relnamespace = NSP.oid AND
-            NSP.nspname IN ('lds', 'bde') AND
-            CLS.relkind = 'r'
+            NSP.nspname IN ('lds', 'bde', 'bde_ext') AND
+            CLS.relkind = 'r' AND
+            CLS.relname <> 'lds_export_config'
         ORDER BY
             1, 2
     LOOP
+        IF table_version.ver_is_table_versioned(v_schema, v_table) THEN
+            CONTINUE;
+        END IF;
+        
         v_msg := 'Versioning table ' ||  v_schema || '.' || v_table;
         RAISE NOTICE '%', v_msg;
         

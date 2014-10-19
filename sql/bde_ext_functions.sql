@@ -19,7 +19,7 @@
 SET client_min_messages TO WARNING;
 BEGIN;
 
-SET SEARCH_PATH = bde_ext, lds, bde, bde_control, public;
+SET SEARCH_PATH = bde_ext, bde, bde_control, public;
 
 DO $$
 DECLARE

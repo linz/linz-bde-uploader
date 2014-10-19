@@ -675,12 +675,10 @@ CREATE TABLE crs_elect_place (
     location VARCHAR(100),
     status VARCHAR(4) NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POINT'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_elect_place', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE ONLY crs_elect_place
     ADD CONSTRAINT pkey_crs_elect_place PRIMARY KEY (id);
@@ -840,11 +838,10 @@ CREATE TABLE crs_feature_name (
     status VARCHAR(4) NOT NULL,
     other_details VARCHAR(100),
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_feature_name', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_feature_name
     ADD CONSTRAINT pkey_crs_feature_name PRIMARY KEY (id);
@@ -916,6 +913,7 @@ REVOKE ALL ON TABLE crs_image FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image TO bde_admin;
 GRANT SELECT ON TABLE crs_image TO bde_user;
 
+/*
 --------------------------------------------------------------------------------
 -- BDE table crs_image
 --------------------------------------------------------------------------------
@@ -939,6 +937,8 @@ ALTER TABLE crs_image_history OWNER TO bde_dba;
 REVOKE ALL ON TABLE crs_image_history FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image_history TO bde_admin;
 GRANT SELECT ON TABLE crs_image_history TO bde_user;
+
+*/
 
 /*
 --------------------------------------------------------------------------------
@@ -1055,11 +1055,10 @@ CREATE TABLE crs_land_district (
     off_code VARCHAR(4) NOT NULL,
     "default" CHAR(1) NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_land_district', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_land_district
     ADD CONSTRAINT pkey_crs_land_district PRIMARY KEY (loc_id);
@@ -1142,12 +1141,10 @@ CREATE TABLE crs_line (
     dcdb_feature VARCHAR(12),
     id INTEGER NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'LINESTRING'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_line', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE ONLY crs_line
     ADD CONSTRAINT pkey_crs_line PRIMARY KEY (id);
@@ -1174,11 +1171,10 @@ CREATE TABLE crs_locality (
     name VARCHAR(100) NOT NULL,
     loc_id_parent INTEGER,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_locality', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_locality
     ADD CONSTRAINT pkey_crs_locality PRIMARY KEY (id);
@@ -1218,13 +1214,11 @@ GRANT SELECT ON TABLE crs_maintenance TO bde_user;
 CREATE TABLE crs_map_grid (
     major_grid VARCHAR(4) NOT NULL,
     minor_grid VARCHAR(4) NOT NULL,
-    shape GEOMETRY,
     se_row_id INTEGER,
-    audit_id INTEGER NOT NULL,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POLYGON'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    audit_id INTEGER NOT NULL
 );
+
+PERFORM AddGeometryColumn('crs_map_grid', 'shape', 4167, 'POLYGON', 2);
 
 ALTER TABLE ONLY crs_map_grid
     ADD CONSTRAINT pkey_crs_map_grid PRIMARY KEY (major_grid, minor_grid);
@@ -1380,11 +1374,10 @@ CREATE TABLE crs_mesh_blk (
     start_datetime TIMESTAMP NOT NULL,
     end_datetime TIMESTAMP,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_mesh_blk', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_mesh_blk
     ADD CONSTRAINT pkey_crs_mesh_blk PRIMARY KEY (id);
@@ -1459,12 +1452,10 @@ CREATE TABLE crs_mesh_blk_line (
     status VARCHAR(4) NOT NULL,
     alt_id INTEGER,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'LINESTRING'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_mesh_blk_line', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE ONLY crs_mesh_blk_line
     ADD CONSTRAINT pkey_crs_mesh_blk_line PRIMARY KEY (id);
@@ -1540,12 +1531,10 @@ CREATE TABLE crs_node (
     alt_id INTEGER,
     wrk_id_created INTEGER,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POINT'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_node', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE ONLY crs_node
     ADD CONSTRAINT pkey_crs_node PRIMARY KEY (id);
@@ -1807,12 +1796,10 @@ CREATE TABLE crs_off_cord_sys (
     cos_id INTEGER NOT NULL,
     description VARCHAR(100) NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POLYGON'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_off_cord_sys', 'shape', 4167, 'POLYGON', 2);
 
 ALTER TABLE ONLY crs_off_cord_sys
     ADD CONSTRAINT pkey_crs_off_cord_sys PRIMARY KEY (id);
@@ -1936,11 +1923,10 @@ CREATE TABLE crs_parcel (
     total_area NUMERIC(20,4),
     calculated_area NUMERIC(20,4),
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_parcel', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_parcel
     ADD CONSTRAINT pkey_crs_parcel PRIMARY KEY (id);
@@ -2015,12 +2001,10 @@ CREATE TABLE crs_parcel_label (
     id INTEGER NOT NULL,
     par_id INTEGER NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POINT'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_parcel_label', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE ONLY crs_parcel_label
     ADD CONSTRAINT pkey_crs_parcel_label PRIMARY KEY (id);
@@ -2309,12 +2293,10 @@ CREATE TABLE crs_road_ctr_line (
     status VARCHAR(4) NOT NULL,
     non_cadastral_rd CHAR(1) NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'LINESTRING'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_road_ctr_line', 'shape', 4167, 'LINESTRING', 2);
 
 ALTER TABLE ONLY crs_road_ctr_line
     ADD CONSTRAINT pkey_crs_road_ctr_line PRIMARY KEY (id);
@@ -2522,12 +2504,10 @@ CREATE TABLE crs_statist_area (
     usr_id_firm_ta VARCHAR(20),
     alt_id INTEGER,
     se_row_id INTEGER,
-    audit_id INTEGER NOT NULL,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'MULTIPOLYGON') OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    audit_id INTEGER NOT NULL
 );
+
+PERFORM AddGeometryColumn('crs_statist_area', 'shape', 4167, 'MULTIPOLYGON', 2);
 
 ALTER TABLE ONLY crs_statist_area
     ADD CONSTRAINT pkey_crs_statist_area PRIMARY KEY (id);
@@ -2610,12 +2590,10 @@ CREATE TABLE crs_street_address (
     alt_id INTEGER,
     id INTEGER NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POINT'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_street_address', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE ONLY crs_street_address
     ADD CONSTRAINT pkey_crs_street_address PRIMARY KEY (id);
@@ -2666,12 +2644,10 @@ GRANT SELECT ON TABLE crs_sur_admin_area TO bde_user;
 CREATE TABLE crs_sur_plan_ref (
     id INTEGER NOT NULL,
     wrk_id INTEGER,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_geotype_shape CHECK (((GeometryType(shape) = 'POINT'::text) OR (shape IS NULL))),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_sur_plan_ref', 'shape', 4167, 'POINT', 2);
 
 ALTER TABLE ONLY crs_sur_plan_ref
     ADD CONSTRAINT pkey_crs_sur_plan_ref PRIMARY KEY (id);
@@ -2882,7 +2858,6 @@ CREATE TABLE crs_title (
     sur_wrk_id INTEGER,
     sur_wrk_id_preallc INTEGER,
     ttl_title_no_srs VARCHAR(20),
-    ttl_title_no_head_srs VARCHAR(20),
     conversion_reason VARCHAR(4),
     protect_start DATE,
     protect_end DATE,
@@ -3397,11 +3372,10 @@ CREATE TABLE crs_vector (
     source INTEGER NOT NULL,
     id INTEGER NOT NULL,
     audit_id INTEGER NOT NULL,
-    se_row_id INTEGER,
-    shape GEOMETRY,
-    CONSTRAINT enforce_dims_shape CHECK ((public.ndims(shape) = 2)),
-    CONSTRAINT enforce_srid_shape CHECK ((srid(shape) = 4167))
+    se_row_id INTEGER
 );
+
+PERFORM AddGeometryColumn('crs_vector', 'shape', 4167, 'GEOMETRY', 2);
 
 ALTER TABLE ONLY crs_vector
     ADD CONSTRAINT pkey_crs_vector PRIMARY KEY (id);
@@ -3528,37 +3502,6 @@ ALTER TABLE cbe_title_parcel_association OWNER TO bde_dba;
 REVOKE ALL ON TABLE cbe_title_parcel_association FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE cbe_title_parcel_association TO bde_admin;
 GRANT SELECT ON TABLE cbe_title_parcel_association TO bde_user;
-
---------------------------------------------------------------------------------
--- Spatial table geometry column metdata. Use don't use the AddGeometryColumn()
--- function for the table definitions, because we want to control the geometry
--- type for tables with mixed geometry types.
---------------------------------------------------------------------------------
-
-DELETE FROM geometry_columns
-WHERE f_table_schema = current_schema();
-
-INSERT INTO geometry_columns (
-    f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type
-)
-VALUES
-    ('', current_schema(), 'crs_elect_place',    'shape', 2, 4167, 'POINT'),
-    ('', current_schema(), 'crs_feature_name',   'shape', 2, 4167, 'GEOMETRY'),
-    ('', current_schema(), 'crs_land_district',  'shape', 2, 4167, 'POLYGON'),
-    ('', current_schema(), 'crs_line',           'shape', 2, 4167, 'LINESTRING'),
-    ('', current_schema(), 'crs_locality',       'shape', 2, 4167, 'POLYGON'),
-    ('', current_schema(), 'crs_map_grid',       'shape', 2, 4167, 'POLYGON'),
-    ('', current_schema(), 'crs_mesh_blk',       'shape', 2, 4167, 'MULTIPOLYGON'),
-    ('', current_schema(), 'crs_mesh_blk_line',  'shape', 2, 4167, 'LINESTRING'),
-    ('', current_schema(), 'crs_node',           'shape', 2, 4167, 'POINT'),
-    ('', current_schema(), 'crs_off_cord_sys',   'shape', 2, 4167, 'POLYGON'),
-    ('', current_schema(), 'crs_parcel',         'shape', 2, 4167, 'MULTIPOLYGON'),
-    ('', current_schema(), 'crs_parcel_label',   'shape', 2, 4167, 'POINT'),
-    ('', current_schema(), 'crs_road_ctr_line',  'shape', 2, 4167, 'LINESTRING'),
-    ('', current_schema(), 'crs_statist_area',   'shape', 2, 4167, 'MULTIPOLYGON'),
-    ('', current_schema(), 'crs_street_address', 'shape', 2, 4167, 'POINT'),
-    ('', current_schema(), 'crs_sur_plan_ref',   'shape', 2, 4167, 'POINT'),
-    ('', current_schema(), 'crs_vector',         'shape', 2, 4167, 'LINESTRING');
 
 END;
 $SCHEMA$;

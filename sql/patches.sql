@@ -611,7 +611,8 @@ $$;
 SELECT _patches.apply_patch(
     'BDE - 1.2.0: Create tables for the LDS aspatial release',
     '
-
+DO $$
+BEGIN
 SET search_path = lds, bde, public;
 
 --------------------------------------------------------------------------------
@@ -632,7 +633,7 @@ CREATE TABLE all_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0)
 );
-SELECT AddGeometryColumn(''all_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
+PERFORM AddGeometryColumn(''all_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
 
 ALTER TABLE all_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_all_par_shape ON all_parcels USING gist (shape);
@@ -642,8 +643,6 @@ ALTER TABLE all_parcels OWNER TO bde_dba;
 REVOKE ALL ON TABLE all_parcels FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE all_parcels TO bde_admin;
 GRANT SELECT ON TABLE all_parcels TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''all_parcels'');
 
 --------------------------------------------------------------------------------
 -- LDS table all_parcels
@@ -663,7 +662,7 @@ CREATE TABLE all_linear_parcels (
     survey_area NUMERIC(20, 4),
     calc_area NUMERIC(20, 0)
 );
-SELECT AddGeometryColumn(''all_linear_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
+PERFORM AddGeometryColumn(''all_linear_parcels'', ''shape'', 4167, ''GEOMETRY'', 2);
 
 ALTER TABLE all_linear_parcels ADD PRIMARY KEY (id);
 CREATE INDEX shx_all_line_par_shape ON all_linear_parcels USING gist (shape);
@@ -673,8 +672,6 @@ ALTER TABLE all_linear_parcels OWNER TO bde_dba;
 REVOKE ALL ON TABLE all_linear_parcels FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE all_linear_parcels TO bde_admin;
 GRANT SELECT ON TABLE all_linear_parcels TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''all_linear_parcels'');
 
 --------------------------------------------------------------------------------
 -- LDS table parcel_stat_actions
@@ -696,8 +693,6 @@ REVOKE ALL ON TABLE parcel_stat_actions FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE parcel_stat_actions TO bde_admin;
 GRANT SELECT ON TABLE parcel_stat_actions TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''parcel_stat_actions'');
-
 --------------------------------------------------------------------------------
 -- LDS table affected_parcel_surveys
 --------------------------------------------------------------------------------
@@ -716,8 +711,6 @@ ALTER TABLE affected_parcel_surveys OWNER TO bde_dba;
 REVOKE ALL ON TABLE affected_parcel_surveys FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE affected_parcel_surveys TO bde_admin;
 GRANT SELECT ON TABLE affected_parcel_surveys TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''affected_parcel_surveys'');
 
 --------------------------------------------------------------------------------
 -- LDS table title_parcel_associations
@@ -738,7 +731,6 @@ REVOKE ALL ON TABLE title_parcel_associations FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_parcel_associations TO bde_admin;
 GRANT SELECT ON TABLE title_parcel_associations TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_parcel_associations'');
 --------------------------------------------------------------------------------
 -- LDS table title_estates
 --------------------------------------------------------------------------------
@@ -764,7 +756,6 @@ REVOKE ALL ON TABLE title_estates FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_estates TO bde_admin;
 GRANT SELECT ON TABLE title_estates TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_estates'');
 --------------------------------------------------------------------------------
 -- LDS table titles_aspatial
 --------------------------------------------------------------------------------
@@ -796,7 +787,6 @@ REVOKE ALL ON TABLE titles_aspatial FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE titles_aspatial TO bde_admin;
 GRANT SELECT ON TABLE titles_aspatial TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''titles_aspatial'');
 --------------------------------------------------------------------------------
 -- LDS table title_owners_aspatial
 --------------------------------------------------------------------------------
@@ -824,7 +814,20 @@ REVOKE ALL ON TABLE title_owners_aspatial FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_owners_aspatial TO bde_admin;
 GRANT SELECT ON TABLE title_owners_aspatial TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+-- only enable versioning if we already have versioned tables
+IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+    PERFORM table_version.ver_enable_versioning(''lds'', ''all_parcels'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''all_linear_parcels'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''parcel_stat_actions'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''affected_parcel_surveys'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_parcel_associations'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_estates'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''titles_aspatial'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+END IF;
+
+END;
+$$
 '
 );
 
@@ -839,18 +842,12 @@ BEGIN
     ALTER TABLE lds.titles_plus
        ALTER COLUMN spatial_extents_shared DROP NOT NULL;
 
-    IF EXISTS ( select true from pg_tables
-                where tablename = ''lds_titles_revision''
-                and schemaname =''table_version'')
-    THEN
+    IF table_version.ver_is_table_versioned(''lds'', ''titles'') THEN
         ALTER TABLE table_version.lds_titles_revision 
            ALTER COLUMN spatial_extents_shared DROP NOT NULL;
     END IF;
 
-    IF EXISTS ( select true from pg_tables
-                where tablename = ''lds_titles_plus_revision''
-                and schemaname =''table_version'')
-    THEN
+    IF table_version.ver_is_table_versioned(''lds'', ''titles_plus'') THEN
         ALTER TABLE table_version.lds_titles_plus_revision 
            ALTER COLUMN spatial_extents_shared DROP NOT NULL;
     END IF;
@@ -934,10 +931,14 @@ $PATCH$
 SELECT _patches.apply_patch(
     'BDE - 1.2.4: Recreate title estate and owners tables to include status columns',
     '
+DO $$
+BEGIN
 
 SET search_path = lds, bde, public;
 
-SELECT table_version.ver_disable_versioning(''lds'', ''title_estates'');
+IF table_version.ver_is_table_versioned(''lds'', ''title_estates'') THEN
+    PERFORM table_version.ver_disable_versioning(''lds'', ''title_estates'');
+END IF;
 
 DROP TABLE IF EXISTS title_estates CASCADE;
 
@@ -963,13 +964,13 @@ REVOKE ALL ON TABLE title_estates FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_estates TO bde_admin;
 GRANT SELECT ON TABLE title_estates TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_estates'');
-
 --------------------------------------------------------------------------------
 -- LDS table title_owners_aspatial
 --------------------------------------------------------------------------------
 
-SELECT table_version.ver_disable_versioning(''lds'', ''title_owners_aspatial'');
+IF table_version.ver_is_table_versioned(''lds'', ''title_owners_aspatial'') THEN
+    PERFORM table_version.ver_disable_versioning(''lds'', ''title_owners_aspatial'');
+END IF;
 
 DROP TABLE IF EXISTS title_owners_aspatial CASCADE;
 
@@ -995,7 +996,14 @@ REVOKE ALL ON TABLE title_owners_aspatial FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_owners_aspatial TO bde_admin;
 GRANT SELECT ON TABLE title_owners_aspatial TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+-- only enable versioning if we already have versioned tables
+IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_owners_aspatial'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_estates'');
+END IF;
+
+END;
+$$
 '
 );
 
@@ -1039,6 +1047,9 @@ $PATCH$
 SELECT _patches.apply_patch(
     'BDE - 1.2.6: Add new street address schema for NZPost',
     '
+DO $$
+BEGIN
+
 SET search_path = lds, bde, public;
 
 DROP TABLE IF EXISTS street_address2 CASCADE;
@@ -1057,7 +1068,7 @@ CREATE TABLE street_address2
   territorial_authority VARCHAR(255)
 );
 
-SELECT AddGeometryColumn(''street_address2'', ''shape'', 4167, ''POINT'', 2);
+PERFORM AddGeometryColumn(''street_address2'', ''shape'', 4167, ''POINT'', 2);
 
 ALTER TABLE street_address2 ADD PRIMARY KEY (id);
 
@@ -1067,8 +1078,13 @@ REVOKE ALL ON TABLE street_address2 FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE street_address2 TO bde_admin;
 GRANT SELECT ON TABLE street_address2 TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''street_address2'');
+-- only enable versioning if we already have versioned tables
+IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+    PERFORM table_version.ver_enable_versioning(''lds'', ''street_address2'');
+END IF;
 
+END;
+$$
 '
 );
 
@@ -1339,6 +1355,8 @@ $PATCH$
 SELECT _patches.apply_patch(
     'BDE - 1.3.2: Add Titles Memorial Data',
     '
+DO $$
+BEGIN
 
 SET search_path = lds, bde, public;
 
@@ -1365,8 +1383,6 @@ ALTER TABLE title_memorials OWNER TO bde_dba;
 REVOKE ALL ON TABLE title_memorials FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_memorials TO bde_admin;
 GRANT SELECT ON TABLE title_memorials TO bde_user;
-
-SELECT table_version.ver_enable_versioning(''lds'', ''title_memorials'');
 
 --------------------------------------------------------------------------------
 -- LDS table title_memorial_additional_text
@@ -1400,7 +1416,14 @@ REVOKE ALL ON TABLE title_memorial_additional_text FROM PUBLIC;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE title_memorial_additional_text TO bde_admin;
 GRANT SELECT ON TABLE title_memorial_additional_text TO bde_user;
 
-SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_text'');
+-- only enable versioning if we already have versioned tables
+IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_text'');
+    PERFORM table_version.ver_enable_versioning(''lds'', ''title_memorials'');
+END IF;
+
+END;
+$$
 '
 );
 
@@ -1412,23 +1435,48 @@ SELECT table_version.ver_enable_versioning(''lds'', ''title_memorial_additional_
 SELECT _patches.apply_patch(
     'BDE - 1.3.5: Alter column width crs_statute/name_and_date from 100 to 200',
     '
+DO $$
+BEGIN
+
 UPDATE pg_attribute SET atttypmod=200+4
 WHERE attrelid = ''bde.crs_statute''::regclass
 AND attname = ''name_and_date'';
 
-UPDATE pg_attribute SET atttypmod=200+4
-WHERE attrelid = ''table_version.bde_crs_statute_revision''::regclass
-AND attname = ''name_and_date'';
+IF table_version.ver_is_table_versioned(''bde'', ''crs_statute'') THEN
+    UPDATE pg_attribute SET atttypmod=200+4
+    WHERE attrelid = ''table_version.bde_crs_statute_revision''::regclass
+    AND attname = ''name_and_date'';
+END IF;
+
+END;
+$$
 '
 );
 
 SELECT _patches.apply_patch(
     'BDE - 1.3.6: Add street addressing columns for Landonline 3.10',
     '
-    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_road_name'', ''sufi'', ''INTEGER'');
-    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''sufi'', ''INTEGER'');
-    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''overridden_mbk_code'', ''CHAR(1)'');
-    SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''mbk_code'', ''VARCHAR(7)'');
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_road_name'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_road_name'', ''sufi'', ''INTEGER'');
+ELSE
+    ALTER TABLE bde.crs_road_name ADD COLUMN sufi INTEGER;
+END IF;
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_street_address'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''sufi'', ''INTEGER'');
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''overridden_mbk_code'', ''CHAR(1)'');
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_street_address'', ''mbk_code'', ''VARCHAR(7)'');
+ELSE
+    ALTER TABLE bde.crs_street_address ADD COLUMN sufi INTEGER;
+    ALTER TABLE bde.crs_street_address ADD COLUMN overridden_mbk_code CHAR(1);
+    ALTER TABLE bde.crs_street_address ADD COLUMN mbk_code VARCHAR(7);
+END IF;
+
+END;
+$$
 '
 );
 
@@ -1499,7 +1547,17 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.4.0: Add ttl_title_no_head_srs column to crs_title',
     '
-	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_title'', ''ttl_title_no_head_srs'', ''VARCHAR(20)'');
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_title'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_title'', ''ttl_title_no_head_srs'', ''VARCHAR(20)'');
+ELSE
+    ALTER TABLE bde.crs_title ADD COLUMN ttl_title_no_head_srs VARCHAR(20);
+END IF;
+
+END;
+$$
 '
 );
 
@@ -1510,7 +1568,17 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.4.0: Add usr_tm_id to crs_land_district',
     '
-	SELECT table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_land_district'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_land_district'', ''usr_tm_id'', ''VARCHAR(20)'');
+ELSE
+    ALTER TABLE bde.crs_land_district ADD COLUMN usr_tm_id VARCHAR(20);
+END IF;
+
+END;
+$$
 '
 );
 -------------------------------------------------------------------------------
@@ -1520,15 +1588,38 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.4.0: Change col-type for crs_estate_share, crs_title_estate, crs_legal_desc_prl',
     '
-	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_estate_share'', ''share'', ''varchar(100)'');
-	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_title_estate'', ''share'', ''varchar(100)'');
-	select table_version.ver_versioned_table_change_column_type(''bde'', ''crs_legal_desc_prl'', ''share'', ''varchar(100)'');
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_estate_share'') THEN
+    PERFORM table_version.ver_versioned_table_change_column_type(''bde'', ''crs_estate_share'', ''share'', ''VARCHAR(100)'');
+ELSE
+    ALTER TABLE bde.crs_estate_share ALTER COLUMN share TYPE VARCHAR(100);
+END IF;
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_title_estate'') THEN
+    PERFORM table_version.ver_versioned_table_change_column_type(''bde'', ''crs_title_estate'', ''share'', ''VARCHAR(100)'');
+ELSE
+    ALTER TABLE bde.crs_title_estate ALTER COLUMN share TYPE VARCHAR(100);
+END IF;
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_legal_desc_prl'') THEN
+    PERFORM table_version.ver_versioned_table_change_column_type(''bde'', ''crs_legal_desc_prl'', ''share'', ''VARCHAR(100)'');
+ELSE
+    ALTER TABLE bde.crs_legal_desc_prl ALTER COLUMN share TYPE VARCHAR(100);
+END IF;
+
+END;
+$$
   '
 );
 
 SELECT _patches.apply_patch(
     'BDE - 1.4.0: Add crs_image_history table',
     '
+DO $$
+BEGIN
+
     SET search_path = bde, public;
     
     CREATE TABLE crs_image_history  (
@@ -1551,7 +1642,12 @@ SELECT _patches.apply_patch(
     GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE crs_image_history TO bde_admin;
     GRANT SELECT ON TABLE crs_image_history TO bde_user;
     
-    SELECT table_version.ver_enable_versioning(''bde'', ''crs_image_history'');
+    IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+        PERFORM table_version.ver_enable_versioning(''bde'', ''crs_image_history'');
+    END IF;
+
+END;
+$$
 '
 );
 
@@ -1582,7 +1678,6 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.4.0: Post Full Landonline revision build operation',
     '
-
 	DO $$
 	DECLARE
 		v_schema NAME;
@@ -1594,41 +1689,43 @@ SELECT _patches.apply_patch(
         
 		PERFORM bde_ext.LDS_MaintainFBDELayers(-1);
         
-		PERFORM table_version.ver_create_revision(''Initial revisioning for filtered external BDE tables'');
-
-		FOR v_schema, v_table IN
-			SELECT
-				NSP.nspname,
-				CLS.relname
-			FROM
-				pg_class CLS,
-				pg_namespace NSP
-			WHERE
-				CLS.relnamespace = NSP.oid AND
-				NSP.nspname IN (''bde_ext'') AND
-				CLS.relkind = ''r''
-			ORDER BY
-				1, 2
-		LOOP
-			v_msg := ''Versioning table '' || v_schema || ''.'' || v_table;
-			RAISE NOTICE ''%'', v_msg;
-
-			BEGIN
-				PERFORM table_version.ver_enable_versioning(v_schema, v_table);
-			EXCEPTION
-				WHEN others THEN
-					RAISE EXCEPTION ''Error versioning %.%. ERROR: %'', v_schema, v_table, SQLERRM;
-			END;
-
-			SELECT table_version.ver_get_version_table_full(v_schema, v_table)
-			INTO v_rev_table;
-
-			EXECUTE ''GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE '' || v_rev_table || '' TO bde_admin'';
-			EXECUTE ''GRANT SELECT ON TABLE '' || v_rev_table || '' TO bde_user'';
-		END LOOP;
-
-		PERFORM table_version.ver_complete_revision();
-	END
+        IF EXISTS (SELECT table_version.ver_get_versioned_tables()) THEN
+            PERFORM table_version.ver_create_revision(''Initial revisioning for filtered full Landonline tables'');
+            
+            FOR v_schema, v_table IN
+                SELECT
+                    NSP.nspname,
+                    CLS.relname
+                FROM
+                    pg_class CLS,
+                    pg_namespace NSP
+                WHERE
+                    CLS.relnamespace = NSP.oid AND
+                    NSP.nspname IN (''bde_ext'') AND
+                    CLS.relkind = ''r''
+                ORDER BY
+                    1, 2
+            LOOP
+                v_msg := ''Versioning table '' || v_schema || ''.'' || v_table;
+                RAISE NOTICE ''%'', v_msg;
+                
+                BEGIN
+                    PERFORM table_version.ver_enable_versioning(v_schema, v_table);
+                EXCEPTION
+                    WHEN others THEN
+                        RAISE EXCEPTION ''Error versioning %.%. ERROR: %'', v_schema, v_table, SQLERRM;
+                END;
+    
+                SELECT table_version.ver_get_version_table_full(v_schema, v_table)
+                INTO v_rev_table;
+    
+                EXECUTE ''GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE '' || v_rev_table || '' TO bde_admin'';
+                EXECUTE ''GRANT SELECT ON TABLE '' || v_rev_table || '' TO bde_user'';
+            END LOOP;
+            
+            PERFORM table_version.ver_complete_revision();
+        END IF;
+	END;
 	$$;
 ');
 
@@ -1636,9 +1733,26 @@ SELECT _patches.apply_patch(
 SELECT _patches.apply_patch(
     'BDE - 1.4.2: Increase field width for street address and road layers, fix bad UTF8 config entry',
     '
-	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''street_address2'', ''locality'', ''varchar(100)'');
-	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line_subsection'', ''locality'', ''varchar(100)'');
-	SELECT table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line'', ''locality'', ''varchar(100)'');
+    DO $$
+    BEGIN
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''street_address2'') THEN
+        PERFORM table_version.ver_versioned_table_change_column_type(''lds'', ''street_address2'', ''locality'', ''VARCHAR(100)'');
+    ELSE
+        ALTER TABLE lds.street_address2 ALTER COLUMN locality TYPE VARCHAR(100);
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''road_centre_line_subsection'') THEN
+        PERFORM table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line_subsection'', ''locality'', ''VARCHAR(100)'');
+    ELSE
+        ALTER TABLE lds.road_centre_line_subsection ALTER COLUMN locality TYPE VARCHAR(100);
+    END IF;
+    
+    IF table_version.ver_is_table_versioned(''lds'', ''road_centre_line'') THEN
+        PERFORM table_version.ver_versioned_table_change_column_type(''lds'', ''road_centre_line'', ''locality'', ''VARCHAR(100)'');
+    ELSE
+        ALTER TABLE lds.road_centre_line ALTER COLUMN locality TYPE VARCHAR(100);
+    END IF;
     
     DELETE FROM lds_export_config
     WHERE parameter = ''utf8_crs_road_name.location''
@@ -1647,5 +1761,22 @@ SELECT _patches.apply_patch(
     
     INSERT INTO lds_export_config (parameter, "key", "value") VALUES
     (''utf8_crs_road_name.location'', ''Porirua City-Titahi Bay [Spelling not official]'',''Porirua-Tītahi Bay'');
+    
+    END;
+    $$
   '
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.4.3: Apply correct rights to lds_export_config',
+    '
+DO $PATCH$
+BEGIN
+    SET search_path=lds,public;
+    ALTER TABLE lds_export_config OWNER TO bde_dba;
+    GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE lds_export_config TO bde_admin;
+    GRANT SELECT ON TABLE lds_export_config TO bde_user;
+END;
+$PATCH$
+'
 );
