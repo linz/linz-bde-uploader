@@ -1,3 +1,12 @@
+linz-bde-uploader (1.4.3-1) lucid; urgency=low
+
+  * Added crs_image_history to config
+  * Added support for PostgreSQL/PostGIS extensions. At the same time
+    cleaned up debian post install functions to correct report errors.
+  * Fix early drop of temp table
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Tue, 21 Oct 2014 05:51:27 +1300
+
 linz-bde-uploader (1.4.2-1) lucid; urgency=low
 
   * Increase field width for street address and road layers, fix bad
