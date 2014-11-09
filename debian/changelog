@@ -1,3 +1,9 @@
+linz-bde-uploader (1.4.4-1) lucid; urgency=low
+
+  * Added check for unique sufi records
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Mon, 10 Nov 2014 06:17:04 +1300
+
 linz-bde-uploader (1.4.3-1) lucid; urgency=low
 
   * Added crs_image_history to config
