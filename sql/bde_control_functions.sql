@@ -751,7 +751,7 @@ BEGIN
                 END IF;
                 v_lock_owner := (
                     SELECT 
-                        string_agg(distinct a.usename,', ')
+                        string_agg(distinct a.usename || ' (' || a.application_name || ')', ', ')
                     FROM 
                         pg_stat_activity a
                         JOIN pg_locks l
