@@ -1780,3 +1780,49 @@ END;
 $PATCH$
 '
 );
+
+
+SELECT _patches.apply_patch(
+    'BDE - 1.5.0: Add UTF8 columns for address and roading simple datasets',
+    '
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''lds'', ''road_centre_line_subsection'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''road_centre_line_subsection'', ''name_utf8'', ''VARCHAR(100)'');
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''road_centre_line_subsection'', ''other_names_utf8'', ''VARCHAR(255)'');
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''road_centre_line_subsection'', ''locality_utf8'', ''VARCHAR(30)'');
+ELSE
+    ALTER TABLE lds.road_centre_line_subsection ADD COLUMN name_utf8 VARCHAR(100);
+    ALTER TABLE lds.road_centre_line_subsection ADD COLUMN other_names_utf8 VARCHAR(255);
+    ALTER TABLE lds.road_centre_line_subsection ADD COLUMN locality_utf8 VARCHAR(30);
+END IF;
+
+IF table_version.ver_is_table_versioned(''lds'', ''road_centre_line'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''road_centre_line'', ''name_utf8'', ''VARCHAR(100)'');
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''road_centre_line'', ''locality_utf8'', ''VARCHAR(30)'');
+ELSE
+    ALTER TABLE lds.road_centre_line ADD COLUMN name_utf8 VARCHAR(100);
+    ALTER TABLE lds.road_centre_line ADD COLUMN locality_utf8 VARCHAR(30);
+END IF;
+
+IF table_version.ver_is_table_versioned(''lds'', ''railway_centre_line'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''railway_centre_line'', ''name_utf8'', ''VARCHAR(100)'');
+ELSE
+    ALTER TABLE lds.railway_centre_line ADD COLUMN name_utf8 VARCHAR(100);
+END IF;
+
+IF table_version.ver_is_table_versioned(''lds'', ''street_address2'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''street_address2'', ''road_name_utf8'', ''VARCHAR(100)'');
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''street_address2'', ''address_utf8'', ''VARCHAR(126)'');
+    PERFORM table_version.ver_versioned_table_add_column(''lds'', ''street_address2'', ''locality_utf8'', ''VARCHAR(30)'');
+ELSE
+    ALTER TABLE lds.street_address2 ADD COLUMN road_name_utf8 VARCHAR(100);
+    ALTER TABLE lds.street_address2 ADD COLUMN address_utf8 VARCHAR(126);
+    ALTER TABLE lds.street_address2 ADD COLUMN locality_utf8 VARCHAR(30);
+END IF;
+
+END;
+$$
+'
+);

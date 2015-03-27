@@ -33,6 +33,7 @@ PG_INIT=/etc/init.d/$PG_SERVICE
 USE_SERVICE=0
 HAS_POSTGIS_EXT=
 HAS_ADMIN_EXT=
+HAS_UNACCENT_EXT=
 TMPFILE=`mktemp -t $LDS_PACKAGE.XXXXXX` || { echo "$0: Cannot create temporary file" >&2; exit 1;  }
 chmod 0777 $TMPFILE
 
@@ -86,12 +87,13 @@ if ! su -l $PG_USER -c "psql -t -A --list | grep $DB"; then
     if [ $PG_VERSION -gt 90100 ]; then
         HAS_POSTGIS_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$postgis\$\$' $PG_USER""")"
         HAS_ADMIN_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$adminpack\$\$' $PG_USER""")"
+        HAS_UNACCENT_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$unaccent\$\$' $PG_USER""")"
     fi
     
     if [ -n "$HAS_ADMIN_EXT" ]; then
         rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION adminpack' &> $TMPFILE; echo \$?")
         if [ $rc -ne $SUCCESS ] ; then
-            die "Could install adminpack functions" $rc
+            die "Could not install adminpack functions" $rc
         fi
     else
         PG_ADMINPACK=/usr/share/postgresql/9.0/contrib/adminpack.sql
@@ -99,6 +101,21 @@ if ! su -l $PG_USER -c "psql -t -A --list | grep $DB"; then
             rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $PG_ADMINPACK &> $TMPFILE; echo \$?")
             if [ $rc -ne $SUCCESS ] ; then
                 die "Could not install database admin pack" $rc
+            fi
+        fi
+    fi
+    
+    if [ -n "$HAS_UNACCENT_EXT" ]; then
+        rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION unaccent' &> $TMPFILE; echo \$?")
+        if [ $rc -ne $SUCCESS ] ; then
+            die "Could not install unaccent extension" $rc
+        fi
+    else
+        PG_UNACCENT=/usr/share/postgresql/9.0/contrib/unaccent.sql
+        if [ -f $PG_UNACCENT ]; then
+            rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $PG_UNACCENT &> $TMPFILE; echo \$?")
+            if [ $rc -ne $SUCCESS ] ; then
+                die "Could not install unaccent function" $rc
             fi
         fi
     fi
