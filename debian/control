@@ -22,13 +22,13 @@ Depends: ${misc:Depends}, ${perl:Depends},
  liblinz-utils-perl,
  liblinz-bde-perl,
  linz-bde-copy (>= 1.1),
- cifs-utils,
+ smbfs,
  perl-doc,
- postgresql-9.3,
- postgresql-client-9.3,
- postgresql-plperl-9.3,
- postgresql-contrib-9.3,
- postgresql-9.3-postgis-2.1 (>= 1.5)
+ postgresql-9.0,
+ postgresql-client-9.0,
+ postgresql-plperl-9.0,
+ postgresql-contrib-9.0,
+ postgresql-9.0-postgis (>= 1.5)
 Recommends:
 Description: Programme for loading LINZ BDE files into a PostgreSQL
  database. linz_bde_loader has the ability to load full and incremental
