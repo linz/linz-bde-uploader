@@ -1,3 +1,19 @@
+linz-bde-uploader (1.5.0-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Added more information about process holding table locks
+  * Added offshore Island support to simplified parcels layers.
+
+  [ Joseph Ramsay ]
+  * Patch supporting Landonline UTF8 data as well as providing ASCII translations for simplifid address and road tables
+  * Removed ARN/ALN groupby lines from maintainsimplifiedelectoral (no longer needed with utf8)
+  * patches.sql: road_centre+line+road_centre_line_subsection+street_address2 locality_utf8 expanded to varchar100
+  * Removed ARN/ALN group by statements in layer functions
+  * Added utf8 self replacements for [u2013,u2014,u2018,u2019,u201C,u201D,u2022]
+  * fix for merge conflict dd48c67
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Thu, 09 Apr 2015 12:48:33 +1200
+
 linz-bde-uploader (1.4.4-1) lucid; urgency=low
 
   * Added check for unique sufi records
