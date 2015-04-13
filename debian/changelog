@@ -1,3 +1,17 @@
+linz-bde-uploader (1.5.2) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Fix for electoral layer creation when duplicate SUFIs are found
+
+  [ Joseph Ramsay ]
+
+  [ Jeremy Palmer ]
+  * Fix for electoral layer creation when duplicate SUFIs are found
+
+  [ Joseph Ramsay ]
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Mon, 13 Apr 2015 15:28:01 +1200
+
 linz-bde-uploader (1.5.1-1) lucid; urgency=medium
 
   * Revert deb control to standard config
