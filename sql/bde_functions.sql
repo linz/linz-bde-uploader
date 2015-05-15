@@ -770,7 +770,8 @@ DECLARE
     v_gazette         crs_statute_action.gazette_type%TYPE;
     v_gaz_year        crs_statute_action.gazette_year%TYPE;
     v_gaz_page        crs_statute_action.gazette_page%TYPE;
-    v_page            VARCHAR(10);
+    v_gaz_notice_id   crs_statute_action.gazette_notice_id%TYPE;
+    v_prefix          VARCHAR(10);
     v_other_legality  VARCHAR(255);
     v_name_and_date   VARCHAR(255);
     v_section         VARCHAR(255);
@@ -810,6 +811,7 @@ BEGIN
         STA.gazette_type,
         STA.gazette_year,
         STA.gazette_page,
+        STA.gazette_notice_id,
         STA.other_legality
     INTO
         v_stat_act_type,
@@ -818,6 +820,7 @@ BEGIN
         v_gazette,
         v_gaz_year,
         v_gaz_page,
+        v_gaz_notice_id,
         v_other_legality
     FROM
         crs_statute_action STA,
@@ -827,14 +830,20 @@ BEGIN
         STA.id = p_sta_id;
     
     IF v_stat_act_type = 'GNOT' THEN
-        IF v_gaz_page IS NULL THEN
-            v_page :=  ' ';
-        ELSE 
-            v_page := ' p ';
-        END IF; 
+        IF v_gaz_notice_id IS NULL THEN
+            IF v_gaz_page IS NULL THEN
+                v_prefix :=  ' ';
+            ELSE 
+                v_prefix := ' p ';
+            END IF; 
+            
+            v_stat_act_desc := bde_get_charcode('STAG', v_gazette) || ' ' || CAST(v_gaz_year AS TEXT) || v_prefix || CAST(v_gaz_page AS TEXT);
         
-        v_stat_act_desc := bde_get_charcode('STAG', v_gazette) || ' ' || CAST(v_gaz_year AS TEXT) || v_page || CAST(v_gaz_page AS TEXT);
+        ELSE        
+            v_prefix := ' ln ';
+            v_stat_act_desc := bde_get_charcode('STAG', v_gazette) || ' ' || CAST(v_gaz_year AS TEXT) || v_prefix || CAST(v_gaz_notice_id AS TEXT);
         
+        END IF;
         IF v_other_legality IS NOT NULL THEN
             v_stat_act_desc := v_stat_act_desc || ', ' || v_other_legality;
         END IF;

@@ -1826,3 +1826,38 @@ END;
 $$
 '
 );
+
+SELECT _patches.apply_patch(
+    'BDE - 1.6.0: Add new crs_image column for Landonline 3.11',
+    '
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_image'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_image'', ''usr_id_created'', ''VARCHAR(20)'');
+ELSE
+    ALTER TABLE bde.crs_image ADD COLUMN usr_id_created VARCHAR(20);
+END IF;
+
+END;
+$$
+'
+);
+
+SELECT _patches.apply_patch(
+    'BDE - 1.6.0: Add new crs_statute_action column for Landonline 3.11',
+    '
+DO $$
+BEGIN
+
+IF table_version.ver_is_table_versioned(''bde'', ''crs_statute_action'') THEN
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_statute_action', ''gazette_notice_id'', ''INTEGER'');
+ELSE
+    ALTER TABLE bde.crs_statute_action ADD COLUMN gazette_notice_id INTEGER;
+END IF;
+
+END;
+$$
+'
+);
+
