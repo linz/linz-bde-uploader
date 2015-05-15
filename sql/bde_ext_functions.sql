@@ -1632,7 +1632,7 @@ BEGIN
             TTL.guarantee_status, 
             TTL.provisional, 
             TTL.sur_wrk_id, 
-            TTL.maori_land,
+            CASE WHEN TTL.maori_land IN ('Y','L') THEN 'Y' ELSE NULL END AS maori_land,
             TTL.ttl_title_no_srs,
             TTL.ttl_title_no_head_srs
         FROM crs_title TTL
