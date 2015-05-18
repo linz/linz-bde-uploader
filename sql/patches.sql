@@ -1851,7 +1851,7 @@ DO $$
 BEGIN
 
 IF table_version.ver_is_table_versioned(''bde'', ''crs_statute_action'') THEN
-    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_statute_action', ''gazette_notice_id'', ''INTEGER'');
+    PERFORM table_version.ver_versioned_table_add_column(''bde'', ''crs_statute_action'', ''gazette_notice_id'', ''INTEGER'');
 ELSE
     ALTER TABLE bde.crs_statute_action ADD COLUMN gazette_notice_id INTEGER;
 END IF;
