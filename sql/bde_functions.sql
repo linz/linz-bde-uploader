@@ -770,7 +770,7 @@ DECLARE
     v_gazette         crs_statute_action.gazette_type%TYPE;
     v_gaz_year        crs_statute_action.gazette_year%TYPE;
     v_gaz_page        crs_statute_action.gazette_page%TYPE;
-    v_gaz_notice_id   crs_statute_action.gazette_notice_id%TYPE;
+    v_gaz_notice_id   INTEGER;
     v_prefix          VARCHAR(10);
     v_other_legality  VARCHAR(255);
     v_name_and_date   VARCHAR(255);
