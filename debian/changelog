@@ -1,3 +1,15 @@
+linz-bde-uploader (1.5.3-1) trusty; urgency=medium
+
+  [ billgeo ]
+  * made changes for LOL 3.11 release
+  * one more change for LOL 3.11 release
+  * fixed bug for LOL release 3.11 where function in bde_functions.sql referenced a column that wouldnt be created until patches.sql was run - variable type is now hardcoded to workaround this
+  * fixed syntax error for LOL release 3.11
+
+  [ Bill Nelson ]
+
+ -- Bill Nelson <bmnelson@linz.govt.nz>  Thu, 21 May 2015 10:54:51 +1200
+
 linz-bde-uploader (1.5.2) lucid; urgency=medium
 
   [ Jeremy Palmer ]
