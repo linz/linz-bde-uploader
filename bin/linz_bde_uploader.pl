@@ -23,12 +23,17 @@ our $VERSION = '1.5.3';
 
 use FindBin;
 use lib $FindBin::Bin;
+use lib '../lib';
 use Getopt::Long;
 use Log::Log4perl qw(:easy :levels get_logger);
 use Log::Log4perl::Layout;
-  
+use Try::Tiny;
+
 use LINZ::BdeUpload;
 use LINZ::Config;
+
+$SIG{INT}  = \&signal_handler;
+$SIG{TERM} = \&signal_handler;
 
 @ARGV || help(0);
 
@@ -52,7 +57,9 @@ my $override_locks = 0;   # Clear existing locks
 my $listing_file = '';
 my $enddate = '';         # Only use files before this date
 my $maintain_db = 0;      # run database maintain after run.
+my $enable_hooks = 0;     # if enabled will run any event hooks defined in the config
 my $logger;
+my $upload;
 
 GetOptions (
     "help|h" => \$showhelp,
@@ -72,6 +79,7 @@ GetOptions (
     "before|b=s" => \$enddate,
     "maintain-database|m" => \$maintain_db,
     "listing_file|l=s" => \$listing_file,
+    "enable-hooks|e!" => \$enable_hooks,
     "verbose|v" => \$verbose,
     )
     || help(0);
@@ -102,7 +110,7 @@ if( $rebuild && ! $apply_level0 )
     $apply_level5 = 1;
 }
 
-eval
+try
 {
     my $options = 
     {
@@ -121,6 +129,7 @@ eval
         end_date => $enddate,
         maintain_db => $maintain_db,
         select_tables => join(' ',@ARGV),
+        enable_hooks => $enable_hooks,
     };
 
     my $cfg = new LINZ::Config($options);
@@ -165,13 +174,18 @@ eval
         $logger->add_appender($stdout_appender);
     }
     
-    my $upload = new LINZ::BdeUpload($cfg);
+    $upload = new LINZ::BdeUpload($cfg);
     $upload->PurgeOldJobs if $do_purge && ! $dry_run;
     $upload->ApplyUpdates($dry_run);
-};
-if( $@ )
+}
+catch
 {
-    LOGDIE("$@");
+    if ($upload)
+    {
+        $upload->FireEvent('error');
+        undef $upload;
+    }
+    ERROR($_);
 };
 
 INFO("Duration of job: ". runtime_duration());
@@ -203,6 +217,18 @@ sub runtime_duration
         $str = sprintf("%02d:%02d:%02d", $hour, $min, $sec);
     }
     return $str;
+}
+
+sub signal_handler
+{
+    if ($upload)
+    {
+        # TODO: might need to kill upload job first
+        # $upload->KillUpload();
+        $upload->FireEvent('error');
+        undef $upload;
+    }
+    die ("Caught $_[0] signal: $!");
 }
 
 sub help
@@ -277,6 +303,8 @@ Options:
 =item -keep-files or -k
 
 =item -verbose or -v
+
+=item -enable-hooks or -e
 
 =item -help or -h
 
@@ -364,8 +392,12 @@ the config file.
 
 =item -keep-files or -k
 
-Keeps the files generated during the upload rather than deleting them - 
+Keeps the files generated during the upload rather than deleting them 
 for debugging use.
+
+=item -enable-hooks or -e
+
+Fire any defined command line hooks in the configuration.
 
 =item -verbose or -v
 
