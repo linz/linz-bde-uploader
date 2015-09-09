@@ -1861,3 +1861,20 @@ $$
 '
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.5.4: Change owners column from Varchar to Text to avoid data overflows',
+    '
+DO $PATCH$
+BEGIN
+    ALTER TABLE lds.titles_plus
+       ALTER COLUMN owners SET DATA TYPE TEXT;
+
+    IF table_version.ver_is_table_versioned(''lds'', ''titles_plus'') THEN
+        ALTER TABLE table_version.lds_titles_plus_revision 
+           ALTER COLUMN owners SET DATA TYPE TEXT;
+    END IF;
+END;
+$PATCH$
+'
+);
+

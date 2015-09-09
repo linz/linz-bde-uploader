@@ -463,7 +463,7 @@ CREATE TABLE titles_plus (
     issue_date TIMESTAMP NOT NULL,
     guarantee_status VARCHAR(100) NOT NULL,
     estate_description VARCHAR(4096),
-    owners VARCHAR(102400),
+    owners Text,
     spatial_extents_shared BOOLEAN NOT NULL
 );
 PERFORM AddGeometryColumn('titles_plus', 'shape', 4167, 'MULTIPOLYGON', 2);
