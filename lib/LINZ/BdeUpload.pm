@@ -416,7 +416,9 @@ sub new
         {
             my $cfg_key = "${event}_event_hooks";
             my @hooks = map { s/^[ \t]+|[ \t]+$//g; $_} split("\n", $cfg->$cfg_key);
-            $self->{event_hooks}->{$event} = \@hooks;
+            if (@hooks) {
+                $self->{event_hooks}->{$event} = \@hooks;
+            }
         }
     }
     
@@ -1076,7 +1078,8 @@ sub FireEvent
     }
     if (! exists $self->{event_hooks}->{$event})
     {
-        LOGDIE("Event does not exist");
+        DEBUG("Event does not exist");
+        return;
     }
     my $hooks = $self->{event_hooks}->{$event};
     if (@$hooks)
