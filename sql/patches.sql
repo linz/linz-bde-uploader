@@ -1866,15 +1866,12 @@ SELECT _patches.apply_patch(
     '
 DO $PATCH$
 BEGIN
-    ALTER TABLE lds.titles_plus
-       ALTER COLUMN owners SET DATA TYPE TEXT;
-
     IF table_version.ver_is_table_versioned(''lds'', ''titles_plus'') THEN
-        ALTER TABLE table_version.lds_titles_plus_revision 
-           ALTER COLUMN owners SET DATA TYPE TEXT;
+        PERFORM table_version.ver_versioned_table_change_column_type(''lds'', ''titles_plus'', ''owners'', ''TEXT'');
+    ELSE
+        ALTER TABLE lds.titles_plus ALTER COLUMN owners SET DATA TYPE TEXT;
     END IF;
 END;
 $PATCH$
 '
 );
-
