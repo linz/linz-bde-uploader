@@ -1,3 +1,21 @@
+linz-bde-uploader (1.5.4-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Added debian packaging for Trusty
+  * Added event hooks functionality. Also reworked error handling to clean-up legacy exception handling put in place for Win32 under perl 5.8
+
+  [ Robert Coup ]
+  * Include Try::Tiny in Debian packaging
+
+  [ billgeo ]
+  * Changing owners field from VARCHAR to TEXT to prevent data overflows
+
+  [ Jeremy Palmer ]
+  * Improve patch from cbd1015 to use table version API
+  * Improve event handling if config does not define the events
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 10 Sep 2015 23:53:10 +1200
+
 linz-bde-uploader (1.5.3-1) trusty; urgency=medium
 
   [ billgeo ]
