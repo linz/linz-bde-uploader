@@ -1,3 +1,10 @@
+linz-bde-uploader (1.5.5-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Ensure bad parcel statuses can not flow through to product generation
+
+ -- Jeremy <jpalmer@linz.govt.nz>  Tue, 15 Sep 2015 23:19:34 +1200
+
 linz-bde-uploader (1.5.4-1) lucid; urgency=medium
 
   [ Jeremy Palmer ]
@@ -13,6 +20,8 @@ linz-bde-uploader (1.5.4-1) lucid; urgency=medium
   [ Jeremy Palmer ]
   * Improve patch from cbd1015 to use table version API
   * Improve event handling if config does not define the events
+
+  [ Jeremy ]
 
  -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 10 Sep 2015 23:53:10 +1200
 
