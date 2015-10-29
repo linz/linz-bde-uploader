@@ -1100,6 +1100,7 @@ DECLARE
     v_table_primary_key_name  TEXT;
     v_table_unique_constraint TEXT;
     v_table_unqiue_index      TEXT;
+    v_count                   INTEGER  := 0;
 BEGIN
     FOR
         v_schema_name,
@@ -1110,9 +1111,38 @@ BEGIN
         v_table_unique_constraint,
         v_table_unqiue_index
     IN
-        WITH t AS (
-            SELECT
+        WITH versioned_tables AS (
+            SELECT DISTINCT ON (CLS.oid)
                 CLS.oid AS table_oid,
+                NSP.nspname AS schema_name,
+                CLS.relname AS table_name,
+                ATT.attname as key_column
+            FROM
+                pg_index IDX,
+                pg_attribute ATT,
+                pg_namespace NSP,
+                pg_class CLS
+            WHERE
+                IDX.indrelid = CLS.oid AND
+                ATT.attrelid = CLS.oid AND
+                ATT.attnum = ANY(IDX.indkey) AND
+                ATT.attnotnull = TRUE AND
+                IDX.indisunique = TRUE AND
+                IDX.indexprs IS NULL AND
+                IDX.indpred IS NULL AND
+                format_type(ATT.atttypid, ATT.atttypmod) IN (''integer'', ''bigint'') AND
+                array_length(IDX.indkey::INTEGER[], 1) = 1 AND
+                NSP.nspname IN (''lds'', ''bde'', ''bde_ext'') AND
+                NSP.oid      = CLS.relnamespace AND
+                CLS.relkind = ''r'' AND
+                CLS.relname <> ''lds_export_config''
+            ORDER BY
+                CLS.oid,
+                IDX.indisprimary DESC
+        ),
+        t AS (
+            SELECT
+                TBL.table_oid,
                 TBL.schema_name,
                 TBL.table_name,
                 TBL.key_column AS version_key_column,
@@ -1120,23 +1150,18 @@ BEGIN
                 string_agg(DISTINCT CONP.conname, '','') AS table_primary_key_name,
                 string_agg(DISTINCT CONU.conname, '','') AS table_unique_constraint
             FROM
-                table_version.ver_get_versioned_tables() AS TBL,
-                pg_namespace NSP,
                 pg_index IDX,
                 pg_attribute ATT,
-                pg_class CLS
-                JOIN pg_constraint CONP ON (CONP.conrelid = CLS.oid AND CONP.contype = ''p'')
-                LEFT JOIN pg_constraint CONU ON (CONU.conrelid = CLS.oid AND CONU.contype = ''u'')
+                versioned_tables AS TBL
+                JOIN pg_constraint CONP ON (CONP.conrelid = TBL.table_oid AND CONP.contype = ''p'')
+                LEFT JOIN pg_constraint CONU ON (CONU.conrelid = TBL.table_oid AND CONU.contype = ''u'')
             WHERE
-                NSP.nspname  = TBL.schema_name AND
-                CLS.relname  = TBL.table_name AND
-                NSP.oid      = CLS.relnamespace AND
-                IDX.indrelid = CLS.oid AND
-                ATT.attrelid = CLS.oid AND 
+                IDX.indrelid = TBL.table_oid AND
+                ATT.attrelid = TBL.table_oid AND 
                 ATT.attnum   = any(IDX.indkey) AND
                 IDX.indisprimary
             GROUP BY
-                CLS.oid,
+                TBL.table_oid,
                 TBL.schema_name,
                 TBL.table_name,
                 TBL.key_column
@@ -1170,7 +1195,10 @@ BEGIN
             EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' DROP CONSTRAINT  '' || v_table_unique_constraint;
         END IF;
         EXECUTE ''ALTER TABLE '' || v_schema_name || ''.'' || v_table_name || '' ADD UNIQUE('' || v_table_primary_key || '')'';
+        RAISE NOTICE ''Table %.% key changed to %'', v_schema_name, v_table_name, v_version_key_column;
+        v_count := v_count + 1;
     END LOOP;
+    RAISE NOTICE ''% Table keys changed'', v_count;
 END;
 $PATCH$
 '
