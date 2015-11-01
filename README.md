@@ -20,7 +20,6 @@ Zealand Government.
     - Log::Dispatch::FileRotate
     - Log::Dispatch::Email::MailSender
     - Try::Tiny
-    
 * PostgreSQL 9.0 or greater, plus
     - Postgis 2.X
 * linz_bde_copy, plus
@@ -32,7 +31,7 @@ Tested on Ubuntu 10.04 and 14.04
 
 ## Install
 
-Use the Debian packaging within the debian/ director to install this software on Ubuntu.
+Use the Debian packaging within the debian/ directory to install this software on Ubuntu.
 
 ### Manual install
 
