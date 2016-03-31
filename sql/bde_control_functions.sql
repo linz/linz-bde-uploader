@@ -51,15 +51,6 @@ BEGIN
 END;
 $$;
 
-
-DROP TYPE IF EXISTS ATTRIBUTE CASCADE;
-
-CREATE TYPE ATTRIBUTE AS (
-    att_name NAME,
-    att_type NAME,
-    att_not_null BOOLEAN
-);
-
 -- Function to retrieve a list of functions that the script can use
 
 CREATE OR REPLACE FUNCTION bde_GetBdeFunctions
@@ -1691,7 +1682,6 @@ DECLARE
     v_ndel                 BIGINT;
     v_nupd                 BIGINT;
     v_nnullupd             BIGINT;
-    v_nuniqf               BIGINT;
     v_rcount               BIGINT;
     v_task                 TEXT;
     v_sql                  TEXT;
@@ -1768,7 +1758,6 @@ BEGIN
     v_nupd     := 0;
     v_nnullupd := 0;
     v_nins     := 0;
-    v_nuniqf   := 0;
     
     PERFORM _bde_GetExclusiveLock( p_upload, v_bdetable );
     
@@ -1850,30 +1839,13 @@ BEGIN
         ANALYZE _tmp_inc_actions;
         
         SELECT count(*) INTO v_nnullupd FROM _tmp_inc_actions WHERE action = '0';
-        SELECT count(*) INTO v_nuniqf FROM _tmp_inc_actions WHERE action = 'X';
-        
-        IF v_nuniqf > 0 THEN
-            RAISE INFO
-                '% updates changed to delete/insert in % to avoid potential uniqueness constraint errors',
-                v_nuniqf, p_table_name;
-        END IF;
-        
+             
         v_task := 'Applying incremental row updates';
         
-        -- Process the updates
-        v_ndel := _bde_ApplyIncDelete(
-            v_bdetable, '_tmp_inc_actions', v_key_column
-        );
-        v_nupd := _bde_ApplyIncUpdate(
-            v_bdetable, '_tmp_inc_actions', v_tmptable, v_key_column
-        );
-        v_nins := _bde_ApplyIncInsert(
-            v_bdetable, '_tmp_inc_actions', v_tmptable, v_key_column
-        );
-        
-        v_ndel := v_ndel - v_nuniqf;
-        v_nins := v_nins - v_nuniqf;
-        v_nupd := v_nupd + v_nuniqf;
+        SELECT * FROM table_version._ver_apply_changes(
+            v_bdetable, v_tmptable, '_tmp_inc_actions', v_key_column
+        )
+        INTO v_ndel, v_nins, v_nupd;
         
         DROP TABLE IF EXISTS _tmp_inc_actions;
     ELSE
@@ -2023,8 +1995,8 @@ BEGIN
             v_nupd,
             v_ndel
         FROM
-            bde_ApplyTableDifferences(
-                p_upload, v_bdetable, v_tmptable, v_key_column
+            table_version.ver_apply_table_differences(
+                v_bdetable, v_tmptable, v_key_column
             );
         
         IF v_nins <> 0 OR v_nupd <> 0 OR v_ndel <> 0 THEN
@@ -2109,79 +2081,6 @@ END
 $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
-    OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION bde_ApplyTableDifferences(
-    p_upload           INTEGER,
-    p_original_table   REGCLASS,
-    p_new_table        REGCLASS,
-    p_key_column       NAME,
-    OUT number_inserts BIGINT,
-    OUT number_deletes BIGINT,
-    OUT number_updates BIGINT
-)
-AS $$
-DECLARE
-    v_nuniqf  BIGINT DEFAULT 0;
-BEGIN
-    number_inserts := 0;
-    number_deletes := 0;
-    number_updates := 0;
-    
-    RAISE INFO 'Generating difference data for %', p_original_table;
-    
-    CREATE TEMP TABLE table_diff AS
-    SELECT
-        T.id,
-        T.action
-    FROM
-        bde_control.bde_GetTableDifferences(
-            p_original_table,p_new_table,p_key_column
-        ) AS T
-    ORDER BY
-        T.action,
-        T.id;
-    
-    RAISE INFO 'Completed generating difference data for %', p_original_table;
-    
-    ALTER TABLE table_diff ADD PRIMARY KEY (id);
-    ANALYSE table_diff;
-    
-    IF EXISTS (SELECT * FROM table_diff LIMIT 1) THEN
-        SELECT count(*) INTO v_nuniqf FROM table_diff WHERE action='X';
-        
-        RAISE INFO 'Deleting from % using difference data', p_original_table;
-        
-        number_deletes := _bde_ApplyIncDelete(
-            p_original_table, 'table_diff', p_key_column
-        );
-        
-        RAISE INFO 'Updating % using difference data', p_original_table;
-        
-        number_updates :=  _bde_ApplyIncUpdate(
-            p_original_table, 'table_diff', p_new_table, p_key_column
-        );
-        
-        RAISE INFO 'Inserting into % using difference data', p_original_table;
-        
-        number_inserts := _bde_ApplyIncInsert(
-            p_original_table, 'table_diff', p_new_table, p_key_column
-        );
-        
-        RAISE INFO 'Finished updating % using difference data', p_original_table;
-
-        number_deletes := number_deletes - v_nuniqf;
-        number_inserts := number_inserts - v_nuniqf;
-        number_updates := number_updates + v_nuniqf;
-    END IF;
-    
-    DROP TABLE table_diff;
-    
-    RETURN;
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION bde_ApplyTableDifferences(INTEGER, REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION bde_CheckTableCount(
@@ -2331,10 +2230,10 @@ DECLARE
     v_count       BIGINT;
     v_sql         TEXT;
     v_unique_key  TEXT;
-    v_table_cols  bde_control.ATTRIBUTE[];
-    v_col         bde_control.ATTRIBUTE;
+    v_table_cols  table_version.ATTRIBUTE[];
+    v_col         table_version.ATTRIBUTE;
 BEGIN
-    v_table_cols := _bde_GetTableUniqueConstraintColumns(
+    v_table_cols := table_version._ver_get_table_unique_constraint_columns(
         p_bde_table,
         p_key_column,
         FALSE
@@ -2487,23 +2386,23 @@ DECLARE
     v_unique_compare1 TEXT = quote_literal('');
     v_unique_compare2 TEXT = quote_literal('');
     v_update_col_txt  TEXT;
-    v_table_cols      bde_control.ATTRIBUTE[];
-    v_col             bde_control.ATTRIBUTE;
+    v_table_cols      table_version.ATTRIBUTE[];
+    v_col             table_version.ATTRIBUTE;
 BEGIN
-    v_table_cols := _bde_GetTableColumns(p_bde_table);
+    v_table_cols := table_version._ver_get_table_columns(p_bde_table);
     IF v_table_cols IS NULL THEN
         RAISE EXCEPTION 'Could not find any table columns for %', p_bde_table;
     END IF;
-    v_null_compare1 = _bde_GetCompareSql(v_table_cols, 'INC_DAT');
-    v_null_compare2 = _bde_GetCompareSql(v_table_cols, 'CUR');
+    v_null_compare1 = table_version._ver_get_compare_sql(v_table_cols, 'INC_DAT');
+    v_null_compare2 = table_version._ver_get_compare_sql(v_table_cols, 'CUR');
     
-    v_table_cols := _bde_GetTableUniqueConstraintColumns(
+    v_table_cols := table_version._ver_get_table_unique_constraint_columns(
         p_bde_table,
         p_key_column
     );
     IF v_table_cols IS NOT NULL THEN
-        v_unique_compare1 = _bde_GetCompareSql(v_table_cols, 'INC_DAT');
-        v_unique_compare2 = _bde_GetCompareSql(v_table_cols, 'CUR');
+        v_unique_compare1 = table_version._ver_get_compare_sql(v_table_cols, 'INC_DAT');
+        v_unique_compare2 = table_version._ver_get_compare_sql(v_table_cols, 'CUR');
     END IF;
     
     -- Insert action of '0' for updates that don't change data
@@ -2544,128 +2443,6 @@ $$
 LANGUAGE plpgsql;
 
 ALTER FUNCTION _bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
-    OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION _bde_ApplyIncDelete(
-    p_delete_table REGCLASS,
-    p_inc_change_table NAME,
-    p_key_column NAME
-)
-RETURNS
-    BIGINT
-AS
-$$
-BEGIN
-    RETURN bde_ExecuteTemplate( $sql$
-        DELETE FROM %1% AS T
-        USING %2% AS INC
-        WHERE T.%3% = INC.id
-        AND  INC.action IN ('D','X')
-        $sql$,
-        ARRAY[p_delete_table::text,p_inc_change_table,quote_ident(p_key_column)]
-    );
-END;
-$$
-LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_ApplyIncDelete(REGCLASS, NAME, NAME) OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION _bde_ApplyIncUpdate(
-    p_update_table REGCLASS,
-    p_inc_change_table NAME,
-    p_inc_data_table REGCLASS,
-    p_key_column NAME
-)
-RETURNS
-    BIGINT
-AS
-$$
-DECLARE
-    v_sql TEXT;
-    v_update_col_txt TEXT;
-    v_table_cols bde_control.ATTRIBUTE[];
-    v_col bde_control.ATTRIBUTE;
-BEGIN
-    v_table_cols := _bde_GetTableColumns(p_update_table);
-    IF v_table_cols IS NULL THEN
-        RAISE EXCEPTION 'Could not find any table columns for %',
-            p_update_table;
-    END IF;
-    
-    v_update_col_txt := '';
-    FOR v_col IN SELECT * FROM unnest(v_table_cols) LOOP
-        IF v_update_col_txt != '' THEN
-            v_update_col_txt := v_update_col_txt || ',';
-        END IF;
-        v_update_col_txt := v_update_col_txt || quote_ident(v_col.att_name) ||
-            ' = NEW_DAT.' || quote_ident(v_col.att_name);
-    END LOOP;
-    
-    RETURN bde_ExecuteTemplate( $sql$
-        UPDATE %1% AS CUR
-        SET %2%
-        FROM %3% AS NEW_DAT,
-             %4% AS INC
-        WHERE INC.id = CUR.%5% 
-        AND   NEW_DAT.%5% = CUR.%5%
-        AND   INC.action = 'U'
-        $sql$,
-        ARRAY[
-            p_update_table::text,
-            v_update_col_txt,
-            p_inc_data_table::text,
-            p_inc_change_table,
-            quote_ident(p_key_column)
-        ]
-    );
-END;
-$$
-LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_ApplyIncUpdate(REGCLASS, NAME, REGCLASS, NAME)
-    OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION _bde_ApplyIncInsert(
-    p_insert_table REGCLASS,
-    p_inc_change_table NAME,
-    p_inc_data_table REGCLASS,
-    p_key_column NAME
-)
-RETURNS
-    TEXT
-AS
-$$
-DECLARE
-    v_table_cols text;
-BEGIN
-    v_table_cols := array_to_string(
-        _bde_GetQuotedTableColumnNames(p_insert_table),
-        ','
-    );
-    IF v_table_cols = '' THEN
-        RAISE EXCEPTION 'Could not find any table columns for %',
-            p_insert_table;
-    END IF;
-    
-    RETURN bde_ExecuteTemplate( $sql$
-        INSERT INTO %1% (%2%)
-        SELECT %2% FROM %3%
-        WHERE %4% IN
-          (SELECT id FROM %5% WHERE action IN ('I','X'))
-        $sql$,
-        ARRAY[
-            p_insert_table::text,
-            v_table_cols,
-            p_inc_data_table::text,
-            quote_ident(p_key_column),
-            p_inc_change_table
-        ]
-    );
-END;
-$$
-LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_ApplyIncInsert(REGCLASS, NAME, REGCLASS, NAME)
     OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION _bde_GetDependentObjectSql(
@@ -2833,7 +2610,11 @@ BEGIN
         SELECT pg_get_indexdef(indexrelid)
         FROM   pg_index
         WHERE  indrelid = p_bdetable
-        AND    NOT indisprimary
+        AND    indexrelid NOT IN (
+            SELECT conindid FROM pg_constraint
+            WHERE  conrelid = p_bdetable
+            AND    contype IN ('u', 'p')
+        )
     LOOP
         v_sql := regexp_replace(
             v_sql,E'(^.*\\sON\\s).*?(\\sUSING\\s.*$)',E'\\1' ||
@@ -3138,374 +2919,6 @@ LANGUAGE plpgsql;
 
 ALTER FUNCTION bde_TablesAffected(INTEGER, TEXT, TEXT) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_GetTableDifferences(
-    p_table1      REGCLASS,
-    p_table2      REGCLASS,
-    p_compare_key NAME
-)
-RETURNS TABLE(
-    action CHAR(1),
-    id     BIGINT
-)
-AS $$
-DECLARE
-    v_table_1_cols bde_control.ATTRIBUTE[];
-    v_table_1_uniq bde_control.ATTRIBUTE[];
-    v_table_2_cols bde_control.ATTRIBUTE[];
-    v_common_cols  bde_control.ATTRIBUTE[];
-    v_unique_cols  bde_control.ATTRIBUTE[];
-    v_sql          TEXT;
-    v_table_cur1   REFCURSOR;
-    v_table_cur2   REFCURSOR;
-    v_id1          INT8;
-    v_check1       TEXT;
-    v_uniq1        TEXT;
-    v_id2          INT8;
-    v_check2       TEXT;
-    v_uniq2        TEXT;
-    v_return       RECORD;
-    v_i            INT8;
-    v_diff_count   INT8;
-BEGIN
-    IF p_table1 = p_table2 THEN
-        RETURN;
-    END IF;
-
-    v_sql := '';
-
-    IF NOT bde_control.bde_TableKeyIsValid(p_table1, p_compare_key) THEN
-        RAISE EXCEPTION
-            '''%'' is not a unique non-composite integer column for %',
-            p_compare_key, CAST(p_table1 AS TEXT);
-    END IF;
-
-    IF NOT bde_control.bde_TableKeyIsValid(p_table2, p_compare_key) THEN
-        RAISE EXCEPTION
-            '''%'' is not a unique non-composite integer column for %',
-            p_compare_key, CAST(p_table2 AS TEXT);
-    END IF;
-    
-    SELECT bde_control._bde_GetTableColumns(p_table1)
-    INTO v_table_1_cols;
-    
-    SELECT bde_control._bde_GetTableColumns(p_table2)
-    INTO v_table_2_cols;
-    
-    SELECT bde_control._bde_GetTableUniqueConstraintColumns(p_table1)
-    INTO v_table_1_uniq;
-
-    SELECT ARRAY(
-        SELECT ROW(ATT.att_name, ATT.att_type, ATT.att_not_null) 
-        FROM   unnest(v_table_1_cols) AS ATT 
-        WHERE  ATT.att_name IN 
-            (SELECT (unnest(v_table_2_cols)).att_name)
-        AND ATT.att_name NOT IN
-            (SELECT (unnest(v_table_1_uniq)).att_name)
-        AND ATT.att_name <> p_compare_key
-    )
-    INTO v_common_cols;
-
-    SELECT ARRAY(
-        SELECT ROW(ATT.att_name, ATT.att_type, ATT.att_not_null) 
-        FROM   unnest(v_table_1_cols) AS ATT 
-        WHERE  ATT.att_name IN 
-            (SELECT (unnest(v_table_2_cols)).att_name)
-        AND ATT.att_name IN
-            (SELECT (unnest(v_table_1_uniq)).att_name)
-        AND ATT.att_name <> p_compare_key
-    )
-    INTO v_unique_cols;
-    
-    SELECT bde_control._bde_GetCompareSelectSql(
-        p_table1, p_compare_key, v_common_cols, v_unique_cols
-    )
-    INTO v_sql;
-    OPEN v_table_cur1 NO SCROLL FOR EXECUTE v_sql;
-    
-    SELECT bde_control._bde_GetCompareSelectSql(
-        p_table2, p_compare_key, v_common_cols, v_unique_cols
-    )
-    INTO v_sql;
-    OPEN v_table_cur2 NO SCROLL FOR EXECUTE v_sql;
-    v_sql := '';
-    
-    FETCH FIRST FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
-    FETCH FIRST FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
-    
-    v_i := 0;
-    v_diff_count := 0;
-    WHILE v_id1 IS NOT NULL AND v_id2 IS NOT NULL LOOP
-        IF v_id1 < v_id2 THEN
-            action := 'D';
-            id := v_id1;
-            v_diff_count := v_diff_count + 1;
-            RETURN NEXT;
-            FETCH NEXT FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
-            CONTINUE;
-        ELSIF v_id2 < v_id1 THEN
-            action := 'I';
-            id := v_id2;
-            v_diff_count := v_diff_count + 1;
-            RETURN NEXT;
-            FETCH NEXT FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
-            CONTINUE;
-        ELSIF v_uniq1 <> v_uniq2 THEN
-            action := 'X';
-            id := v_id1;
-            v_diff_count := v_diff_count + 1;
-            RETURN NEXT;
-        ELSIF v_check1 <> v_check2 THEN
-            action := 'U';
-            id := v_id1;
-            v_diff_count := v_diff_count + 1;
-            RETURN NEXT;
-        END IF;
-        FETCH NEXT FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
-        FETCH NEXT FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
-        v_i := v_i + 1;
-        IF (v_i % 100000 = 0) THEN
-            RAISE DEBUG 'Compared % records, % differences', v_i, v_diff_count;
-        END IF;
-    END LOOP;
-
-    WHILE v_id1 IS NOT NULL LOOP
-        action := 'D';
-        id := v_id1;
-        RETURN NEXT;
-        FETCH NEXT FROM v_table_cur1 INTO v_id1, v_check1, v_uniq1;
-    END LOOP;
-    
-    WHILE v_id2 IS NOT NULL LOOP
-        action := 'I';
-        id := v_id2;
-        RETURN NEXT;
-        FETCH NEXT FROM v_table_cur2 INTO v_id2, v_check2, v_uniq2;
-    END LOOP;
-    
-    CLOSE v_table_cur1;
-    CLOSE v_table_cur2;
-    
-    RETURN;
-EXCEPTION
-    WHEN others THEN
-        IF COALESCE(v_sql, '') <> '' THEN
-            v_sql := E'\nSQL: ' || v_sql;
-        END IF;
-        RAISE EXCEPTION E'Failed comparing tables\n%\nERROR: %', v_sql, SQLERRM;
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION bde_GetTableDifferences(REGCLASS, REGCLASS, NAME)
-    OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION bde_GetTableDifferences(REGCLASS, REGCLASS, NAME)
-    FROM PUBLIC;
-
--- Return a list of columns for a table as an array of ATTRIBUTE entries
-
-CREATE OR REPLACE FUNCTION _bde_GetTableColumns(
-    p_table REGCLASS
-)
-RETURNS bde_control.ATTRIBUTE[] AS
-$$
-DECLARE
-    p_columns bde_control.ATTRIBUTE[];
-BEGIN
-    SELECT
-        array_agg(ROW(ATT.attname, format_type(
-            ATT.atttypid, ATT.atttypmod), ATT.attnotnull)
-        )
-    INTO
-        p_columns
-    FROM
-        pg_attribute ATT
-    WHERE
-        ATT.attnum > 0 AND
-        NOT ATT.attisdropped AND
-        ATT.attrelid = p_table;
-    
-    RETURN p_columns;
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_GetTableColumns(REGCLASS) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _bde_GetTableColumns(REGCLASS)  FROM PUBLIC;
-
--- Return a list of columns subject to a unique constraint
--- for a table as an array of ATTRIBUTE entries.  The specified
--- key_column is excluded.
-
-CREATE OR REPLACE FUNCTION _bde_GetTableUniqueConstraintColumns(
-    p_table REGCLASS,
-    p_key_column NAME = NULL,
-    p_return_comp_keys BOOLEAN = TRUE
-)
-RETURNS bde_control.ATTRIBUTE[] AS
-$$
-DECLARE
-    v_columns bde_control.ATTRIBUTE[];
-BEGIN
-    SELECT
-        array_agg(ROW(attname, type, attnotnull))
-    INTO
-        v_columns
-    FROM
-        (
-        SELECT
-            ATT.attname,
-            format_type(ATT.atttypid, ATT.atttypmod) as type,
-            ATT.attnotnull
-        FROM
-            pg_index IDX,
-            pg_attribute ATT
-        WHERE
-            ATT.attrelid = p_table AND
-            (p_key_column IS NULL OR ATT.attname <> p_key_column) AND
-            IDX.indrelid = ATT.attrelid AND
-            IDX.indisunique = TRUE AND
-            IDX.indexprs IS NULL AND
-            IDX.indpred IS NULL AND
-            ATT.attnum IN (
-                SELECT IDX.indkey[i]
-                FROM   generate_series(0, IDX.indnatts) AS i
-                WHERE  (p_return_comp_keys OR array_length(IDX.indkey,1) = 1)
-            )
-        UNION
-        SELECT
-            ATT.attname,
-            format_type(ATT.atttypid, ATT.atttypmod) as type,
-            ATT.attnotnull
-        FROM
-            pg_attribute ATT
-        WHERE
-            ATT.attnum > 0 AND
-            (p_key_column IS NULL OR ATT.attname <> p_key_column) AND
-            NOT ATT.attisdropped AND
-            ATT.attrelid = p_table AND
-            ATT.attnum IN
-            (SELECT unnest(conkey)
-             FROM pg_constraint
-             WHERE 
-                conrelid = p_table AND
-                contype in ('p','u') AND
-                (p_return_comp_keys OR array_length(conkey,1) = 1))
-        ) AS ATT;
-    
-    RETURN v_columns;
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_GetTableUniqueConstraintColumns(REGCLASS, NAME, BOOLEAN)
-    OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _bde_GetTableUniqueConstraintColumns(REGCLASS, NAME, BOOLEAN)
-    FROM PUBLIC;
-
-CREATE OR REPLACE FUNCTION _bde_GetQuotedTableColumnNames(
-    p_table REGCLASS
-)
-RETURNS TEXT[] AS $$
-    SELECT
-        array_agg(quote_ident(ATT.attname))
-    FROM
-        pg_attribute ATT
-    WHERE
-        ATT.attnum > 0 AND
-        NOT ATT.attisdropped AND
-        ATT.attrelid = $1;
-$$ LANGUAGE sql;
-
-ALTER FUNCTION _bde_GetQuotedTableColumnNames(REGCLASS) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _bde_GetQuotedTableColumnNames(REGCLASS)  FROM PUBLIC;
-
-CREATE OR REPLACE FUNCTION _bde_GetCompareSelectSql(
-    p_table       REGCLASS,
-    p_key_column  NAME,
-    p_columns     bde_control.ATTRIBUTE[],
-    p_unique_cols bde_control.ATTRIBUTE[]
-)
-RETURNS TEXT AS 
-$$
-BEGIN
-    RETURN bde_ExpandTemplate( $sql$
-        SELECT 
-           %1% AS ID,
-           %2% AS check_sum,
-           %3% AS check_uniq
-        FROM 
-           %4% AS T
-        ORDER BY
-           %1% ASC
-        $sql$,
-        ARRAY[
-            quote_ident(p_key_column),
-            _bde_GetCompareSql(p_columns,'T'),
-            _bde_GetCompareSql(p_unique_cols,'T'),
-            p_table::text
-            ]);
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_GetCompareSelectSql(
-    REGCLASS,
-    NAME,
-    ATTRIBUTE[],
-    ATTRIBUTE[]
-)
-OWNER TO bde_dba;
-
-REVOKE ALL ON FUNCTION _bde_GetCompareSelectSql(
-    REGCLASS,
-    NAME,
-    ATTRIBUTE[],
-    ATTRIBUTE[]
-)  FROM PUBLIC;
-
-CREATE OR REPLACE FUNCTION _bde_GetCompareSql(
-    p_columns     bde_control.ATTRIBUTE[],
-    p_table_alias TEXT
-)
-RETURNS TEXT AS 
-$$
-DECLARE
-    v_sql          TEXT;
-    v_col_name     NAME;
-    v_col_type     TEXT;
-    v_col_not_null BOOLEAN;
-BEGIN
-    IF array_ndims(p_columns) IS NULL THEN
-        RETURN quote_literal('');
-    END IF;
-    v_sql := '';
-    FOR v_col_name, v_col_type, v_col_not_null IN
-        SELECT
-            att_name,
-            att_type,
-            att_not_null
-        FROM
-            unnest(p_columns)
-        ORDER BY
-            att_name,
-            att_type,
-            att_not_null
-    LOOP
-        IF v_sql != '' THEN
-            v_sql := v_sql || ' || ';
-        END IF;
-
-        IF v_col_not_null THEN
-            v_sql := v_sql || '''|V'' || ' || 'CAST(' || p_table_alias ||
-                '.' || quote_ident(v_col_name) || ' AS TEXT)';
-        ELSE
-            v_sql := v_sql || 'COALESCE(''V|'' || CAST(' || p_table_alias ||
-                '.' || quote_ident(v_col_name) || ' AS TEXT), ''|N'')';
-        END IF;
-    END LOOP;
-
-    RETURN v_sql;
-END;
-$$ LANGUAGE plpgsql;
-
-ALTER FUNCTION _bde_GetCompareSql(ATTRIBUTE[], TEXT) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION _bde_GetCompareSql(ATTRIBUTE[], TEXT)  FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION bde_TableKeyIsValid(
     p_table      REGCLASS,
