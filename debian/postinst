@@ -20,6 +20,27 @@ die()
     exit ${err_no:-$FAILURE}
 }
 
+has_extension()
+{
+	ext=$1
+	echo "$(su -l $PG_USER -c """psql -t -A -c 'SELECT extname FROM pg_extension WHERE extname = \$\$$ext\$\$' $PG_USER""")"
+}
+
+create_extension()
+{
+	ext=$1
+	db=$2
+	schema=$3
+	command="CREATE EXTENSION $ext"
+	if [ -z "Sschema" ]; then
+		command="$command SCHEMA $schema"
+	fi
+	rc=$(sudo su -l $PG_USER -c "psql -d $db -c '$command' &> $TMPFILE; echo \$?")
+	if [ $rc -ne $SUCCESS ] ; then
+		die "Couldn't install $ext extension" $rc
+	fi
+}
+
 # Make sure the database is installed and running.
 
 BDE_PACKAGE=linz-bde-uploader
@@ -32,9 +53,6 @@ DB=linz_db
 PG_SERVICE=postgresql
 PG_INIT=/etc/init.d/$PG_SERVICE
 USE_SERVICE=0
-HAS_POSTGIS_EXT=
-HAS_ADMIN_EXT=
-HAS_UNACCENT_EXT=
 TMPFILE=`mktemp -t $BDE_PACKAGE.XXXXXX` || { echo "$0: Cannot create temporary file" >&2; exit 1;  }
 chmod 0777 $TMPFILE
 
@@ -68,8 +86,8 @@ fi
 
 PG_VERSION="$(su -l $PG_USER -c """psql -t -A postgres -c 'SHOW server_version_num'""")"
 
-if [ $PG_VERSION -lt 90100 ]; then
-    die "Need to run this install script against PostgreSQL 9.1 or higher"
+if [ $PG_VERSION -lt 90300 ]; then
+    die "Need to run this install script against PostgreSQL 9.3 or higher"
 fi
     
 # create bde database if it does not exists
@@ -85,19 +103,26 @@ EXTENSIONS="
 	plperl
 	unaccent
 	postgis
-	dbpatch
 	table_version
 "
 for EXT in $EXTENSIONS
 do
-	rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION $EXT' &> $TMPFILE; echo \$?")
-	HAS_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT extname FROM pg_extension WHERE extname = \$\$$EXT\$\$' $PG_USER""")"
+	HAS_EXT=$(has_extension $EXT)
 	if [ -n "$HAS_EXT" ]; then
-		if [ $rc -ne $SUCCESS ] ; then
-			die "Could install $EXT extension" $rc
-		fi
+		create_extension $EXT $DB 
 	fi
 done
+
+# dbpatch patch requires special schema due to legacy usage.
+HAS_EXT=$(has_extension dbpatch)
+if [ -n "$HAS_EXT" ]; then
+	rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE SCHEMA IF NOT EXISTS _patches;' &> $TMPFILE; echo \$?")
+	create_extension dbpatch $DB _patches
+	if [ $rc -ne $SUCCESS ] ; then
+		cat $TMPFILE
+		die "Couldn't create _patches schema SQL file" $rc
+	fi
+fi
 
 #ensure patches.sql is the last file in this array
 SQL_FILES="
@@ -130,7 +155,7 @@ if getent group $OLD_LDS_USER >/dev/null; then
 	usermod -l $BDE_USER $OLD_LDS_USER
 	groupmod -n $BDE_USER $OLD_LDS_USER
 	usermod -m -d /home/$BDE_USER $BDE_USER
-	usermod -c “BDE Maintainer” $BDE_USER
+	usermod -c "BDE Maintainer" $BDE_USER
 fi
 
 # creating BDE user if it doesn't exist
@@ -169,3 +194,4 @@ clean_up
 #DEBHELPER#
 
 exit 0
+
