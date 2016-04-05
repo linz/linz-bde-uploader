@@ -23,7 +23,8 @@ die()
 has_extension()
 {
 	ext=$1
-	echo "$(su -l $PG_USER -c """psql -t -A -c 'SELECT extname FROM pg_extension WHERE extname = \$\$$ext\$\$' $PG_USER""")"
+	db=$2
+	echo "$(su -l $PG_USER -c """psql -t -A -c 'SELECT extname FROM pg_extension WHERE extname = \$\$$ext\$\$' $db""")"
 }
 
 create_extension()
@@ -32,7 +33,7 @@ create_extension()
 	db=$2
 	schema=$3
 	command="CREATE EXTENSION $ext"
-	if [ -z "Sschema" ]; then
+	if [ -n "$schema" ]; then
 		command="$command SCHEMA $schema"
 	fi
 	rc=$(sudo su -l $PG_USER -c "psql -d $db -c '$command' &> $TMPFILE; echo \$?")
@@ -107,15 +108,15 @@ EXTENSIONS="
 "
 for EXT in $EXTENSIONS
 do
-	HAS_EXT=$(has_extension $EXT)
-	if [ -n "$HAS_EXT" ]; then
+	HAS_EXT=$(has_extension $EXT $DB)
+	if [ -z "$HAS_EXT" ]; then
 		create_extension $EXT $DB 
 	fi
 done
 
 # dbpatch patch requires special schema due to legacy usage.
-HAS_EXT=$(has_extension dbpatch)
-if [ -n "$HAS_EXT" ]; then
+HAS_EXT=$(has_extension dbpatch $DB)
+if [ -z "$HAS_EXT" ]; then
 	rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE SCHEMA IF NOT EXISTS _patches;' &> $TMPFILE; echo \$?")
 	create_extension dbpatch $DB _patches
 	if [ $rc -ne $SUCCESS ] ; then
@@ -151,7 +152,7 @@ done
 # if old lds_bde user exists rename it to bde
 OLD_LDS_USER=lds_bde
 if getent group $OLD_LDS_USER >/dev/null; then
-	killall -u $OLD_LDS_USER
+	killall -u $OLD_LDS_USER 2>/dev/null || true
 	usermod -l $BDE_USER $OLD_LDS_USER
 	groupmod -n $BDE_USER $OLD_LDS_USER
 	usermod -m -d /home/$BDE_USER $BDE_USER
