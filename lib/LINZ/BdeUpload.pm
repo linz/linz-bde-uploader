@@ -1098,11 +1098,14 @@ sub FireEvent
             $event_hook =~ s/\{id\}/$upload_id/g;
             $event_hook =~ s/\{level\}/$level/g;
             $event_hook =~ s/\{dataset\}/$dataset/g;
-            DEBUG("Running $event hook: " . $event_hook);
-            my $rv = system($event_hook);
+            INFO("Running $event hook: " . $event_hook);
+            my $event_output = qx($event_hook 2>&1);
+            my $rv=$?
+            $rv = ($rv == -1 ? $rv : $rv>>8);  # see system()
+            INFO("Event $event hook result: $rv\n" . $event_output);
             if ($rv != 0)
             {
-                ERROR("Failed to run $event hook: " . $event_hook . ". Return status $rv");
+                ERROR("Failed to run $event hook: " . $event_hook . ". Return status $rv. Output:\n" . $event_output);
             }
         }
     }
