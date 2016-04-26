@@ -29,7 +29,7 @@ Depends: ${misc:Depends}, ${perl:Depends},
  postgresql-client-9.3,
  postgresql-plperl-9.3,
  postgresql-contrib-9.3,
- postgresql-9.3-postgis-2.1,
+ postgresql-9.3-postgis-2.2,
  postgresql-9.3-tableversion,
  postgresql-9.3-dbpatch
 Recommends:
