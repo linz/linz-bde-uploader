@@ -20,21 +20,41 @@ die()
     exit ${err_no:-$FAILURE}
 }
 
+has_extension()
+{
+	ext=$1
+	db=$2
+	echo "$(su -l $PG_USER -c """psql -t -A -c 'SELECT extname FROM pg_extension WHERE extname = \$\$$ext\$\$' $db""")"
+}
+
+create_extension()
+{
+	ext=$1
+	db=$2
+	schema=$3
+	command="CREATE EXTENSION $ext"
+	if [ -n "$schema" ]; then
+		command="$command SCHEMA $schema"
+	fi
+	rc=$(sudo su -l $PG_USER -c "psql -d $db -c '$command' &> $TMPFILE; echo \$?")
+	if [ $rc -ne $SUCCESS ] ; then
+		die "Couldn't install $ext extension" $rc
+	fi
+}
+
 # Make sure the database is installed and running.
 
-LDS_PACKAGE=linz-bde-uploader
-LDS_SHARE_DIR=/usr/share/$LDS_PACKAGE
-LDS_LOG_DIR=/var/log/$LDS_PACKAGE
-LDS_USER=lds_bde
+BDE_PACKAGE=linz-bde-uploader
+BDE_SHARE_DIR=/usr/share/$BDE_PACKAGE
+BDE_LOG_DIR=/var/log/$BDE_PACKAGE
+BDE_ETC_DIR=/etc/$BDE_PACKAGE
+BDE_USER=bde
 PG_USER=postgres
-DB=bde_db
+DB=linz_db
 PG_SERVICE=postgresql
 PG_INIT=/etc/init.d/$PG_SERVICE
 USE_SERVICE=0
-HAS_POSTGIS_EXT=
-HAS_ADMIN_EXT=
-HAS_UNACCENT_EXT=
-TMPFILE=`mktemp -t $LDS_PACKAGE.XXXXXX` || { echo "$0: Cannot create temporary file" >&2; exit 1;  }
+TMPFILE=`mktemp -t $BDE_PACKAGE.XXXXXX` || { echo "$0: Cannot create temporary file" >&2; exit 1;  }
 chmod 0777 $TMPFILE
 
 if [ -x /usr/sbin/service ]; then
@@ -66,6 +86,10 @@ if [ $rc -ne $SUCCESS ]; then
 fi
 
 PG_VERSION="$(su -l $PG_USER -c """psql -t -A postgres -c 'SHOW server_version_num'""")"
+
+if [ $PG_VERSION -lt 90300 ]; then
+    die "Need to run this install script against PostgreSQL 9.3 or higher"
+fi
     
 # create bde database if it does not exists
 if ! su -l $PG_USER -c "psql -t -A --list | grep $DB"; then
@@ -73,90 +97,47 @@ if ! su -l $PG_USER -c "psql -t -A --list | grep $DB"; then
     if [ $rc -ne $SUCCESS ] ; then
         die "Could not create database" $rc
     fi
-    
-    rc=$(sudo su -l $PG_USER -c "createlang plperlu $DB &> $TMPFILE; echo \$?")
-    if [ $rc -ne $SUCCESS ] ; then
-        die "Could not install plperlu database language" $rc
-    fi
-    
-    rc=$(sudo su -l $PG_USER -c "createlang plperl $DB &> $TMPFILE; echo \$?")
-    if [ $rc -ne $SUCCESS ] ; then
-        die "Could not install plperl database language" $rc
-    fi
-    
-    if [ $PG_VERSION -gt 90100 ]; then
-        HAS_POSTGIS_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$postgis\$\$' $PG_USER""")"
-        HAS_ADMIN_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$adminpack\$\$' $PG_USER""")"
-        HAS_UNACCENT_EXT="$(su -l $PG_USER -c """psql -t -A -c 'SELECT name FROM pg_available_extensions WHERE name = \$\$unaccent\$\$' $PG_USER""")"
-    fi
-    
-    if [ -n "$HAS_ADMIN_EXT" ]; then
-        rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION adminpack' &> $TMPFILE; echo \$?")
-        if [ $rc -ne $SUCCESS ] ; then
-            die "Could not install adminpack functions" $rc
-        fi
-    else
-        PG_ADMINPACK=/usr/share/postgresql/9.0/contrib/adminpack.sql
-        if [ -f $PG_ADMINPACK ]; then
-            rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $PG_ADMINPACK &> $TMPFILE; echo \$?")
-            if [ $rc -ne $SUCCESS ] ; then
-                die "Could not install database admin pack" $rc
-            fi
-        fi
-    fi
-    
-    if [ -n "$HAS_UNACCENT_EXT" ]; then
-        rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION unaccent' &> $TMPFILE; echo \$?")
-        if [ $rc -ne $SUCCESS ] ; then
-            die "Could not install unaccent extension" $rc
-        fi
-    else
-        PG_UNACCENT=/usr/share/postgresql/9.0/contrib/unaccent.sql
-        if [ -f $PG_UNACCENT ]; then
-            rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $PG_UNACCENT &> $TMPFILE; echo \$?")
-            if [ $rc -ne $SUCCESS ] ; then
-                die "Could not install unaccent function" $rc
-            fi
-        fi
-    fi
-    
-    if [ -n "$HAS_POSTGIS_EXT" ]; then
-        rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE EXTENSION postgis' &> $TMPFILE; echo \$?")
-        if [ $rc -ne $SUCCESS ] ; then
-            die "Could install postgis functions" $rc
-        fi
-    else
-        # install postgis 1.5
-        POSTGIS_INSTALL_FILE=/usr/share/postgresql/9.0/contrib/postgis-1.5/postgis.sql
-        rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $POSTGIS_INSTALL_FILE &> $TMPFILE; echo \$?")
-        if [ $rc -ne $SUCCESS ] ; then
-            die "Could install postgis functions" $rc
-        fi
-        
-        POSTGIS_SRS_FILE=/usr/share/postgresql/9.0/contrib/postgis-1.5/postgis.sql
-        rc=$(sudo su -l $PG_USER -c "psql -v ON_ERROR_STOP=TRUE -d $DB -f $POSTGIS_SRS_FILE &> $TMPFILE; echo \$?")
-        if [ $rc -ne $SUCCESS ] ; then
-            die "Could install postgis SRS data" $rc
-        fi
-    fi
+fi
+
+EXTENSIONS="
+	plperlu
+	plperl
+	unaccent
+	postgis
+	table_version
+"
+for EXT in $EXTENSIONS
+do
+	HAS_EXT=$(has_extension $EXT $DB)
+	if [ -z "$HAS_EXT" ]; then
+		create_extension $EXT $DB 
+	fi
+done
+
+# dbpatch patch requires special schema due to legacy usage.
+HAS_EXT=$(has_extension dbpatch $DB)
+if [ -z "$HAS_EXT" ]; then
+	rc=$(sudo su -l $PG_USER -c "psql -d $DB -c 'CREATE SCHEMA IF NOT EXISTS _patches;' &> $TMPFILE; echo \$?")
+	create_extension dbpatch $DB _patches
+	if [ $rc -ne $SUCCESS ] ; then
+		cat $TMPFILE
+		die "Couldn't create _patches schema SQL file" $rc
+	fi
 fi
 
 #ensure patches.sql is the last file in this array
 SQL_FILES="
-    $LDS_SHARE_DIR/sql/bde_roles.sql
-    $LDS_SHARE_DIR/sql/bde_schema.sql
-    $LDS_SHARE_DIR/sql/bde_functions.sql
-    $LDS_SHARE_DIR/sql/table_version_tables.sql
-    $LDS_SHARE_DIR/sql/table_version_functions.sql
-    $LDS_SHARE_DIR/sql/bde_control_tables.sql
-    $LDS_SHARE_DIR/sql/bde_control_functions.sql
-    $LDS_SHARE_DIR/sql/lds_layer_tables.sql
-    $LDS_SHARE_DIR/sql/lds_layer_functions.sql
-    $LDS_SHARE_DIR/sql/bde_ext_schema.sql
-    $LDS_SHARE_DIR/sql/bde_ext_functions.sql
-    $LDS_SHARE_DIR/sql/create_table_polygon_grid.sql
-    $LDS_SHARE_DIR/sql/patch_management.sql
-    $LDS_SHARE_DIR/sql/patches.sql
+    $BDE_SHARE_DIR/sql/bde_roles.sql
+    $BDE_SHARE_DIR/sql/bde_schema.sql
+    $BDE_SHARE_DIR/sql/bde_functions.sql
+    $BDE_SHARE_DIR/sql/bde_control_tables.sql
+    $BDE_SHARE_DIR/sql/bde_control_functions.sql
+    $BDE_SHARE_DIR/sql/lds_layer_tables.sql
+    $BDE_SHARE_DIR/sql/lds_layer_functions.sql
+    $BDE_SHARE_DIR/sql/bde_ext_schema.sql
+    $BDE_SHARE_DIR/sql/bde_ext_functions.sql
+    $BDE_SHARE_DIR/sql/create_table_polygon_grid.sql
+    $BDE_SHARE_DIR/sql/patches.sql
 "
 
 for SQL_FILE in $SQL_FILES
@@ -168,34 +149,43 @@ do
     fi
 done
 
-# creating lds user group if it isn't already there
-if ! getent group $LDS_USER >/dev/null; then
-    addgroup --group $LDS_USER >/dev/null
+# if old lds_bde user exists rename it to bde
+OLD_LDS_USER=lds_bde
+if getent group $OLD_LDS_USER >/dev/null; then
+	killall -u $OLD_LDS_USER 2>/dev/null || true
+	usermod -l $BDE_USER $OLD_LDS_USER
+	groupmod -n $BDE_USER $OLD_LDS_USER
+	usermod -m -d /home/$BDE_USER $BDE_USER
+	usermod -c "BDE Maintainer" $BDE_USER
 fi
 
-# creating lds user if he isn't already there
-if ! getent passwd $LDS_USER >/dev/null; then
+# creating BDE user if it doesn't exist
+if ! getent passwd $BDE_USER >/dev/null; then
         adduser \
           --system \
-          --ingroup $LDS_USER \
-          --gecos "LDS BDE Maintainer" \
-        $LDS_USER  >/dev/null
+          --ingroup $BDE_USER \
+          --gecos "BDE Maintainer" \
+        $BDE_USER  >/dev/null
 fi
 
-if ! su -l $PG_USER -c "psql -t -c \"select 1 from pg_roles where rolname = '$LDS_USER' AND rolcanlogin = TRUE\"" | grep 1; then
-    # Create $LDS_USER user without password
-    su -l $PG_USER -c "psql -c 'CREATE ROLE $LDS_USER LOGIN NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE'"
-    su -l $PG_USER -c "psql -c 'ALTER ROLE $LDS_USER SET search_path=bde, bde_control, lds, table_version, public'"
-    su -l $PG_USER -c "psql -c 'GRANT bde_dba TO $LDS_USER'";
+if ! su -l $PG_USER -c "psql -t -c \"select 1 from pg_roles where rolname = '$BDE_USER' AND rolcanlogin = TRUE\"" | grep 1; then
+    # Create $BDE_USER user without password
+    su -l $PG_USER -c "psql -c 'CREATE ROLE $BDE_USER LOGIN NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE'"
+    su -l $PG_USER -c "psql -c 'ALTER ROLE $BDE_USER SET search_path=bde, bde_control, lds, table_version, public'"
+    su -l $PG_USER -c "psql -c 'GRANT bde_dba TO $BDE_USER'";
 fi;
 
 
 # now create log directory if it does not exist.
-if [ ! -d $LDS_LOG_DIR ]; then
-    mkdir -p $LDS_LOG_DIR
+if [ ! -d $BDE_LOG_DIR ]; then
+    mkdir -p $BDE_LOG_DIR
 fi
-chown -R $LDS_USER:adm $LDS_LOG_DIR;
-chmod 0755 $LDS_LOG_DIR;
+chown -R $BDE_USER:adm $BDE_LOG_DIR;
+chmod 0755 $BDE_LOG_DIR;
+
+# allow bde group to edit files in etc directory
+chmod 0774 $BDE_LOG_DIR;
+chown -R root:bde $BDE_ETC_DIR
 
 clean_up
 
@@ -205,3 +195,4 @@ clean_up
 #DEBHELPER#
 
 exit 0
+

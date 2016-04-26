@@ -1951,3 +1951,14 @@ $$
 '
 );
 
+SELECT _patches.apply_patch(
+    'BDE - 1.6.0: Migrate table versioning function to new extension',
+    '
+DO $PATCH$
+BEGIN
+    DROP TYPE IF EXISTS bde_control.ATTRIBUTE CASCADE;
+END;
+$PATCH$
+'
+);
+

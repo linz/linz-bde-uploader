@@ -4,7 +4,7 @@ linz_bde_loader is a programme for loading LINZ BDE files into a PostgreSQL
 database. linz_bde_uploader has the ability to load full and incremental table
 Landonline BDE loads, as well as manage versioning information.
 
-Copyright 2011 Crown copyright (c) Land Information New Zealand and the New
+Copyright 2016 Crown copyright (c) Land Information New Zealand and the New
 Zealand Government.
 
 ## Requirements
@@ -20,8 +20,10 @@ Zealand Government.
     - Log::Dispatch::FileRotate
     - Log::Dispatch::Email::MailSender
     - Try::Tiny
-* PostgreSQL 9.0 or greater, plus
+* PostgreSQL 9.1 or greater, plus
     - Postgis 2.X
+    - PostgreSQL table_version extension
+    - PostgreSQL dbpatch extension
 * linz_bde_copy, plus
     - zlib library for building
 
@@ -81,6 +83,11 @@ Next PostGIS is required to be installed into the database.
 
     psql -d bde_db -c "CREATE EXTENSION postgis"
 
+To support upgrading the database the following extension is required:
+
+    psql -d bde_db -c "CREATE EXTENSION dbpatch"
+
+    
 Next the database needs to be configured for uploading BDE data. This is setup
 with the following series of scripts:
 
@@ -88,35 +95,35 @@ with the following series of scripts:
     psql -d bde_db -f sql/bde_schema.sql
     psql -d bde_db -f sql/bde_schema_index.sql
     psql -d bde_db -f sql/bde_functions.sql
-    psql -d bde_db -f sql/table_version_tables.sql
-    psql -d bde_db -f sql/table_version_functions.sql
     psql -d bde_db -f sql/bde_control_tables.sql
     psql -d bde_db -f sql/bde_control_functions.sql
+    psql -d bde_db -f sql/patches.sql
+
 
 Also if you want to enable versioning on the BDE tables the following scripts
 need to be run:
 
-    psql -d bde_db -f sql/lds_layer_tables.sql
-    psql -d bde_db -f sql/lds_layer_functions.sql
+    psql -d bde_db -c "CREATE EXTENSION table_version"
+    psql -d bde_db -f sql/version_bde_tables.sql
 
 Lastly the PostgreSQL user account for linz_bde_uploader needs to be created. On
 LINUX it is best to first create a system user account as well so ident
 authenication can be used.
 
-    adduser --system --gecos "LDS BDE Maintainer" lds_bde
+    adduser --system --gecos "BDE Maintainer" bde
     
-The lds_bde PostgreSQL user account needs to have bde_dba rights, but does not
+The bde PostgreSQL user account needs to have bde_dba rights, but does not
 need to have superuser rights by default. An example SQL create user script
 could look like:
     
     DO $$
     BEGIN
     
-    IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'lds_bde') THEN
-        CREATE ROLE lds_bde LOGIN
+    IF NOT EXISTS (SELECT * FROM pg_roles where rolname = 'bde') THEN
+        CREATE ROLE bde LOGIN
               NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
-        ALTER ROLE lds_bde SET search_path=bde, bde_control, lds, public;
-        GRANT bde_dba TO lds_bde;
+        ALTER ROLE bde SET search_path=bde, bde_control, lds, public;
+        GRANT bde_dba TO bde;
     END IF;
     
     END
