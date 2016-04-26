@@ -1100,7 +1100,7 @@ sub FireEvent
             $event_hook =~ s/\{dataset\}/$dataset/g;
             INFO("Running $event hook: " . $event_hook);
             my $event_output = qx($event_hook 2>&1);
-            my $rv=$?
+            my $rv=$?;
             $rv = ($rv == -1 ? $rv : $rv>>8);  # see system()
             INFO("Event $event hook result: $rv\n" . $event_output);
             if ($rv != 0)
