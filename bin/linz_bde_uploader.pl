@@ -19,7 +19,7 @@
 use strict;  
 
 # TODO need to update this from git describe
-our $VERSION = '1.5.8';
+our $VERSION = 'dev';
 
 use FindBin;
 use lib $FindBin::Bin;
@@ -34,8 +34,6 @@ use LINZ::Config;
 
 $SIG{INT}  = \&signal_handler;
 $SIG{TERM} = \&signal_handler;
-
-@ARGV || help(0);
 
 # Main program controls
 
@@ -58,6 +56,7 @@ my $listing_file = '';
 my $enddate = '';         # Only use files before this date
 my $maintain_db = 0;      # run database maintain after run.
 my $enable_hooks = 0;     # if enabled will run any event hooks defined in the config
+my $print_version = 0;
 my $logger;
 my $upload;
 
@@ -81,10 +80,17 @@ GetOptions (
     "listing_file|l=s" => \$listing_file,
     "enable-hooks|e!" => \$enable_hooks,
     "verbose|v" => \$verbose,
+    "version" => \$print_version,
     )
     || help(0);
 
 help(1) if $showhelp;
+
+if ($print_version) 
+{
+    print "$VERSION\n";
+    exit(0);
+}
 
 if($apply_level0_inc && !$apply_level0)
 {
