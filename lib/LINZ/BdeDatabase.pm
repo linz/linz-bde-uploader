@@ -14,7 +14,7 @@
 ################################################################################
 
 use strict;
-use DBI;
+use warnings;
 
 =head1 LINZ::BdeDatabase
 
@@ -172,14 +172,6 @@ job is cleaned up.
 
 Will run garbage collection and analyse on the BDE database.
 
-=item $db->set_error
-
-Set the database upload in error
-
-=item $db->clear_error
-
-Clears any set database upload error
-
 =item $success = $db->beginTable($table_name)
 
 Starts a load for a table. If the table transaction option is set the cfg then a
@@ -218,7 +210,15 @@ rolled back.
 package LINZ::BdeDatabase;
 
 use Log::Log4perl qw(:easy :levels get_logger);
-use fields qw{_connection _user _pwd _dbh _pg_server_version _error _startSql _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId _overrideLocks _usetbltransaction _usedstransaction _intransaction _locktimeout _allowConcurrent schema uploadId stack};
+use fields qw{
+    _connection _user _pwd _dbh _pg_server_version _startSql
+    _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId
+    _overrideLocks _usetbltransaction _usedstransaction _intransaction
+    _locktimeout _allowConcurrent schema uploadId stack
+};
+
+use Try::Tiny;
+use DBI;
 
 our @sqlFuncs = qw{
     addTable
@@ -296,7 +296,6 @@ sub new
     $self->{_usedstransaction} = $cfg->use_dataset_transaction(1) ? 1 : 0;
     $self->{_locktimeout} = $cfg->table_exclusive_lock_timeout(60)+0;
     $self->{_allowConcurrent} = $cfg->allow_concurrent_uploads(0);
-    $self->{_error} = 0;
 
     $self->{schema} = $cfg->bde_schema;
 
@@ -342,7 +341,7 @@ sub new
                 "you are connected to a read-only slave";
         }
     }
-
+    
     $dbh->do("set search_path to ".$self->{_dbschema}.", public");
     my $schema2 = $dbh->selectrow_array("SELECT bde_CheckSchemaName(?)",{},
         $self->{_dbschema});
@@ -365,7 +364,6 @@ sub new
 sub DESTROY
 {
     my($self) = @_;
-    $self->finishJob;
     if( $self->_dbh )
     {
         $self->_commitTransaction;
@@ -405,31 +403,38 @@ sub maintain
 
 sub finishJob
 {
-    my ($self) = @_;
+    my $self = shift;
+    my $error = shift;
     return if ! $self->jobCreated;
-    eval
+    if ($error)
     {
-        $self->_runFinishSql;
-    };
-    if ($@)
-    {
-        ERROR("Could not run finish SQL, transaction will be rolled back: $@");
+        ERROR("Could not complete the transaction, the job will be rolled back: $error");
         $self->_rollbackTransaction;
+    }
+    else
+    {
+        try
+        {
+            $self->_runFinishSql;
+        }
+        catch
+        {
+            ERROR("Could not run finish SQL, transaction will be rolled back: $_");
+            $self->_rollbackTransaction;
+        };
     }
     
-    eval
+    try
     {
-        $self->finishUpload($self->{_error});
-    };
-    if ($@)
-    {
-        ERROR("Could not finish job transaction will be rolled back: $@");
-        $self->_rollbackTransaction;
-        $self->finishUpload($self->{_error});
+        $self->finishUpload($error ? 1: 0);
     }
+    catch
+    {
+        ERROR("Could not finish the job upload: $_");
+    };
     
     my $msg = 'Job ' . $self->{uploadId} . ' finished ' .
-        ($self->{_error} ? 'with errors' : 'successfully');
+        ($error ? 'with errors' : 'successfully');
     INFO($msg);
     $self->{uploadId} = undef;
 }
@@ -503,18 +508,6 @@ sub rollBackDataset
     return $result;
 }
 
-sub set_error
-{
-    my $self = shift;
-    $self->{_error} = 1;
-}
-
-sub clear_error
-{
-    my $self = shift;
-    $self->{_error} = 0;
-}
-
 sub schema { return $_[0]->{schema} }
 
 sub _dbh { return $_[0]->{_dbh} }
@@ -534,14 +527,14 @@ sub _runSQLBlock
             }
             $cmd =~ s/\{id\}/$id/g;
         }
-        eval
+        try
         {
             $self->_dbh_do($cmd);
-        };
-        if ($@)
+        }
+        catch
         {
             die "Cannot run SQL command: $cmd\n", $self->_dbh->errstr;
-        }
+        };
     }
 }
 
@@ -575,14 +568,14 @@ sub _runFinishSql
             next if ! $self->tablesAffected($test,$tables);
         }
         $cmd =~ s/\{id\}/$id/g;
-        eval
+        try
         {
             $self->_dbh_do($cmd);
-        };
-        if ($@)
+        }
+        catch
         {
             die "Cannot run finishing SQL: $cmd: ", $self->_dbh->errstr;
-        }
+        };
     }
 }
 
@@ -607,7 +600,6 @@ sub _setupFunctions
         next if ! $name;
         $name =~ s/^bde_//i;
 
-        my $paramlist = 
         my $sqlf = $func.'('.join(",",("?")x$nparam).')';
         $sqlf = '* FROM '.$sqlf if ($returntype eq 'RECORD' || $returntype eq 'TABLE');
         $sqlf = 'SELECT '.$sqlf;
@@ -649,7 +641,7 @@ sub _executeFunction
         if scalar(@$params) != $nparam;
 
     my $result;
-    eval
+    try
     {
         $self->_setDbMessageHandler;
         if( $returntype eq 'RECORD' )
@@ -674,12 +666,12 @@ sub _executeFunction
             ($result) = $self->_dbh->selectrow_array($sql,{},@$params);
         }
         $self->_clearDbMessageHandler;
-    };
-    if( $@ )
+    }
+    catch
     {
         my $error = $self->_dbh->errstr;
         die "Database function $name failed: $error";
-    }
+    };
     return $result; 
 }
 
@@ -702,21 +694,25 @@ sub _dbMessageHandler
     $db_message =~ s/\n/ /g;
     my ($type, $text, $extra) = $db_message
         =~ /^(\w+)\:(?:\s+0{5}\:)?\s+(.*?)\s*((?:CONTEXT|LOCATION)\:(?:.*))?$/;
-    my $logger = get_logger();
-    my $msg_func = $pg_log_message_map{$type};
-    if ($msg_func)
+    if ($type)
     {
-        $logger->$msg_func($text);
-        if ($extra)
+        my $logger = get_logger();
+        my $msg_func = $pg_log_message_map{$type};
+        if ($msg_func)
         {
-            my $level = $msg_func eq 'warn' ? $msg_func : 'debug';
-            $logger->$level($extra);
+            $logger->$msg_func($text);
+            if ($extra)
+            {
+                my $level = $msg_func eq 'warn' ? $msg_func : 'debug';
+                $logger->$level($extra);
+            }
+        }
+        else
+        {
+            die $db_message;
         }
     }
-    else
-    {
-        die $db_message;
-    }
+    return;
 }
 
 sub _beginTransaction
@@ -742,7 +738,7 @@ sub _rollbackTransaction
 {
     my $self = shift;
     my $result;
-    eval
+    try
     {
         $result = $self->_dbh->rollback;
     };

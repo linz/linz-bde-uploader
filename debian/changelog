@@ -1,3 +1,223 @@
+linz-bde-uploader (1.5.8-1) trusty; urgency=medium
+
+  [ Robert Coup ]
+  * Improve logging of event hooks. 
+    - Capture stdout and stderr for logging 
+    - Return correct return code (high 8 bits of Perl's value) 
+    - Increase default logging around hook execution
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 13 Apr 2016 18:06:56 +1200
+
+linz-bde-uploader (1.5.7) trusty; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Fix missing required package in build script
+
+  [ billgeo ]
+  * added pending parcels import to LDS schema
+  * Removed unecessary pending parcels layers
+
+  [ Bill Nelson ]
+
+ -- Bill Nelson <bmnelson@linz.govt.nz>  Fri, 01 Apr 2016 14:46:27 +1300
+
+linz-bde-uploader (1.5.6-1) trusty; urgency=medium
+
+  [ Joseph Ramsay ]
+  * master->trusty merge and control edits
+
+  [ Jeremy Palmer ]
+  * fix bde primary key fix that was not picked up in the migration
+  * Move readme to markdown version. Updated a few install notes
+  * Fix readme formatting
+
+  [ Chris Crook ]
+  * Updating lds.geodetic_network_marks layer to fix CHN, CVN, and NHN networks
+
+ -- Chris Crook <ccrook@linz.govt.nz>  Wed, 04 Nov 2015 09:54:08 +1300
+
+linz-bde-uploader (1.5.5-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Ensure bad parcel statuses can not flow through to product generation
+
+ -- Jeremy <jpalmer@linz.govt.nz>  Tue, 15 Sep 2015 23:19:34 +1200
+
+linz-bde-uploader (1.5.4-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Added debian packaging for Trusty
+  * Added event hooks functionality. Also reworked error handling to clean-up legacy exception handling put in place for Win32 under perl 5.8
+
+  [ Robert Coup ]
+  * Include Try::Tiny in Debian packaging
+
+  [ billgeo ]
+  * Changing owners field from VARCHAR to TEXT to prevent data overflows
+
+  [ Jeremy Palmer ]
+  * Improve patch from cbd1015 to use table version API
+  * Improve event handling if config does not define the events
+
+  [ Jeremy ]
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 10 Sep 2015 23:53:10 +1200
+
+linz-bde-uploader (1.5.3-1) trusty; urgency=medium
+
+  [ billgeo ]
+  * made changes for LOL 3.11 release
+  * one more change for LOL 3.11 release
+  * fixed bug for LOL release 3.11 where function in bde_functions.sql referenced a column that wouldnt be created until patches.sql was run - variable type is now hardcoded to workaround this
+  * fixed syntax error for LOL release 3.11
+
+  [ Bill Nelson ]
+
+ -- Bill Nelson <bmnelson@linz.govt.nz>  Thu, 21 May 2015 10:54:51 +1200
+
+linz-bde-uploader (1.5.2) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Fix for electoral layer creation when duplicate SUFIs are found
+
+  [ Joseph Ramsay ]
+
+  [ Jeremy Palmer ]
+  * Fix for electoral layer creation when duplicate SUFIs are found
+
+  [ Joseph Ramsay ]
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Mon, 13 Apr 2015 15:28:01 +1200
+
+linz-bde-uploader (1.5.1-1) lucid; urgency=medium
+
+  * Revert deb control to standard config
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Thu, 09 Apr 2015 15:27:57 +1200
+
+linz-bde-uploader (1.5.0-1) lucid; urgency=medium
+
+  [ Jeremy Palmer ]
+  * Added more information about process holding table locks
+  * Added offshore Island support to simplified parcels layers.
+
+  [ Joseph Ramsay ]
+  * Patch supporting Landonline UTF8 data as well as providing ASCII translations for simplifid address and road tables
+  * Removed ARN/ALN groupby lines from maintainsimplifiedelectoral (no longer needed with utf8)
+  * patches.sql: road_centre+line+road_centre_line_subsection+street_address2 locality_utf8 expanded to varchar100
+  * Removed ARN/ALN group by statements in layer functions
+  * Added utf8 self replacements for [u2013,u2014,u2018,u2019,u201C,u201D,u2022]
+  * fix for merge conflict dd48c67
+
+ -- Joseph Ramsay <jramsay@linz.govt.nz>  Thu, 09 Apr 2015 12:48:33 +1200
+
+linz-bde-uploader (1.4.4-1) lucid; urgency=low
+
+  * Added check for unique sufi records
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Mon, 10 Nov 2014 06:17:04 +1300
+
+linz-bde-uploader (1.4.3-1) lucid; urgency=low
+
+  * Added crs_image_history to config
+  * Added support for PostgreSQL/PostGIS extensions. At the same time
+    cleaned up debian post install functions to correct report errors.
+  * Fix early drop of temp table
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Tue, 21 Oct 2014 05:51:27 +1300
+
+linz-bde-uploader (1.4.2-1) lucid; urgency=low
+
+  * Increase field width for street address and road layers, fix bad
+    UTF8 config entry
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Fri, 17 Oct 2014 16:53:31 +1300
+
+linz-bde-uploader (1.4.1-1) precise; urgency=low
+
+  [ iharrison ]
+  * Update lds_layer_functions.sql to fix typo in meshblock layer check
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Mon, 13 Oct 2014 07:19:00 +1300
+
+linz-bde-uploader (1.4.0-1) lucid; urgency=low
+
+  [ Jeremy Palmer ]
+  * Added code from Joe for the creation of full landonline table that
+    require a filter
+  * Refactored title exclusion and protection code
+  * Clean-up usage of temp tables, remove some dead code
+  * Remove the unneeded parcel point table and standardised some SQL
+  * Few more clean-ups
+  * Untabify file
+  * Untabify file schema file
+  * Add conf to run FBDE table, bump version
+  * Fix issues from recent refactoring
+  * Few fixes for affected table checks
+
+  [ iharrison ]
+  * Removed references to BDE schema
+
+  [ Jeremy Palmer ]
+  * Fixed some schema path issues
+  * Make parcel polygons OGC valid
+
+  [ Joseph Ramsay ]
+  * Rename conflicting street_address table to street_address_ext
+
+  [ iharrison ]
+  * Added 3 new queries.
+  * Added 3 new schema definitions.
+  * Changed feature_name_poly geometry type to polygon
+
+  [ Joseph Ramsay ]
+  * Prep for tstlhapp build, modified patches.sql for run-in, postint
+  * remove duplicate index fk_tmt_ttm
+  * add search path incl bde_control schema and fk_tmt_ttm index
+  * Bugfix. Change table update check function to reference correct
+    source
+  * ORDER BY added to PK's on all tables to increase revisioning speed
+
+  [ iharrison ]
+  * tmp_titles to tmp_title_estates join
+
+  [ Joseph Ramsay ]
+  * Added Timestamp logging to UpdateSimplified func, timing logs to
+    FBDE
+  * Added sufi (INT) to street_address
+  * Added pending-only table/pop functions
+
+  [ iharrison ]
+  * Added fields to title table
+  * Added column to title table
+
+  [ Joseph Ramsay ]
+  * Col adds, New col type ver func, Patches.sql update, Pub/Prv reverts
+  * Split crs_title/crs_land_district patch + bugfix bde_ext_functions
+    deps
+  * table_version prefix added to is_tab_ver func in chg_col_typ func
+
+  [ Jeremy Palmer ]
+  * Add crs_image_history table. Fix application of TTM index in patch
+  * Fixed issues with index patch
+  * Add maori_land flag to titles full landonline table
+  * version new crs_image_history table
+  * Fixed order by statement for full landonline tables
+  * Added survey plan image revision table, fixed primary key naming and
+    rogue tablespace statement
+  * Added survey plan image revision checks for affected tables
+  * Fixed issue with ttl_title_no_head_srs not being included in group
+    by statement
+  * Updated electoral SQL code to use TA grid index and use UTF8 names
+  * fixed patch SQL
+  * Updated create grid function to correctly support schema qualified
+    statements
+  * Added checks for affected table back to electoral simple layer
+    generation
+  * Can't check for public table privileges, so have removed test
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Thu, 09 Oct 2014 08:45:28 +1300
+
 linz-bde-uploader (1.3.7-1) lucid; urgency=low
 
   * Updated table config to switch to new road name and street address

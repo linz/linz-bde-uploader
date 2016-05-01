@@ -28,6 +28,7 @@ my $requires = {
     'LINZ::Bde'                        => 0,
     'DBD::Pg'                          => 0,
     'Date::Calc'                       => 0,
+    'Try::Tiny'                        => 0,
 };
 
 my $build =  inc::MyBuilder->new(
