@@ -900,56 +900,6 @@ LANGUAGE plpgsql;
 
 ALTER FUNCTION _bde_UploadTableId(INTEGER, NAME) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_SetLogFile(
-    p_file TEXT
-)
-RETURNS
-    BOOLEAN AS 
-$$
-    my $file = shift;
-    my $status = open(TMP,">$file") ? 1 : 0;
-    if ($status)
-    {
-        close(TMP);
-        chmod 0664, $file;
-        $_SHARED{_bde_logfile} = $file;
-    }
-    else
-    {
-        elog(WARNING, "Cannot open log file $file: $!");
-    }
-    return $status;
-$$
-  LANGUAGE plperlu;
-
-ALTER FUNCTION bde_SetLogFile(TEXT) OWNER TO bde_dba;
-
-CREATE OR REPLACE FUNCTION bde_WriteLogFile(
-    p_message_type CHAR, 
-    p_message_text TEXT
-)
-RETURNS
-    BOOLEAN AS 
-$$
-    my $message_type = shift;
-    my $text = shift;
-    my $file = $_SHARED{_bde_logfile};
-    return if ! $file;
-
-    my $timestamp = localtime;
-    open(TMP,">>$file");
-    print TMP "$timestamp\t$message_type\t$text\n";
-    close(TMP);
-    return 1;
-$$
-  LANGUAGE plperlu;
-
-ALTER FUNCTION bde_WriteLogFile(character, text) OWNER TO bde_dba;
-
--- Function to write a timestamp for an event to the log.
--- Entering a timestamp at the start and end of the event will
--- define a duration for the event
-
 CREATE OR REPLACE FUNCTION bde_TimestampEvent(
     p_upload INTEGER, 
     p_event TEXT
