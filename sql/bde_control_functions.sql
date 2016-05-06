@@ -24,15 +24,6 @@ SET SEARCH_PATH TO bde_control;
 
 -- Drop all existing functions in bde_control
 
--- Proposed improvements:
---
--- Use pg advisory locks on tables rather than lock in upload_table table.
---    That way they automatically disappear.
-
--- *** Question for level 5 updates ****
--- Where we have key column discrepancies between inc data and table do we want
--- to abort as currently, or alert and process as much as possible.
-
 SET client_min_messages TO WARNING;
 BEGIN;
 
