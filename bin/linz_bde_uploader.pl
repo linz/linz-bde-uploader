@@ -19,7 +19,7 @@
 use strict;  
 
 # TODO need to update this from git describe
-our $VERSION = 'dev';
+our $VERSION = '2.0.0-dev';
 
 use FindBin;
 use lib $FindBin::Bin;
