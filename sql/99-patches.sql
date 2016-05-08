@@ -1,6 +1,5 @@
 ﻿--------------------------------------------------------------------------------
 --
---
 -- linz_bde_loader - LINZ BDE loader for PostgreSQL
 --
 -- Copyright 2016 Crown copyright (c)

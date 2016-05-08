@@ -1,12 +1,10 @@
 #!/bin/bash
 ################################################################################
 #
-# $Id$
-#
 # run_bde_upload -  Wrapper script to run the linz_bde_uploader perl script,
 # rotating log files
 #
-# Copyright 2011 Crown copyright (c)
+# Copyright 2016 Crown copyright (c)
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #

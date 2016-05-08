@@ -1,10 +1,8 @@
 ﻿--------------------------------------------------------------------------------
 --
--- $Id$
---
 -- linz_bde_loader -  LINZ BDE loader for PostgreSQL
 --
--- Copyright 2011 Crown copyright (c)
+-- Copyright 2016 Crown copyright (c)
 -- Land Information New Zealand and the New Zealand Government.
 -- All rights reserved
 --
