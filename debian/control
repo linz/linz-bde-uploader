@@ -4,9 +4,10 @@ Priority: optional
 Build-Depends: debhelper (>= 7)
 Build-Depends-Indep: perl (>= 5.8),
  libmodule-build-perl
+Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
 Homepage: http://www.linz.govt.nz
-Vcs-Svn: git://github.com/linz/linz_bde_uploader.git
+Vcs-Git: git://github.com/linz/linz_bde_uploader.git
 Vcs-Browser: https://github.com/linz/linz_bde_uploader
 
 Package: linz-bde-uploader
@@ -23,16 +24,10 @@ Depends: ${misc:Depends}, ${perl:Depends},
  libtry-tiny-perl,
  liblinz-utils-perl,
  liblinz-bde-perl,
- linz-bde-copy (>= 1.1),
  cifs-utils,
  perl-doc,
  postgresql-9.3,
- postgresql-client-9.3,
- postgresql-plperl-9.3,
- postgresql-contrib-9.3,
- postgresql-9.3-postgis-2.2,
- postgresql-9.3-tableversion,
- postgresql-9.3-dbpatch
+ postgresql-client-9.3
 Recommends:
 Description: Programme for loading LINZ BDE files into a PostgreSQL
  database. linz_bde_loader has the ability to load full and incremental
