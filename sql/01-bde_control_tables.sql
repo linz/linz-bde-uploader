@@ -33,11 +33,11 @@ SET SEARCH_PATH TO bde_control, public;
 
 CREATE TABLE upload
 (
-	id SERIAL NOT NULL PRIMARY KEY,
-	schema_name name NOT NULL,
-	start_time TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
-	end_time TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
-	status CHAR(1) NOT NULL DEFAULT 'U'
+    id SERIAL NOT NULL PRIMARY KEY,
+    schema_name name NOT NULL,
+    start_time TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
+    end_time TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
+    status CHAR(1) NOT NULL DEFAULT 'U'
 );
 
 ALTER TABLE upload OWNER TO bde_dba;
@@ -67,22 +67,22 @@ $comment$;
 
 CREATE TABLE upload_table
 (
-	id SERIAL NOT NULL PRIMARY KEY,
-	schema_name name NOT NULL,
-	table_name name NOT NULL,
-	key_column NAME,
-	last_upload_id INT,
-	last_upload_dataset VARCHAR(14),
-	last_upload_type CHAR(1),
-	last_upload_incremental BOOLEAN,
-	last_upload_details TEXT,
-	last_upload_time TIMESTAMP,
-	last_upload_bdetime TIMESTAMP,
-	last_level0_dataset VARCHAR(14),
-	upl_id_lock INT,
+    id SERIAL NOT NULL PRIMARY KEY,
+    schema_name name NOT NULL,
+    table_name name NOT NULL,
+    key_column NAME,
+    last_upload_id INT,
+    last_upload_dataset VARCHAR(14),
+    last_upload_type CHAR(1),
+    last_upload_incremental BOOLEAN,
+    last_upload_details TEXT,
+    last_upload_time TIMESTAMP,
+    last_upload_bdetime TIMESTAMP,
+    last_level0_dataset VARCHAR(14),
+    upl_id_lock INT,
     row_tol_warning FLOAT CHECK (row_tol_warning BETWEEN 0 AND 1),
     row_tol_error FLOAT CHECK (row_tol_error BETWEEN 0 AND 1),
-	UNIQUE (schema_name,table_name)
+    UNIQUE (schema_name,table_name)
 );
 
 ALTER TABLE upload_table OWNER TO bde_dba;
@@ -112,18 +112,18 @@ $comment$;
 
 CREATE TABLE upload_stats
 (
-	id SERIAL NOT NULL PRIMARY KEY,
-	upl_id INT NOT NULL,
-	tbl_id INT NOT NULL,
-	type CHAR(1) NOT NULL,
-	incremental BOOLEAN NOT NULL DEFAULT TRUE,
-	dataset VARCHAR(14) NOT NULL,
-	upload_time TIMESTAMP NOT NULL DEFAULT clock_timestamp()::timestamp,
+    id SERIAL NOT NULL PRIMARY KEY,
+    upl_id INT NOT NULL,
+    tbl_id INT NOT NULL,
+    type CHAR(1) NOT NULL,
+    incremental BOOLEAN NOT NULL DEFAULT TRUE,
+    dataset VARCHAR(14) NOT NULL,
+    upload_time TIMESTAMP NOT NULL DEFAULT clock_timestamp()::timestamp,
         duration INTERVAL,
-	ninsert BIGINT NOT NULL DEFAULT 0,
-	nupdate BIGINT NOT NULL DEFAULT 0,
+    ninsert BIGINT NOT NULL DEFAULT 0,
+    nupdate BIGINT NOT NULL DEFAULT 0,
     nnullupdate BIGINT NOT NULL DEFAULT 0,
-	ndelete BIGINT NOT NULL DEFAULT 0
+    ndelete BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_sts_tbl ON upload_stats ( tbl_id );
