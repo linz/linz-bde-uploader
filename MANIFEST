@@ -1,5 +1,5 @@
 bin/linz_bde_uploader.pl
-bin/run_bde_upload.bat
+bin/run_bde_upload
 Build.PL
 conf/linz_bde_uploader.conf
 conf/tables.conf
@@ -9,14 +9,14 @@ debian/control
 debian/copyright
 debian/postinst
 debian/rules
+debian/source/format
 inc/MyBuilder.pm
 lib/LINZ/BdeDatabase.pm
 lib/LINZ/BdeUpload.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
-README
+README.md
 sql/01-bde_control_tables.sql
 sql/02-bde_control_functions.sql
 sql/99-patches.sql
-META.yml
