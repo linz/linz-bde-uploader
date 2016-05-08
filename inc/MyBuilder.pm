@@ -70,15 +70,59 @@ sub process_script_files {
             to      => $to_file, 
             flatten => 'flatten'
         ) || next;
+        
         $self->fix_shebang_line($result) unless $self->is_vmsish;
+        $self->substitute_version($result);
         $self->make_executable($result);
+    }
+}
+
+sub substitute_version {
+    my $self = shift;
+    my $file = shift;
+    open(FILE, "<$file") || die "Can't process '$file': $!";
+    my @lines = <FILE>;
+    close(FILE);
+    my $version = $self->dist_version;
+    my @newlines;
+    my $updated;
+    foreach(@lines) {
+       my $matched = $_ =~ s/\@\@VERSION\@\@/$version/g;
+       $updated = 1 if $matched;
+       push(@newlines,$_);
+    }
+    if ($updated) {
+        open(FILE, ">$file.new") || die "Can't write to '$file': $!";
+        print FILE @newlines;
+        close(FILE);
+        rename "$file.new", $file;
+    }
+}
+
+sub process_sql_files {
+    my $self = shift;
+    my $files = $self->find_sql_files;
+    while (my ($file, $dest) = each %$files)
+    {
+        my $has_version;
+        if ($file =~ /\.in$/ ) {
+            $dest =~ s/\.[^.]+$//;
+            $has_version = 1;
+        }
+        
+        my $result = $self->copy_if_modified(
+            from => $file,
+            to   => File::Spec->catfile($self->blib, $dest),
+            flatten => 'flatten'
+        ) || next;
+        $self->substitute_version($result) if $has_version;
     }
 }
 
 
 sub _set_extra_install_paths
 {
-	my $self = shift;
+    my $self = shift;
     my $prefix = $self->install_base || $self->prefix || $Config::Config{'prefix'} || '';
     my $sysconfdir =  $prefix eq '/usr' ? '/etc' : File::Spec->catdir($prefix, 'etc');
     my $datadir = File::Spec->catdir($prefix, 'share');
@@ -99,7 +143,7 @@ sub _find_files
     return { map {$_, $_}
         map $self->localize_file_path($_),
         grep !/\.\#/,
-        @{ $self->rscan_dir($dir, qr{\.$type$}) } };
+        @{ $self->rscan_dir($dir, qr{\.$type(\.in)?$}) } };
 }
 
 1;

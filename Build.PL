@@ -33,11 +33,11 @@ my $build =  inc::MyBuilder->new(
     module_name        => 'LINZ::BDEUploader',
     license            => 'bsd',
     dist_author        => 'LINZ',
-    dist_version_from  => 'bin/linz_bde_uploader.pl',
+    dist_version       => '2.0.0-dev',
     dist_abstract      => 'Software for loading LINZ BDE files into a PostgreSQL database',
     sign               => 1,
     requires           => $requires,
-	create_makefile_pl => 'small',
+    create_makefile_pl => 'small',
 );
 
 $build->add_build_element('conf');
