@@ -18,3 +18,13 @@ SET client_min_messages TO WARNING;
 
 SET search_path = bde_control, bde, public;
 
+IF NOT EXISTS (
+    SELECT *
+    FROM   pg_extension EXT, 
+           pg_namespace NSP
+    WHERE  EXT.extname = 'dbpatch' 
+    AND    NSP.oid = EXT.extnamespace 
+    AND    NSP.nspname = '_patches'
+) THEN
+    RAISE EXCEPTION 'dbpatch extension is not installed correctly';
+END IF;
