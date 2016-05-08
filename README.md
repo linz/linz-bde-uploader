@@ -114,9 +114,9 @@ Also creating a standard system log directory in /var/log would be a good idea:
 ```shell
 BDE_LOG_DIR=/var/log/linz-bde-uploader
 BDE_USER=bde
-mkdir -p $BDE_LOG_DIR
-chown -R $BDE_USER:adm $BDE_LOG_DIR;
-chmod 0755 $BDE_LOG_DIR;
+sudo mkdir -p $BDE_LOG_DIR
+sudo chown -R $BDE_USER:adm $BDE_LOG_DIR;
+sudo chmod 0755 $BDE_LOG_DIR;
 ```
 
 ## linz_bde_uploader Configuration
