@@ -7,6 +7,7 @@ Landonline BDE loads, as well as manage versioning information.
 ## Requirements
 
 * PostgreSQL 9.3 or greater
+* [postgresql-tableversion](https://github.com/linz/postgresql-tableversion)
 * [linz-bde-schema](https://github.com/linz/linz-bde-schema)
 * Perl 5.88 or greater, plus
     - DBD::Pg
@@ -75,6 +76,13 @@ perl Build.PL \
 A UTF8 database needs to be created for the management of the BDE data.
 This can be done following the instructions in
 [linz-bde-schema](https://github.com/linz/linz-bde-schema)
+
+If you haven't already installed the PostgreSQL table_version extension then do
+so:
+
+```shell
+psql $DB_NAME -c "CREATE EXTENSION IF NOT EXISTS table_version"
+```
 
 You can then execute the installed linz-bde-uploader SQL support files with
 something like:

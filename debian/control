@@ -27,7 +27,8 @@ Depends: ${misc:Depends}, ${perl:Depends},
  cifs-utils,
  perl-doc,
  postgresql-9.3,
- postgresql-client-9.3
+ postgresql-client-9.3,
+ postgresql-9.3-tableversion
 Recommends:
 Description: Programme for loading LINZ BDE files into a PostgreSQL
  database. linz_bde_uploader has the ability to load full and incremental
