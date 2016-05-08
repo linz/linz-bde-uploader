@@ -17,7 +17,6 @@
 use strict;
 use warnings;
 
-# TODO need to update this from git describe
 our $VERSION = '2.0.0-dev';
 
 use FindBin;
