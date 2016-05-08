@@ -1,6 +1,6 @@
 # LINZ Bulk Data Extract Uploader
 
-linz_bde_loader is a programme for loading LINZ BDE files into a PostgreSQL
+linz_bde_uploader is a programme for loading LINZ BDE files into a PostgreSQL
 database. linz_bde_uploader has the ability to load full and incremental table
 Landonline BDE loads, as well as manage versioning information.
 
@@ -162,7 +162,7 @@ A simple example to upload latest available full set of bde files into the
 database:
 
 ```shell
-linz_bde_uploader -full -verbose -config-path /etc/linz-bde-uploader/linz_bde_uploader.conf -listing /var/log/linz-bde-uploader/linz_bde_loader.log
+linz_bde_uploader -full -verbose -config-path /etc/linz-bde-uploader/linz_bde_uploader.conf -listing /var/log/linz-bde-uploader/linz_bde_uploader.log
 ```
 
 There is also the wrapper shell script ``run_bde_upload`` that runs

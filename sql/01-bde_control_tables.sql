@@ -1,6 +1,6 @@
 ﻿--------------------------------------------------------------------------------
 --
--- linz_bde_loader -  LINZ BDE loader for PostgreSQL
+-- linz_bde_uploader -  LINZ BDE uploader for PostgreSQL
 --
 -- Copyright 2016 Crown copyright (c)
 -- Land Information New Zealand and the New Zealand Government.
@@ -10,7 +10,7 @@
 -- LICENSE file for more information.
 --
 --------------------------------------------------------------------------------
--- Creates system tables required for linz_bde_loader
+-- Creates system tables required for linz_bde_uploader
 --------------------------------------------------------------------------------
 SET client_min_messages TO WARNING;
 
@@ -119,7 +119,7 @@ CREATE TABLE upload_stats
     incremental BOOLEAN NOT NULL DEFAULT TRUE,
     dataset VARCHAR(14) NOT NULL,
     upload_time TIMESTAMP NOT NULL DEFAULT clock_timestamp()::timestamp,
-        duration INTERVAL,
+    duration INTERVAL,
     ninsert BIGINT NOT NULL DEFAULT 0,
     nupdate BIGINT NOT NULL DEFAULT 0,
     nnullupdate BIGINT NOT NULL DEFAULT 0,

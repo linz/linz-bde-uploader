@@ -1,6 +1,6 @@
 ################################################################################
 #
-# linz_bde_loader -  LINZ BDE loader for PostgreSQL
+# linz_bde_uploader -  LINZ BDE uploader for PostgreSQL
 #
 # Copyright 2016 Crown copyright (c)
 # Land Information New Zealand and the New Zealand Government.
@@ -89,7 +89,7 @@ indefinitely.
 
 =item   $cfg->allow_concurrent_uploads
 
-Allow simultaneous jobs to load.  The linz_bde_loader job should generally be
+Allow simultaneous jobs to load.  The linz_bde_uploader job should generally be
 run with -purge if this is not allowed, as otherwise an expired job will
 prevent the upload running
 

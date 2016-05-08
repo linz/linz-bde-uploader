@@ -1,6 +1,6 @@
 ################################################################################
 #
-# linz_bde_loader -  LINZ BDE loader for PostgreSQL
+# linz_bde_uploader -  LINZ BDE uploader for PostgreSQL
 #
 # Copyright 2016 Crown copyright (c)
 # Land Information New Zealand and the New Zealand Government.
