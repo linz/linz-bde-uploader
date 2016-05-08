@@ -15,8 +15,10 @@
 -- of the file. 
 --------------------------------------------------------------------------------
 SET client_min_messages TO WARNING;
-
 SET search_path = bde_control, bde, public;
+
+DO $PATCHES$
+BEGIN
 
 IF NOT EXISTS (
     SELECT *
@@ -28,3 +30,9 @@ IF NOT EXISTS (
 ) THEN
     RAISE EXCEPTION 'dbpatch extension is not installed correctly';
 END IF;
+
+-- Patches start from here
+
+
+END;
+$PATCHES$
