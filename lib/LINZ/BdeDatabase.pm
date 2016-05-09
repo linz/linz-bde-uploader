@@ -54,8 +54,8 @@ established.
 
 =item  $cfg->db_upload_complete_sql
 
-A set of ";" separated SQL commands taht are after a successful upload 
-(one that has been applied to at least one table). Each sql command 
+A set of ";" separated SQL commands that are after a successful upload 
+(one that has been applied to at least one table). Each SQL command 
 can be preceded by a conditional statement of the form
 
    "if" [any|all] [level0|level0_dataset] table ... table [loaded|affected] "?"

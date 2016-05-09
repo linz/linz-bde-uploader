@@ -1245,7 +1245,9 @@ Two useful functions that these may use are:
 
 =item INT bde_control.bde_TablesAffected( upload_id INT, tables name[], test TEXT ) 
 
-Tests tables that are affected by an upload. I<tables> is a list of tables to check.  <test> is a string specifying the test to apply and can include the following space separated items:
+Tests tables that are affected by an upload. I<tables> is a list of tables to check.
+<test> is a string specifying the test to apply and can include the following
+space separated items:
 
 =over
 
