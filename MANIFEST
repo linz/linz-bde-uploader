@@ -7,7 +7,6 @@ debian/changelog
 debian/compat
 debian/control
 debian/copyright
-debian/postinst
 debian/rules
 debian/source/format
 inc/MyBuilder.pm
