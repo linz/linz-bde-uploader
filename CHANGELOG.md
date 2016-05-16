@@ -9,6 +9,8 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Move BDE schema files to external project
 - Move LDS schema file to external project
 - Move polygon grid functions to external project
+- Removed debian postinst script. The install and configuration is now managed externally
+- Moved version Build.PL and added SQL version number function
 
 ## [1.5.8] - 2016-04-13
 ### Changed
