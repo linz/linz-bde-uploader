@@ -2,6 +2,8 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [Unreleased] - xxxx-xx-xx
+
 ## 2.0.0 - 2016-05-16
 ### Changed
 - Packaging changes to account for dependancy changes
