@@ -2413,22 +2413,15 @@ DECLARE
     v_sql text;
     v_rights varchar(16)[];
     v_right varchar(16);
-    v_roleid oid;
     v_rolename name;
     v_grant varchar(20);
 BEGIN
     v_result := ARRAY[]::text[];
     v_sql := 'ALTER TABLE ' || p_target || ' OWNER TO ' || 
-            quote_ident((
-                SELECT rolname 
-                FROM pg_authid
-                WHERE oid = (
-                    SELECT refobjid 
-                    FROM pg_shdepend 
-                    WHERE objid=p_reference
-                    AND deptype='o'
-                    )
-                ));
+        quote_ident((
+            SELECT pg_get_userbyid(relowner)
+            FROM pg_class where oid = p_reference
+        ));
     v_result := array_append(v_result,v_sql);
 
     v_rights := ARRAY[
@@ -2441,31 +2434,33 @@ BEGIN
         'TRIGGER'
     ];
 
-    FOR v_roleid IN
-        SELECT refobjid
-        FROM   pg_shdepend
-        WHERE  objid=p_reference
-        AND    deptype='a'
+    FOR v_rolename IN
+        SELECT AUTH.rolname
+        FROM   pg_shdepend DEP,
+               pg_authid AUTH,
+               pg_database DB
+        WHERE  DEP.dbid = DB.oid
+        AND    DEP.objid = p_reference
+        AND    AUTH.oid = DEP.refobjid
+        AND    DEP.deptype='a'
+        AND    DB.datname = current_database()
     LOOP
-        v_rolename := quote_ident(
-            (SELECT rolname FROM pg_authid WHERE oid=v_roleid)
-        );
         FOR v_right IN SELECT * FROM unnest(v_rights)
         LOOP
             v_sql := '';
             v_grant := '';
             IF has_table_privilege(
-                v_roleid,p_reference,v_right || ' WITH GRANT OPTION'
+                v_rolename, p_reference, v_right || ' WITH GRANT OPTION'
             ) THEN
                 v_sql := v_right;
                 v_grant := ' WITH GRANT OPTION';
-            ELSIF has_table_privilege(v_roleid,p_reference,v_right) THEN
+            ELSIF has_table_privilege(v_rolename, p_reference, v_right) THEN
                 v_sql := v_right;
             END IF;
             IF v_sql <> '' THEN
                 v_sql := 'GRANT ' || v_sql || ' ON TABLE ' || p_target || 
                     ' TO ' || v_rolename || v_grant;
-                v_result := array_append(v_result,v_sql);
+                v_result := array_append(v_result, v_sql);
             END IF;
         END LOOP;
     END LOOP;
