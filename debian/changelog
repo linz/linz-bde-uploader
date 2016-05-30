@@ -1,3 +1,9 @@
+linz-bde-uploader (2.0.0-2linz~trusty1) trusty; urgency=medium
+
+  * Adding linz-bde-copy to dependencies
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Tue, 31 May 2016 05:48:52 +1200
+
 linz-bde-uploader (2.0.0-1linz~trusty1) trusty; urgency=medium
 
   * Packaging for LINZ's Software Repository
