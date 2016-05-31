@@ -2,9 +2,11 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [Unreleased] - xxxx-xx-xx
+
 ## [2.0.2] - 2016-06-01
 ### Added
-- Added support for overriding log level with -level-log CLI option
+- Added support for overriding log level with -log-level CLI option
 
 ### Fixed
 -  Made error exception handling more robust
