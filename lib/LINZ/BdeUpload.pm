@@ -731,57 +731,43 @@ sub ApplyDatasetUpdates
         
         my $change_table_name;
         
-        try
+        my @loadtables = ();
+        my $need_change_table = 0;
+          
+        foreach my $table ($uploadset->tables($dataset))
         {
-            my @loadtables = ();
-            my $need_change_table = 0;
-              
-            foreach my $table ($uploadset->tables($dataset))
+            my $tablename = $table->name;
+            # add tables that have a clean state into the @loadtables array
+            # for processing
+            if(! $tablestate->{$tablename})
             {
-                my $tablename = $table->name;
-                # add tables that have a clean state into the @loadtables array
-                # for processing
-                if(! $tablestate->{$tablename})
-                {
-                    push(@loadtables,$table); 
-                    $need_change_table = 1 if !$is_level_0_ds && !$table->level5_is_full;
-                }
-                # tablestate accumulates failed uploads.  This will
-                # be cleared if the table is successfully uploaded.
-                $tablestate->{$tablename} .= "|".$dataset->name;
+                push(@loadtables,$table); 
+                $need_change_table = 1 if !$is_level_0_ds && !$table->level5_is_full;
             }
-            
-            $change_table_name = $self->CreateLevel5ChangeTable($dataset,$changetable)
-                if $need_change_table;
-            
-            foreach my $table ( @loadtables )
-            {
-                $self->CheckTimeout;
-                my $tablename = $table->name;
-                try
-                {
-                    $self->UploadTable($dataset,$table);
-                    $tablestate->{$tablename} = '';
-                }
-                catch
-                {
-                    $tablestate->{$tablename} = '|';
-                    my $msg = "Failed to load $load_type update for ".
-                        $tablename. " from ". $dataset->name;
-                    if ($self->db->datasetInTransaction)
-                    {
-                        die $msg;
-                    }
-                    ERROR($msg);
-                };
-            }
+            # tablestate accumulates failed uploads.  This will
+            # be cleared if the table is successfully uploaded.
+            $tablestate->{$tablename} .= "|".$dataset->name;
         }
-        catch
+        
+        $change_table_name = $self->CreateLevel5ChangeTable($dataset,$changetable)
+            if $need_change_table;
+        
+        foreach my $table ( @loadtables )
         {
-            $self->db->rollBackDataset;
-            ERROR($_ . ". The transaction has been rolled back");
-            last;
-        };
+            $self->CheckTimeout;
+            my $tablename = $table->name;
+            try
+            {
+                $self->UploadTable($dataset,$table);
+                $tablestate->{$tablename} = '';
+            }
+            catch
+            {
+                my $msg = "Failed to load $load_type update for ".
+                    $tablename. " from ". $dataset->name. ': '. $_;
+                die $msg;
+            };
+        }
 
         $db->dropWorkingCopy($change_table_name) if $change_table_name;
         
