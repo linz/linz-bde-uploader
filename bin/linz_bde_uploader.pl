@@ -21,7 +21,7 @@ our $VERSION = '@@VERSION@@';
 
 use FindBin;
 use lib $FindBin::Bin;
-use lib '../lib';
+use lib "$FindBin::Bin/../lib";
 use Getopt::Long;
 use Log::Log4perl qw(:easy :levels get_logger);
 use Log::Log4perl::Layout;
