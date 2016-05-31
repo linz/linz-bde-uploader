@@ -33,6 +33,19 @@ use LINZ::Config;
 $SIG{INT}  = \&signal_handler;
 $SIG{TERM} = \&signal_handler;
 
+#log levels
+my %LOG_LEVELS =
+(
+    OFF   => $OFF,
+    FATAL => $FATAL,
+    ERROR => $ERROR,
+    WARN  => $WARN,
+    INFO  => $INFO,
+    DEBUG => $DEBUG,
+    TRACE => $TRACE,
+    ALL   => $ALL
+);
+
 # Main program controls
 
 my $do_purge = 0;      # Clean up old jobs if set
@@ -55,6 +68,7 @@ my $enddate = '';         # Only use files before this date
 my $maintain_db = 0;      # run database maintain after run.
 my $enable_hooks = 0;     # if enabled will run any event hooks defined in the config
 my $print_version = 0;
+my $log_level = undef;
 my $logger;
 my $upload;
 
@@ -78,6 +92,7 @@ GetOptions (
     "listing_file|l=s" => \$listing_file,
     "enable-hooks|e!" => \$enable_hooks,
     "verbose|v" => \$verbose,
+    "log-level=s" => \$log_level,
     "version" => \$print_version,
     )
     || help(0);
@@ -88,6 +103,12 @@ if ($print_version)
 {
     print "$VERSION\n";
     exit(0);
+}
+
+if (defined $log_level && !exists $LOG_LEVELS{$log_level})
+{ 
+    print "Log level must be one of " . join(', ', keys %LOG_LEVELS) . "\n";
+    help(0);
 }
 
 if($apply_level0_inc && !$apply_level0)
@@ -134,6 +155,7 @@ try
         maintain_db => $maintain_db,
         select_tables => join(' ',@ARGV),
         enable_hooks => $enable_hooks,
+        log_level => $log_level,
     };
 
     my $cfg = new LINZ::Config($options);
@@ -148,8 +170,16 @@ try
     else
     {
         my $log_config = $cfg->log_settings;
-        Log::Log4perl->init(\$log_config);
-        $logger = get_logger("");
+        if ($log_config)
+        {
+            Log::Log4perl->init(\$log_config);
+            $logger = get_logger("");
+        }
+        else
+        {
+            $logger = get_logger("");
+            $logger->level($INFO)
+        }
         
         if($listing_file)
         {
@@ -163,8 +193,6 @@ try
             );
             $file_appender->layout($layout);
             $logger->add_appender( $file_appender );
-            DEBUG("File logging turned on");
-            #Log::Log4perl::Logger::reset_all_output_methods();
         }
     }
     
@@ -176,6 +204,10 @@ try
         );
         $stdout_appender->layout($layout);
         $logger->add_appender($stdout_appender);
+    }
+    if (defined $log_level)
+    {
+        $logger->level($LOG_LEVELS{$log_level});
     }
     
     $upload = new LINZ::BdeUpload($cfg);
@@ -189,7 +221,7 @@ catch
         $upload->FireEvent('error');
         undef $upload;
     }
-    ERROR($_);
+    Log::Log4perl->initialized() ? ERROR($_) : print $_;
 };
 
 INFO("Duration of job: ". runtime_duration());
@@ -310,6 +342,8 @@ Options:
 
 =item -verbose or -v
 
+=item -log-level
+
 =item -enable-hooks or -e
 
 =item -help or -h
@@ -408,6 +442,13 @@ Fire any defined command line hooks in the configuration.
 =item -version
 
 Print the version number for the software.
+
+=item -log-level
+
+Set the logging level for the software. Will override the defined value in the
+config.  Only useful if logging is set in config or if the verbose or
+listing_file options are used. Can be one of the following values: OFF, FATAL,
+ERROR, WARN, INFO, DEBUG, TRACE, ALL
 
 =item -verbose or -v
 
