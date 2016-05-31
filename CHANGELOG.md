@@ -17,7 +17,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## 2.0.0 - 2016-05-16
 ### Changed
-- Packaging changes to account for dependancy changes
+- Packaging changes to account for dependency changes
 - Move dbpatch and table version source code from project to external projects
 - Move BDE schema files to external project
 - Move LDS schema file to external project
@@ -35,7 +35,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ### Added
   * Added pending parcels import to LDS schema
-  * Removed unecessary pending parcels layers
+  * Removed unnecessary pending parcels layers
 
 ## [1.5.6] - 2015-11-04
 ### Fixed
