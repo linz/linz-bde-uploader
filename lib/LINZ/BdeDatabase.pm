@@ -406,7 +406,6 @@ sub finishJob
     return if ! $self->jobCreated;
     if ($error)
     {
-        ERROR("Could not complete the transaction, the job will be rolled back: $error");
         $self->_rollbackTransaction;
     }
     else
@@ -417,8 +416,7 @@ sub finishJob
         }
         catch
         {
-            ERROR("Could not run finish SQL, transaction will be rolled back: $_");
-            $self->_rollbackTransaction;
+            ERROR("Could not run finish SQL: $_");
         };
     }
     
