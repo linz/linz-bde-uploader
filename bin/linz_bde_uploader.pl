@@ -173,13 +173,18 @@ try
         my $log_config = $cfg->log_settings;
         if ($log_config)
         {
+            if ( $log_config !~ /^[^#]?log4perl\.(root)?[Ll]ogger\s+\=\s+
+                (FATAL|ERROR|WARN|INFO|DEBUG|TRACE|ALL)/m )
+            {
+                die "log_setting within the configuration doesn't define a root logger\n";
+            }
             Log::Log4perl->init(\$log_config);
             $logger = get_logger("");
         }
         else
         {
             $logger = get_logger("");
-            $logger->level($INFO)
+            $logger->level($INFO);
         }
         
         if($listing_file)
