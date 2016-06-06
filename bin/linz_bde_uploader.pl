@@ -69,6 +69,7 @@ my $maintain_db = 0;      # run database maintain after run.
 my $enable_hooks = 0;     # if enabled will run any event hooks defined in the config
 my $print_version = 0;
 my $log_level = undef;
+my $status = 0;
 my $logger;
 my $upload;
 
@@ -222,10 +223,11 @@ catch
         undef $upload;
     }
     Log::Log4perl->initialized() ? ERROR($_) : print $_;
+    $status = 1;
 };
 
 INFO("Duration of job: ". runtime_duration());
-exit;
+exit $status;
 
 sub runtime_duration
 {
