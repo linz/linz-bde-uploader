@@ -174,7 +174,7 @@ try
         if ($log_config)
         {
             if ( $log_config !~ /^[^#]?log4perl\.(root)?[Ll]ogger\s+\=\s+
-                (FATAL|ERROR|WARN|INFO|DEBUG|TRACE|ALL)/m )
+                (FATAL|ERROR|WARN|INFO|DEBUG|TRACE|ALL)/mx )
             {
                 die "log_setting within the configuration doesn't define a root logger\n";
             }
