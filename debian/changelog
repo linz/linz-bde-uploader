@@ -1,3 +1,9 @@
+linz-bde-uploader (2.0.3-1linz~trusty1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Chris Crook <ccrook@linz.govt.nz>  Tue, 15 Aug 2016 19:00:00 +1200
+
 linz-bde-uploader (2.0.2-1linz~trusty1) trusty; urgency=medium
 
   * New upstream release
