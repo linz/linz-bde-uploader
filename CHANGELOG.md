@@ -2,6 +2,11 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.0.3] - 2016-08-15
+### Added
+- Fixes #34. Renaming of pg_stat_activity procpid to pid (following Postgresql 9.2 change)
+- Fixes #30 - missed regex extended flag
+
 ## [2.0.2] - 2016-06-01
 ### Added
 - Added support for overriding log level with -level-log CLI option

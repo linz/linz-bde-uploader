@@ -69,6 +69,7 @@ my $maintain_db = 0;      # run database maintain after run.
 my $enable_hooks = 0;     # if enabled will run any event hooks defined in the config
 my $print_version = 0;
 my $log_level = undef;
+my $status = 0;
 my $logger;
 my $upload;
 
@@ -172,13 +173,18 @@ try
         my $log_config = $cfg->log_settings;
         if ($log_config)
         {
+            if ( $log_config !~ /^[^#]?log4perl\.(root)?[Ll]ogger\s+\=\s+
+                (FATAL|ERROR|WARN|INFO|DEBUG|TRACE|ALL)/mx )
+            {
+                die "log_setting within the configuration doesn't define a root logger\n";
+            }
             Log::Log4perl->init(\$log_config);
             $logger = get_logger("");
         }
         else
         {
             $logger = get_logger("");
-            $logger->level($INFO)
+            $logger->level($INFO);
         }
         
         if($listing_file)
@@ -222,10 +228,11 @@ catch
         undef $upload;
     }
     Log::Log4perl->initialized() ? ERROR($_) : print $_;
+    $status = 1;
 };
 
 INFO("Duration of job: ". runtime_duration());
-exit;
+exit $status;
 
 sub runtime_duration
 {

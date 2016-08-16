@@ -735,7 +735,7 @@ BEGIN
                     FROM 
                         pg_stat_activity a
                         JOIN pg_locks l
-                            ON l.pid = a.procpid
+                            ON l.pid = a.pid
                         JOIN pg_database d 
                             ON l.database = d.oid
                     WHERE
