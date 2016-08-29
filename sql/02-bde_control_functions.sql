@@ -1698,8 +1698,6 @@ BEGIN
     v_nnullupd := 0;
     v_nins     := 0;
     
-    PERFORM _bde_GetExclusiveLock( p_upload, v_bdetable );
-    
     v_task := 'Preparing incremental change table';
     
     PERFORM _bde_PrepareChangeTable(p_upload,v_changetable);
