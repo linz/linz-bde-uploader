@@ -483,20 +483,9 @@ sub tmp
     return $tmp;
 }
 
-sub PurgeOldJobs
+sub _clean_scratch_dirs
 {
-    my($self) = @_;
-
-    my $db = $self->db;
-
-    my $expiry_time = $self->cfg->lock_expiry_hours;
-    $db->releaseExpiredLocks($expiry_time) if $expiry_time;
-
-    my $job_expiry_time = $self->cfg->job_record_expiry_days;
-    $db->removeOldJobData($job_expiry_time);
-
-    # Clean up any old scratch directories
-
+    my $self = shift;
     my $scratch = $self->{tmp_base};
     my $prefix = "$scratch/$tmp_prefix";
     foreach my $dir (glob($prefix."*"))
@@ -508,7 +497,28 @@ sub PurgeOldJobs
         next if $db->uploadIsActive($job);
         rmtree($dir) if ! $self->{keepfiles};
     }
+}
 
+sub RemoveZombiedJobs
+{
+    my($self) = @_;
+    my $db = $self->db;
+    $db->releaseExpiredLocks(0);
+    $self->_clean_scratch_dirs;
+}
+
+sub PurgeOldJobs
+{
+    my($self) = @_;
+
+    my $db = $self->db;
+
+    my $expiry_time = $self->cfg->lock_expiry_hours;
+    $db->releaseExpiredLocks($expiry_time) if $expiry_time;
+
+    my $job_expiry_time = $self->cfg->job_record_expiry_days;
+    $db->removeOldJobData($job_expiry_time);
+    $self->_clean_scratch_dirs;
 }
 
 sub SetTimeout
@@ -1147,6 +1157,8 @@ uploaded.
 =item $upload = new LINZ::BdeUpload($cfg);
 
 =item $upload->SetTimeout
+
+=item $upload->RemoveZombiedJobs
 
 =item $upload->PurgeOldJobs
 

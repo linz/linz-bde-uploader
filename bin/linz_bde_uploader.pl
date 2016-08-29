@@ -48,7 +48,8 @@ my %LOG_LEVELS =
 
 # Main program controls
 
-my $do_purge = 0;      # Clean up old jobs if set
+my $do_purge_old = 0;      # Clean up old jobs if set
+my $do_remove_zombie = 0;   # Clean up zombied jobs if set
 my $apply_level0 = 0;      # Do level 0 updates if set
 my $apply_level0_inc = 0;  # Do level 0 incremental load if set
 my $apply_level5 = 0;      # Do level 5 updates is set
@@ -77,7 +78,8 @@ GetOptions (
     "help|h" => \$showhelp,
     "config-extension|x=s" => \$cfgext,
     "config-path|c=s" => \$cfgpath,
-    "purge|p!" => \$do_purge,
+    "purge|p!" => \$do_purge_old,
+    "remove-zombie|z!" => \$do_remove_zombie,
     "skip-postupload-tasks!" => \$skip_postupload,
     "full|f!" => \$apply_level0,
     "full-incremental|j!" => \$apply_level0_inc,
@@ -117,9 +119,9 @@ if($apply_level0_inc && !$apply_level0)
     $apply_level0 = 1;
 }
 
-if( ! $apply_level0 && ! $apply_level5 && ! $do_purge && ! $rebuild)
+if( ! $apply_level0 && ! $apply_level5 && ! $do_purge && ! $do_remove_zombie && ! $rebuild)
 { 
-    print "Need at least one option of -full, -incremental, or -purge\n";
+    print "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
     help(0);
 }
 
@@ -217,7 +219,11 @@ try
     }
     
     $upload = new LINZ::BdeUpload($cfg);
-    $upload->PurgeOldJobs if $do_purge && ! $dry_run;
+    if(!$dry_run)
+    {
+        $upload->RemoveZombiedJobs if $do_remove_zombie;
+        $upload->PurgeOldJobs if $do_purge_old;
+    }
     $upload->ApplyUpdates($dry_run);
 }
 catch
@@ -302,8 +308,8 @@ Version: @@VERSION@@
   perl linz_bde_uploader.pl [options..] [tables..]
 
 If no options are a brief help message is displayed. At least one of the 
--full, -incremental, -rebuild, or -purge options must be supplied.  If tables
-are included, then only those tables will be updated.
+-full, -incremental, -rebuild, -purge, -remove-zombie options must be supplied.
+If tables are included, then only those tables will be updated.
 
 The list of tables is optional and defines the subset of the tables that will
 be updated.  Only tables defined in the configuration will be updated - 
@@ -318,6 +324,8 @@ Options:
 =item -config-extension or -x  I<cfgext>
 
 =item -purge or -p
+
+=item -remove-zombie or -z
 
 =item -full or -f
 
@@ -377,6 +385,12 @@ values from bde.cfg.I<cfgext>
 Purge old jobs from the database and file system.  The expiry times for 
 old jobs is defined in the configuration file.  This clears locks and 
 purges expired jobs from the system
+
+=item -remove-zombie or -z
+
+For jobs that are recorded as active but are no longer running this will release
+the locks, delete working directories/temp schemas, and set the job status to
+error
 
 =item -full or -f
 
