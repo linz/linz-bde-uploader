@@ -1,3 +1,9 @@
+linz-bde-uploader (2.1.1-1linz~trusty1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Palmer <jpalmer@linz.govt.nz>  Wed, 31 Aug 2016 15:57:08 +1200
+
 linz-bde-uploader (2.1.0-1linz~trusty1) trusty; urgency=medium
 
   * New upstream release
