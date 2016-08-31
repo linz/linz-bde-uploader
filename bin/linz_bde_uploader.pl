@@ -119,7 +119,7 @@ if($apply_level0_inc && !$apply_level0)
     $apply_level0 = 1;
 }
 
-if( ! $apply_level0 && ! $apply_level5 && ! $do_purge && ! $do_remove_zombie && ! $rebuild)
+if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
 { 
     print "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
     help(0);

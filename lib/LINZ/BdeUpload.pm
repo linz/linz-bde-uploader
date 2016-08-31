@@ -494,7 +494,7 @@ sub _clean_scratch_dirs
         my $job = substr($dir,length($prefix));
         next if $job !~ /^\d+$/;
         $job += 0;
-        next if $db->uploadIsActive($job);
+        next if $self->db->uploadIsActive($job);
         rmtree($dir) if ! $self->{keepfiles};
     }
 }
@@ -503,7 +503,12 @@ sub RemoveZombiedJobs
 {
     my($self) = @_;
     my $db = $self->db;
-    $db->releaseExpiredLocks(0);
+    DEBUG("Removing zombied jobs");
+    my $count = $db->releaseExpiredLocks(0);
+    if ($count)
+    {
+        INFO("Cleaned up $count zombied jobs");
+    }
     $self->_clean_scratch_dirs;
 }
 
