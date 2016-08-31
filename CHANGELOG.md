@@ -2,6 +2,10 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.1.1] - 2016-08-31
+### Fixed
+- zombied job option and added better logging for this option
+
 ## [2.1.0] - 2016-08-31
 ### Added
 - Added option to delete zombied jobs (-remove-zombie)
