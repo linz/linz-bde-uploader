@@ -2,6 +2,14 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.1.0] - 2016-08-31
+### Added
+- Added option to delete zombied jobs (-remove-zombie)
+
+### Fixed
+- Remove the need for the level 5 process to gain an exclusive lock for the
+  table to be updated
+
 ## [2.0.3] - 2016-08-15
 ### Added
 - Fixes #34. Renaming of pg_stat_activity procpid to pid (following Postgresql 9.2 change)
