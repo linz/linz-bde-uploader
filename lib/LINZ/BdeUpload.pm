@@ -434,6 +434,7 @@ sub new
     {
         mkpath($scratch);
         die ("Cannot create temporary working folder $scratch") if ! -d $scratch;
+        chmod 0755, $scratch;
     }
     $self->{tmp_base} = File::Spec->rel2abs($scratch);
 
@@ -478,6 +479,7 @@ sub tmp
 
     mkpath($tmp);
     die ("Cannot create working directory $tmp") if ! -d $tmp;
+    chmod 0755, $tmp;
 
     $self->{tmp} = $tmp;
     return $tmp;
@@ -1135,6 +1137,7 @@ sub BuildTempFile
     my $nerrors;
     unlink($log) if ! $self->{keepfiles};
     die ("Data file not built") if ! -r $tmpname;
+    chmod 0755, $tmpname;
     INFO($result->{nrec}," records copied from ",$reader->path,
             " with ",$result->{nerrors}," errors");
     
