@@ -2,6 +2,13 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.2.0] - 2016-09-13
+### Added
+- Support changes for the Landonline release 3.14
+
+### Fixed
+- Explicitly set the temp file permissions to have global read rights
+
 ## [2.1.1] - 2016-08-31
 ### Fixed
 - zombied job option and added better logging for this option
