@@ -2,6 +2,10 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.3.0] - 2016-12-22
+### Added
+- Support changes for the Landonline release 3.15
+
 ## [2.2.0] - 2016-09-13
 ### Added
 - Support changes for the Landonline release 3.14
