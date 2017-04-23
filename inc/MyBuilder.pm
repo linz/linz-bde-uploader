@@ -30,14 +30,6 @@ sub new
     return $self;
 }
 
-sub resume
-{
-    my $class = shift;
-    my $self = $class->SUPER::resume(@_);
-    $self->_set_extra_install_paths();
-    return $self;
-}
-
 sub find_conf_files
 {
     shift->_find_files('conf', 'conf');
@@ -123,7 +115,7 @@ sub process_sql_files {
 sub _set_extra_install_paths
 {
     my $self = shift;
-    my $prefix = $self->install_base || $self->prefix || $Config::Config{'prefix'} || '';
+    my $prefix = $self->prefix || ( $self->installdirs eq 'vendor' ? $Config::Config{'prefix'} : '/usr/local' );
     my $sysconfdir =  $prefix eq '/usr' ? '/etc' : File::Spec->catdir($prefix, 'etc');
     my $datadir = File::Spec->catdir($prefix, 'share');
     
