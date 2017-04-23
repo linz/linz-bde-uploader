@@ -1,2 +1,12 @@
-
-# /script/
+blib/
+_build/
+ # /script/
+Build
+Makefile
+MYMETA.json
+MYMETA.yml
+.DS_Store
+debian/linz-bde-uploader
+debian/*.log
+debian/*.substvars
+debian/files
