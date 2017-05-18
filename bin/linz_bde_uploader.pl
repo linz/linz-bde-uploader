@@ -307,7 +307,7 @@ Version: @@VERSION@@
 
   perl linz_bde_uploader.pl [options..] [tables..]
 
-If no options are a brief help message is displayed. At least one of the 
+If no options are given a brief help message is displayed. At least one of the
 -full, -incremental, -rebuild, -purge, -remove-zombie options must be supplied.
 If tables are included, then only those tables will be updated.
 
