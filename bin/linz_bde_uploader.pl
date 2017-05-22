@@ -349,7 +349,7 @@ Options:
 
 =item -skip-postupload-tasks
 
-=item -listing_file or -l I<listing_file>
+=item -listing or -l I<listing_file>
 
 =item -keep-files or -k
 
@@ -446,7 +446,7 @@ also override constraints on allowing concurrent uploads.
 
 Choose not to run any postupload tasks defined for the schema.  
 
-=item -listing_file or -l I<listing_file>
+=item -listing or -l I<listing_file>
 
 Specifies a file for logging. This is in addition to other log appenders set in
 the config file.
