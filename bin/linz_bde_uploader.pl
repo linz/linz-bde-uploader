@@ -378,7 +378,7 @@ linz_bde_uploader.pl script is located.
 =item -config-extension or -x  I<cfgext>
 
 Extra configuration extension.  Overrides selected configuration items with
-values from bde.cfg.I<cfgext> 
+values from I<cfgpath>.I<cfgext>
 
 =item -purge or -p
 
