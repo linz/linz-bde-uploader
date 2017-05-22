@@ -59,7 +59,7 @@ the working files are placed in a temporary schema named after this id
 end_time will be periodically updated during the running of the job and will
 be used to determine if the job is still active
 
-status values are U (uninitiallized), A (active), C (completed successfully), and E (completed with errors)
+status values are U (uninitialized), A (active), C (completed successfully), and E (completed with errors)
 
 $comment$;
 
