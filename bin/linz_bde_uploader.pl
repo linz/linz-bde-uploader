@@ -464,12 +464,12 @@ Fire any defined command line hooks in the configuration.
 
 Print the version number for the software.
 
-=item -log-level
+=item -log-level I<level>
 
 Set the logging level for the software. Will override the defined value in the
 config.  Only useful if logging is set in config or if the verbose or
-listing_file options are used. Can be one of the following values: OFF, FATAL,
-ERROR, WARN, INFO, DEBUG, TRACE, ALL
+-listing options are used.  I<level> can be one of the following values:
+OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL
 
 =item -verbose or -v
 
