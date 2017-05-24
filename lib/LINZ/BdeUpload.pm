@@ -1150,11 +1150,11 @@ __END__
 
 =head1 NAME
 
-LINZ::BdeUpload - A module to manage the a BDE upload job.
+LINZ::BdeUpload - A module to manage a BDE upload job.
 
 =head1 Synopsis
 
-Module to manage the a BDE upload job.  Manages the configuration of tables
+Module to manage a BDE upload job.  Manages the configuration of tables
 to upload, the target database, and the repository from which files are 
 uploaded.
 
@@ -1231,7 +1231,7 @@ uploaded.
 =head2 Post upload functions 
 
 The post upload functions are functions in the target schema that are
-run when after files have been affected by level0 or level 5 updates.
+run when after files have been affected by level 0 or level 5 updates.
 
 Functions with a signature
 
