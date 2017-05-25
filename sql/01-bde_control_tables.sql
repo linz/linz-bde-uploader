@@ -101,7 +101,8 @@ Tracks the status of uploads for each table.
 key_column is the name of a unique non-composite, not null
 integer or bigint column used for identifying the table row for
 incremental updates. This identifier must be the same as defined in
-the cbe_tables.tablekeycolumn (?).
+the cbe_tables.tablekeycolumn field of the Landonline INFORMIX
+database.
 
 last_upload_id is the id of the last upload job affecting this table,
 referencing the id field of the upload table.
