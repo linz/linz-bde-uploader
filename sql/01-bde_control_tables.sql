@@ -95,51 +95,71 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_table TO bde_admin;
 GRANT SELECT ON TABLE upload_table TO bde_user;
 
 COMMENT ON TABLE upload_table IS
-$comment$
-Tracks the status of uploads for each table.
+'Tracks the status of uploads for each table.';
 
-key_column is the name of a unique non-composite, not null
+COMMENT ON COLUMN upload_table.key_column IS $comment$
+the name of a unique non-composite, not null
 integer or bigint column used for identifying the table row for
 incremental updates. This identifier must be the same as defined in
 the cbe_tables.tablekeycolumn field of the Landonline INFORMIX
 database.
+$comment$;
 
-last_upload_id is the id of the last upload job affecting this table,
+COMMENT ON COLUMN upload_table.last_upload_id IS $comment$
+the id of the last upload job affecting this table,
 referencing the id field of the upload table.
+$comment$;
 
-last_upload_dataset is the dataset id of the last level 5 or 0 uploaded
+COMMENT ON COLUMN upload_table.last_upload_dataset IS $comment$
+the dataset id of the last level 5 or 0 uploaded
 (since the level 0 upload will override any level 5 uploads that have
 been applied).
+$comment$;
 
-last_upload_type is either 0 or 5.
+COMMENT ON COLUMN upload_table.last_upload_type IS $comment$
+either 0 or 5.
+$comment$;
 
-last_upload_incremental is true if the table data was updated, and
+COMMENT ON COLUMN upload_table.last_upload_incremental IS $comment$
+true if the table data was updated, and
 false if the table data was completely refreshed from a level 0.
+$comment$;
 
-last_upload_details is a text string with details of the last upload
-(currently will contain constituent files and end times, for checking
-L5 uploads against).
+COMMENT ON COLUMN upload_table.last_upload_details IS $comment$
+a text string with details of the last upload (currently will contain
+constituent files and end times, for checking L5 uploads against).
+$comment$;
 
-last_upload_time records when the table upload was started.
+COMMENT ON COLUMN upload_table.last_upload_time IS $comment$
+records when the table upload was started.
+$comment$;
 
-last_upload_bdetime is the timestamp found in the last BDE file
-uploaded.
+COMMENT ON COLUMN upload_table.last_upload_bdetime IS $comment$
+timestamp found in the last BDE file uploaded.
+$comment$;
 
-last_level0_dataset is the dataset id of the last level 0 uploaded.
+COMMENT ON COLUMN upload_table.last_level0_dataset IS $comment$
+the dataset id of the last level 0 uploaded.
+$comment$;
 
-upl_id_lock is the id of an upload currently locking the table (this is
+COMMENT ON COLUMN upload_table.upl_id_lock IS $comment$
+the id of an upload currently locking the table (this is
 in the sense of a process lock, not a database lock).
+$comment$;
 
-row_tol_warning is the maximum tolerated change in row count during
-a -full-incremental update  before a warning is raised, expressed as
-the ratio of new to old rows count.
+COMMENT ON COLUMN upload_table.row_tol_warning IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before a warning is raised, expressed as the ratio of new to
+old rows count.
+$comment$;
 
-row_tol_error is the maximum tolerated change in row count during
-a -full-incremental update  before an exception is thrown, expressed as
+COMMENT ON COLUMN upload_table.row_tol_error IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before an exception is thrown, expressed as
 the ratio of new to old rows count.
 $comment$;
--- upload_stats
 
+-- upload_stats
 CREATE TABLE upload_stats
 (
     id SERIAL NOT NULL PRIMARY KEY,
