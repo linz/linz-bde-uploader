@@ -130,13 +130,13 @@ last_level0_dataset is the dataset id of the last level 0 uploaded.
 upl_id_lock is the id of an upload currently locking the table (this is
 in the sense of a process lock, not a database lock).
 
-row_tol_warning is the minimum ratio of the number of number of rows
-in the table after a level 0 update  to the number before the update
-before a warning is logged.
+row_tol_warning is the maximum tolerated change in row count during
+a -full-incremental update  before a warning is raised, expressed as
+the ratio of new to old rows count.
 
-row_tol_error is the minimum ratio of the number of number of rows
-in the table after a level 0 update  to the number before the update
-before an exception is thrown.
+row_tol_error is the maximum tolerated change in row count during
+a -full-incremental update  before an exception is thrown, expressed as
+the ratio of new to old rows count.
 $comment$;
 -- upload_stats
 
