@@ -4,6 +4,9 @@
 database. `linz_bde_uploader` has the ability to load full and incremental table
 Landonline BDE loads, as well as manage versioning information.
 
+Refer to [LINZ::Bde](https://github.com/linz/linz_bde_perl) documentation
+for further information about LINZ BDE files and repository format.
+
 ## Requirements
 
 * PostgreSQL 9.3 or greater
