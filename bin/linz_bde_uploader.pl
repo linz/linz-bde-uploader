@@ -167,7 +167,6 @@ try
     my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
     if ($dry_run)
     {
-        Log::Log4perl->easy_init($INFO);
         $logger = get_logger("");
     }
     else
