@@ -1,6 +1,7 @@
 bin/linz_bde_uploader.pl
 bin/run_bde_upload
 Build.PL
+CHANGELOG.md
 conf/linz_bde_uploader.conf
 conf/tables.conf
 debian/changelog
