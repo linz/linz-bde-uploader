@@ -15,6 +15,10 @@
 \bpm_to_blib$
 \bblibdirs$
 ^MANIFEST\.SKIP$
+^META.yml$
+^META.json$
+^MYMETA.yml$
+^MYMETA.json$
 
 # Avoid Module::Build generated and utility files.
 \bBuild$
