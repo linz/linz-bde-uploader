@@ -13,19 +13,21 @@ perl:
 
 before_install:
   # Install LINZ::Config
+  - pushd /tmp
   - wget
     https://github.com/linz/linz_utils_perl/archive/1.0.1.tar.gz
   - tar xzf 1.0.1.tar.gz
   - cd linz_utils_perl-1.0.1
   - perl Build.PL
   - sudo ./Build install
-  - cd ..
+  - popd
   # Install LINZ::Bde
+  - pushd /tmp
   - wget https://github.com/linz/linz_bde_perl/archive/1.0.2.tar.gz
   - tar xzf 1.0.2.tar.gz && cd linz_bde_perl-1.0.2
   - perl Build.PL
   - sudo ./Build install
-  - cd ..
+  - popd
   # Install postgresql-tableversion
   #- sudo pgxn install table_version
 
