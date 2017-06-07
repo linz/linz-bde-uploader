@@ -1,0 +1,37 @@
+# See https://docs.travis-ci.com/
+
+#os: trusty
+language: perl
+perl:
+  - "5.24"
+  - "5.22"
+  - "5.20"
+  - "5.18"
+  - "5.16"
+  - "5.14"
+  - "5.12"
+
+before_install:
+  # Install LINZ::Config
+  - pushd /tmp
+  - wget
+    https://github.com/linz/linz_utils_perl/archive/1.0.1.tar.gz
+  - tar xzf 1.0.1.tar.gz
+  - cd linz_utils_perl-1.0.1
+  - perl Build.PL
+  - sudo ./Build install
+  - popd
+  # Install LINZ::Bde
+  - pushd /tmp
+  - wget https://github.com/linz/linz_bde_perl/archive/1.0.2.tar.gz
+  - tar xzf 1.0.2.tar.gz && cd linz_bde_perl-1.0.2
+  - perl Build.PL
+  - sudo ./Build install
+  - popd
+  # Install postgresql-tableversion
+  #- sudo pgxn install table_version
+
+script:
+  - perl Makefile.PL
+  - make test
+  - make distcheck

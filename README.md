@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/linz/linz_bde_uploader.svg?branch=master)](https://travis-ci.org/linz/linz_bde_uploader)
+
 # LINZ Bulk Data Extract Uploader
 
 `linz_bde_uploader` is a programme for loading LINZ BDE files into a PostgreSQL
