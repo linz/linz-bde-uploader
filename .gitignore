@@ -3,6 +3,7 @@ blib/
 _build/
 Build
 Makefile
+Makefile.PL
 META.*
 MYMETA.json
 MYMETA.yml
