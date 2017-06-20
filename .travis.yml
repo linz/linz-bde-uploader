@@ -37,4 +37,5 @@ before_install:
 script:
   - perl Makefile.PL
   - make test
+  - make dist
   - make distcheck
