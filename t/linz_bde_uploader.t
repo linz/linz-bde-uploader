@@ -18,8 +18,15 @@ use warnings;
 use Test::More;
 use Test::Exception;
 use Test::Cmd;
+use File::Temp qw/ tempdir /;
+use File::Copy qw/ copy /;
 
 my $script = "./blib/script/linz_bde_uploader";
+my $confdir = "conf";
+
+my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 1);
+my $logfname = ${tmpdir}.'/log';
+#print "XXX ${tmpdir}\n";
 
 my $test = Test::Cmd->new( prog => $script, workdir => '' );
 $test->run();
@@ -37,5 +44,40 @@ $test->run( args => '-full' );
 like( $test->stderr, qr/Cannot open configuration file/, 'stderr, called with -full');
 is( $test->stdout, '', 'stdout, called with -full');
 is( $? >> 8, 1, 'exit status, with -full' );
+
+# Provide a configuration
+copy($confdir.'/linz_bde_uploader.conf', $tmpdir.'/cfg1')
+  or die "Copy failed: $!";
+# A configuration with .test suffix will be read by default to
+# override the mai configuration
+open(my $cfg_fh, ">", "${tmpdir}/cfg1.test")
+  or die "Can't write ${tmpdir}/cfg1.test: $!";
+print $cfg_fh <<"EOF";
+log_settings <<END_OF_LOG_SETTINGS
+log4perl.logger = DEBUG, File
+log4perl.appender.File = Log::Log4perl::Appender::File
+log4perl.appender.File.filename = ${logfname}
+log4perl.appender.File.layout = Log::Log4perl::Layout::SimpleLayout
+END_OF_LOG_SETTINGS
+EOF
+close($cfg_fh);
+
+# We're now missing tables.conf...
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, called with -full -config-path');
+is( $test->stdout, '', 'stdout, called with -full -config-path');
+is( $? >> 8, 1, 'exit status, with -full -config-path' );
+open(my $log_fh, "<", "${logfname}") or die "Cannot open ${logfname}";
+my $line = <$log_fh>;
+like( $line,
+  qr/FATAL - Error reading BDE upload dataset configuration .*tables.conf/,
+  'logfile, called with -full -config-path');
+$line = <$log_fh>;
+like( $line,
+  qr/Cannot open file.*No such file/,
+  'logfile line 2, called with -full -config-path');
+$line = <$log_fh>;
+is( $line, undef, 'logfile at EOF, called with -full -config-path' );
+close($log_fh);
 
 done_testing();
