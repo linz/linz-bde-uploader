@@ -24,11 +24,18 @@ my $script = "./blib/script/linz_bde_uploader";
 my $test = Test::Cmd->new( prog => $script, workdir => '' );
 $test->run();
 
-like( $test->stderr, qr/Need at least one option of/,
+like( $test->stderr, qr/at least .* -full, -incremental, -purge, or -remove-zombie/,
   'complain on stderr when no args');
 like( $test->stderr, qr/Syntax/,
   'prints syntax on stderr when no args');
+like( $test->stderr, qr/linz_bde_uploader.pl \[options..\] \[tables..\]/,
+  'prints synopsis on stderr when no args');
 is( $test->stdout, '', 'empty stdout on no args' );
-is( $? >> 8, 1, 'exit status' );
+is( $? >> 8, 1, 'exit status, with no args' );
+
+$test->run( args => '-full' );
+like( $test->stderr, qr/Cannot open configuration file/, 'stderr, called with -full');
+is( $test->stdout, '', 'stdout, called with -full');
+is( $? >> 8, 1, 'exit status, with -full' );
 
 done_testing();

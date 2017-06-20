@@ -233,7 +233,7 @@ catch
         $upload->FireEvent('error');
         undef $upload;
     }
-    Log::Log4perl->initialized() ? ERROR($_) : print $_;
+    Log::Log4perl->initialized() ? ERROR($_) : print STDERR $_;
     $status = 1;
 };
 
