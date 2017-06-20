@@ -1,0 +1,17 @@
+#!/bin/sh
+
+PERL=perl
+
+cd `dirname $0`
+
+${PERL} Build.PL
+test $? = 0 || exit 1
+
+./Build distmeta # builds Makefile.PL (among other things)
+test $? = 0 || exit 1
+
+./Build manifest # builds MANIFEST
+test $? = 0 || exit 1
+
+${PERL} Makefile.PL
+test $? = 0 || exit 1

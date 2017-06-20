@@ -35,7 +35,7 @@ before_install:
   #- sudo pgxn install table_version
 
 script:
-  - perl Makefile.PL
+  - ./configure
   - make test
   - make dist
   - make distcheck
