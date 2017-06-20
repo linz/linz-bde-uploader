@@ -12,6 +12,8 @@ perl:
   - "5.12"
 
 before_install:
+  # Install packages needed for testing
+  - sudo apt-get install libtest-cmd-perl
   # Install LINZ::Config
   - pushd /tmp
   - wget
