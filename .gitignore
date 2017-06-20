@@ -2,6 +2,8 @@
 blib/
 _build/
 Build
+MANIFEST
+MANIFEST.bak
 Makefile
 Makefile.PL
 META.*
