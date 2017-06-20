@@ -21,3 +21,6 @@ sql/01-bde_control_tables.sql
 sql/02-bde_control_functions.sql
 sql/03-bde_control_version.sql.in
 sql/99-patches.sql
+META.yml
+META.json
+t/linz_bde_uploader.t
