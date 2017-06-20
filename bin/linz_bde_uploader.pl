@@ -121,8 +121,8 @@ if($apply_level0_inc && !$apply_level0)
 
 if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
 { 
-    print "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
-    help(0);
+    print STDERR "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
+    help(0, *STDERR, 1);
 }
 
 $enddate .= '000000' if $enddate =~ /^\d{8}$/;
@@ -282,16 +282,17 @@ sub signal_handler
 
 sub help
 {
-    my($full) = @_;
+    my($full, $stream, $exitcode) = @_;
     my $level = $full ? 2 : 99;
     my $sections = 'Syntax';
     require Pod::Usage;
     Pod::Usage::pod2usage({
         -verbose=>$level,
         -sections=>$sections,
+        -output=>$stream,
         -exitval=>'NOEXIT' 
     });
-    exit;
+    exit $exitcode;
 }
 __END__
 
