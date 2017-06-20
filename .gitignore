@@ -1,8 +1,9 @@
+*.tar.gz
 blib/
 _build/
- # /script/
 Build
 Makefile
+META.*
 MYMETA.json
 MYMETA.yml
 .DS_Store
