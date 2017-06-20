@@ -13,7 +13,8 @@ perl:
 
 before_install:
   # Install packages needed for testing
-  - sudo apt-get install libtest-cmd-perl
+  #- sudo apt-get install libtest-cmd-perl
+  - cpanm Test::Cmd
   # Install LINZ::Config
   - pushd /tmp
   - wget
