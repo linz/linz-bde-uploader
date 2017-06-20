@@ -15,6 +15,7 @@ use strict;
 use warnings;
 
 use Config;
+use lib '.';
 use inc::MyBuilder;
 
 my $requires = {
