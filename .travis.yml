@@ -39,3 +39,5 @@ script:
   - make test
   - make dist
   - make distcheck
+  # Test building deb package
+  - git clean -dxf && dpkg-buildpackage -b -uc -us
