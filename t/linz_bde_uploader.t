@@ -24,6 +24,7 @@ use DBI;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
+my $sqldir = "sql";
 
 my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 1);
 my $logfname = ${tmpdir}.'/log';
@@ -39,7 +40,11 @@ my $dbh = DBI->connect("dbi:Pg:dbname=template1", "") or
 $dbh->do("create database ${testdbname}") or
     die "Cannot create test database ${testdbname}";
 
+$dbh = DBI->connect("dbi:Pg:dbname=${testdbname}", "") or
+    die "Cannot connect to ${testdbname}";
+
 END {
+  my $dbh = DBI->connect("dbi:Pg:dbname=template1", "");
   $dbh->do("drop database if exists ${testdbname}") if $dbh;
 }
 
@@ -368,6 +373,24 @@ $log = join '', @logged;
 like( $log,
   qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
   'logfile - empty db');
+
+# Prepare the database now
+# TODO: make this simpler, see
+# https://github.com/linz/linz_bde_uploader/issues/82
+
+$dbh->do("CREATE EXTENSION IF NOT EXISTS table_version") or die
+  "Could not create extension table_version";
+$dbh->do("CREATE SCHEMA IF NOT EXISTS _patches") or die
+  "Could not create schema _patches";
+$dbh->do("CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches") or die
+  "Could not create extension dbpatch";
+my $PSQLOPTS = "--set ON_ERROR_STOP=1";
+my @sqlfiles = <$sqldir/*>;
+foreach my $f (@sqlfiles) {
+  my $out = `psql --set ON_ERROR_STOP=1 "${testdbname}" -f $f 2>&1`;
+  unlike( $out, qr/ERROR/, "sourcing $f gives no error" );
+  #print "XXX $f - $out\n";
+}
 
 close($log_fh);
 done_testing();
