@@ -60,15 +60,23 @@ like( $test->stderr, qr/Cannot open configuration file/, 'stderr, called with -f
 is( $test->stdout, '', 'stdout, called with -full');
 is( $? >> 8, 1, 'exit status, with -full' );
 
-# Provide a configuration
-copy($confdir.'/linz_bde_uploader.conf', $tmpdir.'/cfg1')
-  or die "Copy failed: $!";
-# A configuration with .test suffix will be read by default to
-# override the mai configuration
-open(my $cfg_fh, ">", "${tmpdir}/cfg1.test")
-  or die "Can't write ${tmpdir}/cfg1.test: $!";
+# Provide an empty configuration
+open(my $cfg_fh, ">", "${tmpdir}/cfg1")
+  or die "Can't write ${tmpdir}/cfg1: $!";
+close($cfg_fh);
+
+# Empty configuration
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+like( $test->stderr,
+  qr/Configuration item "log_settings" is missing/,
+  'stderr, empty config' );
+is( $test->stdout, '', 'stdout, empty config' );
+is( $? >> 8, 1, 'exit status, empty config' );
+
+# Add log_settings configuration
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
 print $cfg_fh <<"EOF";
-db_connection dbname=nonexistent
 log_settings <<END_OF_LOG_SETTINGS
 log4perl.logger = DEBUG, File
 log4perl.appender.File = Log::Log4perl::Appender::File
@@ -78,24 +86,43 @@ END_OF_LOG_SETTINGS
 EOF
 close($cfg_fh);
 
+# bde_tables_config is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no bde_tables_config' );
+is( $test->stdout, '', 'stdout, no bde_tables_config' );
+is( $? >> 8, 1, 'exit status, no bde_tables_config' );
+open(my $log_fh, "<", "${logfname}") or die "Cannot open ${logfname}";
+my @logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no bde_tables_config' ); # WARNING: might depend on verbosity
+my $log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "bde_tables_config".*missing.*Duration of job/ms,
+  'logfile - no bde_tables_config');
+
+# Add bde_tables_config
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "bde_tables_config {_configdir}/tables.conf\n";
+close($cfg_fh);
+
 # We're now missing tables.conf...
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, called with -full -config-path');
-is( $test->stdout, '', 'stdout, called with -full -config-path');
-is( $? >> 8, 1, 'exit status, with -full -config-path' );
-open(my $log_fh, "<", "${logfname}") or die "Cannot open ${logfname}";
-my $line = <$log_fh>;
-like( $line,
-  qr/FATAL - Error reading BDE upload dataset configuration .*tables.conf/,
-  'logfile, called with -full -config-path');
-$line = <$log_fh>;
-like( $line,
-  qr/Cannot open file.*No such file/,
-  'logfile line 2, called with -full -config-path');
-$line = <$log_fh>;
-is( $line, undef, 'logfile at EOF, called with -full -config-path' );
+is( $test->stderr, '', 'stderr, no tables.conf' );
+is( $test->stdout, '', 'stdout, no tables.conf' );
+is( $? >> 8, 1, 'exit status, no tables.conf' );
+@logged = <$log_fh>;
+is( @logged, 2,
+  'logged 2 lines, no tables.conf' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/FATAL.*tables.conf.*No such file/ms,
+  'logfile - no bde_tables_config');
 
 # Let's write a test tables configuration next
+
 open($cfg_fh, ">", "${tmpdir}/tables.conf")
   or die "Can't write ${tmpdir}/tables.conf: $!";
 print $cfg_fh <<"EOF";
@@ -103,11 +130,202 @@ TABLE crs_test key=id row_tol=0.20,0.80 files test
 EOF
 close($cfg_fh);
 
+# db_connection is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_connection' );
+is( $test->stdout, '', 'stdout, no db_connection' );
+is( $? >> 8, 1, 'exit status, no db_connection' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_connection' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_connection".*missing.*Duration of job/ms,
+  'logfile - no db_connection');
+
+# Add db_connection
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_connection dbname=nonexistent\n";
+close($cfg_fh);
+
+# db_user is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_user' );
+is( $test->stdout, '', 'stdout, no db_user' );
+is( $? >> 8, 1, 'exit status, no db_user' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_user' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_user".*missing.*Duration of job/ms,
+  'logfile - no db_user');
+
+# Add db_user
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_user \n";
+close($cfg_fh);
+
+# db_pwd is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_pwd' );
+is( $test->stdout, '', 'stdout, no db_pwd' );
+is( $? >> 8, 1, 'exit status, no db_pwd' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_pwd' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_pwd".*missing.*Duration of job/ms,
+  'logfile - no db_pwd');
+
+# Add db_pwd
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_pwd \n";
+close($cfg_fh);
+
+# db_connect_sql is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_connect_sql' );
+is( $test->stdout, '', 'stdout, no db_connect_sql' );
+is( $? >> 8, 1, 'exit status, no db_connect_sql' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_connect_sql' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_connect_sql".*missing.*Duration of job/ms,
+  'logfile - no db_connect_sql');
+
+# Add db_connect_sql
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_connect_sql \n";
+close($cfg_fh);
+
+# db_upload_complete_sql is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_upload_complete_sql' );
+is( $test->stdout, '', 'stdout, no db_upload_complete_sql' );
+is( $? >> 8, 1, 'exit status, no db_upload_complete_sql' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_upload_complete_sql' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_upload_complete_sql".*missing.*Duration of job/ms,
+  'logfile - no db_upload_complete_sql');
+
+# Add db_upload_complete_sql
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_upload_complete_sql \n";
+close($cfg_fh);
+
+# dataset_load_start_sql is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no dataset_load_start_sql' );
+is( $test->stdout, '', 'stdout, no dataset_load_start_sql' );
+is( $? >> 8, 1, 'exit status, no dataset_load_start_sql' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no dataset_load_start_sql' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "dataset_load_start_sql".*missing.*Duration of job/ms,
+  'logfile - no dataset_load_start_sql');
+
+# Add dataset_load_start_sql
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "dataset_load_start_sql \n";
+close($cfg_fh);
+
+# dataset_load_end_sql is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no dataset_load_end_sql' );
+is( $test->stdout, '', 'stdout, no dataset_load_end_sql' );
+is( $? >> 8, 1, 'exit status, no dataset_load_end_sql' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no dataset_load_end_sql' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "dataset_load_end_sql".*missing.*Duration of job/ms,
+  'logfile - no dataset_load_end_sql');
+
+# Add dataset_load_end_sql
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "dataset_load_end_sql \n";
+close($cfg_fh);
+
+# db_schema is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no db_schema' );
+is( $test->stdout, '', 'stdout, no db_schema' );
+is( $? >> 8, 1, 'exit status, no db_schema' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no db_schema' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "db_schema".*missing.*Duration of job/ms,
+  'logfile - no db_schema');
+
+# Add db_schema
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_schema public\n";
+close($cfg_fh);
+
+# bde_schema is now required now..
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no bde_schema' );
+is( $test->stdout, '', 'stdout, no bde_schema' );
+is( $? >> 8, 1, 'exit status, no bde_schema' );
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, no bde_schema' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*item "bde_schema".*missing.*Duration of job/ms,
+  'logfile - no bde_schema');
+
+# Add bde_schema
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "bde_schema bde\n";
+close($cfg_fh);
+
+# Attempts to connect to non-existing database
+
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, -full -config-path and tables.conf');
 is( $test->stdout, '', 'stdout, -full -config-path and tables.conf');
 is( $? >> 8, 1, 'exit status, with -full -config-path and tables.conf' );
-$line = <$log_fh>;
+my $line = <$log_fh>;
 like( $line,
   qr/ERROR.*FATAL.*database "nonexistent" does not exist/,
   'logfile line 1 - nonexistent db');
@@ -120,12 +338,13 @@ like( $line,
 $line = <$log_fh>;
 is( $line, undef, 'logfile line at EOF, nonexistent db');
 
+# A configuration with .test suffix will be read by default to
+# override the main configuration
 # Set database connection to the test database
-open($cfg_fh, ">>", "${tmpdir}/cfg1.test")
+open($cfg_fh, ">", "${tmpdir}/cfg1.test")
   or die "Can't append to ${tmpdir}/cfg1.test: $!";
 print $cfg_fh <<"EOF";
 db_connection dbname=${testdbname}
-db_schema public
 EOF
 close($cfg_fh);
 
@@ -135,7 +354,7 @@ $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, empty db');
 is( $test->stdout, '', 'stdout, empty db');
 is( $? >> 8, 1, 'exit status, empty db');
-my @logged = <$log_fh>;
+@logged = <$log_fh>;
 is( @logged, 7,
   'logged 7 lines, empty db' ); # WARNING: might depend on verbosity
 $line = join '', @logged;
