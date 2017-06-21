@@ -112,7 +112,7 @@ sub new
 sub _report_config_error
 {
     my($self,@message) = @_;
-    LOGDIE("Error reading BDE upload dataset configuration from ",
+    LOGEXIT("Error reading BDE upload dataset configuration from ",
         $self->{config_file}, "\n", @message)
 }
 
