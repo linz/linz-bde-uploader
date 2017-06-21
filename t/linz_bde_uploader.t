@@ -53,6 +53,7 @@ copy($confdir.'/linz_bde_uploader.conf', $tmpdir.'/cfg1')
 open(my $cfg_fh, ">", "${tmpdir}/cfg1.test")
   or die "Can't write ${tmpdir}/cfg1.test: $!";
 print $cfg_fh <<"EOF";
+db_connection dbname=nonexistent
 log_settings <<END_OF_LOG_SETTINGS
 log4perl.logger = DEBUG, File
 log4perl.appender.File = Log::Log4perl::Appender::File
@@ -78,6 +79,31 @@ like( $line,
   'logfile line 2, called with -full -config-path');
 $line = <$log_fh>;
 is( $line, undef, 'logfile at EOF, called with -full -config-path' );
-close($log_fh);
 
+# Let's write a test tables configuration next
+open($cfg_fh, ">", "${tmpdir}/tables.conf")
+  or die "Can't write ${tmpdir}/tables.conf: $!";
+print $cfg_fh <<"EOF";
+TABLE crs_test key=id row_tol=0.20,0.80 files test
+EOF
+close($cfg_fh);
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, -full -config-path and tables.conf');
+is( $test->stdout, '', 'stdout, -full -config-path and tables.conf');
+is( $? >> 8, 1, 'exit status, with -full -config-path and tables.conf' );
+$line = <$log_fh>;
+like( $line,
+  qr/ERROR.*FATAL.*database "nonexistent" does not exist/,
+  'logfile line 1 - nonexistent db');
+$line = <$log_fh>;
+is( $line, "\n", 'logfile line 2 - nonexistent db');
+$line = <$log_fh>;
+like( $line,
+  qr/INFO.*Duration of job/,
+  'logfile line 3 - nonexistent db (duration)');
+$line = <$log_fh>;
+is( $line, undef, 'logfile line at EOF, nonexistent db');
+
+close($log_fh);
 done_testing();
