@@ -125,8 +125,7 @@ open($cfg_fh, ">>", "${tmpdir}/cfg1.test")
   or die "Can't append to ${tmpdir}/cfg1.test: $!";
 print $cfg_fh <<"EOF";
 db_connection dbname=${testdbname}
-db_connect_sql <<EOT
-EOT
+db_schema public
 EOF
 close($cfg_fh);
 
