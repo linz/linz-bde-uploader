@@ -20,6 +20,7 @@ use Test::Exception;
 use Test::Cmd;
 use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
+use DBI;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -27,6 +28,20 @@ my $confdir = "conf";
 my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 1);
 my $logfname = ${tmpdir}.'/log';
 #print "XXX ${tmpdir}\n";
+
+my $testdbname = "linz_bde_uploader_test_$$";
+
+# Create test database
+
+my $dbh = DBI->connect("dbi:Pg:dbname=template1", "") or
+    die "Cannot connect to template1, please set PG env variables";
+
+$dbh->do("create database ${testdbname}") or
+    die "Cannot create test database ${testdbname}";
+
+END {
+  $dbh->do("drop database if exists ${testdbname}") if $dbh;
+}
 
 my $test = Test::Cmd->new( prog => $script, workdir => '' );
 $test->run();
@@ -104,6 +119,28 @@ like( $line,
   'logfile line 3 - nonexistent db (duration)');
 $line = <$log_fh>;
 is( $line, undef, 'logfile line at EOF, nonexistent db');
+
+# Set database connection to the test database
+open($cfg_fh, ">>", "${tmpdir}/cfg1.test")
+  or die "Can't append to ${tmpdir}/cfg1.test: $!";
+print $cfg_fh <<"EOF";
+db_connection dbname=${testdbname}
+EOF
+close($cfg_fh);
+
+# Run with ability to connect to database
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, empty db');
+is( $test->stdout, '', 'stdout, empty db');
+is( $? >> 8, 1, 'exit status, empty db');
+my @logged = <$log_fh>;
+is( @logged, 7,
+  'logged 7 lines, empty db' ); # WARNING: might depend on verbosity
+$line = join '', @logged;
+like( $line,
+  qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
+  'logfile - empty db');
 
 close($log_fh);
 done_testing();
