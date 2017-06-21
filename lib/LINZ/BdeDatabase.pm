@@ -311,7 +311,7 @@ sub new
         $self->{_user}, $self->{_pwd}, 
         {
             AutoCommit    =>1,
-            PrintError    =>1,
+            PrintError    =>0,
             PrintWarn     =>1,
             RaiseError    =>1,
             pg_errorlevel =>2,
