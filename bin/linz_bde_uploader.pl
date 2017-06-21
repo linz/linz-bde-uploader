@@ -167,7 +167,8 @@ try
     my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
     if ($dry_run)
     {
-        Log::Log4perl->easy_init($INFO);
+        Log::Log4perl->easy_init( { level    => $INFO,
+                                    file     => "STDOUT" } );
         $logger = get_logger("");
     }
     else
@@ -204,7 +205,7 @@ try
         }
     }
     
-    if($verbose || $dry_run)
+    if($verbose)
     {
         my $stdout_appender = Log::Log4perl::Appender->new(
             "Log::Log4perl::Appender::Screen",

@@ -322,16 +322,28 @@ close($cfg_fh);
 # Attempts to connect to non-existing database
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, -full -config-path and tables.conf');
-is( $test->stdout, '', 'stdout, -full -config-path and tables.conf');
-is( $? >> 8, 1, 'exit status, with -full -config-path and tables.conf' );
+is( $test->stderr, '', 'stderr, nonexistent db');
+is( $test->stdout, '', 'stdout, nonexistent db');
+is( $? >> 8, 1, 'exit status, with nonexistent db' );
 @logged = <$log_fh>;
 is( @logged, 3,
-  'logged 3 lines, -full -config-path and tables.conf' ); # WARNING: might depend on verbosity
+  'logged 3 lines, nonexistent db' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR.*FATAL.*database "nonexistent" does not exist.*Duration of job/ms,
-  'logfile - -full -config-path and tables.conf db');
+  'logfile - nonexistent db');
+
+# Dry run connects anyway
+
+$test->run( args => "-full -dry-run -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, nonexistent db, dry-run');
+like( $test->stdout,
+  qr/FATAL.*database "nonexistent" does not exist.*Duration of job/ms,
+  'logfile - nonexistent db, dry-run');
+is( $? >> 8, 1, 'exit status, nonexistent db, dry-run');
+@logged = <$log_fh>;
+is( @logged, 0,
+  'logged 0 lines, nonexistent db, dry-run' ); # WARNING: might depend on verbosity
 
 # A configuration with .test suffix will be read by default to
 # override the main configuration
