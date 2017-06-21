@@ -325,18 +325,13 @@ $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, -full -config-path and tables.conf');
 is( $test->stdout, '', 'stdout, -full -config-path and tables.conf');
 is( $? >> 8, 1, 'exit status, with -full -config-path and tables.conf' );
-my $line = <$log_fh>;
-like( $line,
-  qr/ERROR.*FATAL.*database "nonexistent" does not exist/,
-  'logfile line 1 - nonexistent db');
-$line = <$log_fh>;
-is( $line, "\n", 'logfile line 2 - nonexistent db');
-$line = <$log_fh>;
-like( $line,
-  qr/INFO.*Duration of job/,
-  'logfile line 3 - nonexistent db (duration)');
-$line = <$log_fh>;
-is( $line, undef, 'logfile line at EOF, nonexistent db');
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, -full -config-path and tables.conf' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR.*FATAL.*database "nonexistent" does not exist.*Duration of job/ms,
+  'logfile - -full -config-path and tables.conf db');
 
 # A configuration with .test suffix will be read by default to
 # override the main configuration
@@ -357,8 +352,8 @@ is( $? >> 8, 1, 'exit status, empty db');
 @logged = <$log_fh>;
 is( @logged, 7,
   'logged 7 lines, empty db' ); # WARNING: might depend on verbosity
-$line = join '', @logged;
-like( $line,
+$log = join '', @logged;
+like( $log,
   qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
   'logfile - empty db');
 
