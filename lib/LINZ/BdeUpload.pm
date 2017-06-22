@@ -423,7 +423,7 @@ sub new
     # Set up the repository and the database
 
     $self->{db} = new LINZ::BdeDatabase( $cfg );
-    $self->{db}->setApplication($cfg->application_name);
+    $self->{db}->setApplication($cfg->application_name('LINZ BDE Loader'));
 
     $self->{repository} = new LINZ::BdeRepository( $cfg->bde_repository );
    
