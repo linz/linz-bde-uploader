@@ -281,21 +281,21 @@ sub new
 {
     my($class,$cfg) = @_;
     my $self = fields::new($class);
-    $self->{_connection} = $cfg->db_connection;
-    $self->{_user} = $cfg->db_user;
-    $self->{_pwd} = $cfg->db_pwd;
-    $self->{_startSql} = $cfg->db_connect_sql;
-    $self->{_finishSql} = $cfg->db_upload_complete_sql;
-    $self->{_startDatasetSql} = $cfg->dataset_load_start_sql;
-    $self->{_endDatasetSql} = $cfg->dataset_load_end_sql;
-    $self->{_dbschema} = $cfg->db_schema;
+    $self->{_connection} = $cfg->db_connection; # no default, less problems
+    $self->{_user} = $cfg->db_user('');
+    $self->{_pwd} = $cfg->db_pwd('');
+    $self->{_startSql} = $cfg->db_connect_sql('');
+    $self->{_finishSql} = $cfg->db_upload_complete_sql('');
+    $self->{_startDatasetSql} = $cfg->dataset_load_start_sql('');
+    $self->{_endDatasetSql} = $cfg->dataset_load_end_sql('');
+    $self->{_dbschema} = $cfg->db_schema('bde_control');
     $self->{_overrideLocks} = $cfg->override_locks(0) ? 1 : 0;
     $self->{_usetbltransaction} = $cfg->use_table_transaction(0) ? 1 : 0;
     $self->{_usedstransaction} = $cfg->use_dataset_transaction(1) ? 1 : 0;
     $self->{_locktimeout} = $cfg->table_exclusive_lock_timeout(60)+0;
     $self->{_allowConcurrent} = $cfg->allow_concurrent_uploads(0);
 
-    $self->{schema} = $cfg->bde_schema;
+    $self->{schema} = $cfg->bde_schema('bde');
 
     if( $self->{_usedstransaction} && $self->{_usetbltransaction} )
     {
