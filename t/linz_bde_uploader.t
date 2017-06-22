@@ -436,16 +436,64 @@ foreach my $f (@sqlfiles) {
 # Run with prepared database, it's missing application_name now
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, prepared db');
-is( $test->stdout, '', 'stdout, prepared db');
-is( $? >> 8, 1, 'exit status, prepared db');
+is( $test->stderr, '', 'stderr, missing application_name');
+is( $test->stdout, '', 'stdout, missing application_name');
+is( $? >> 8, 1, 'exit status, missing application_name');
 @logged = <$log_fh>;
 is( @logged, 3,
-  'logged 3 lines, prepared db' ); # WARNING: might depend on verbosity
+  'logged 3 lines, missing application_name' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
-  qr/ERROR - Configuration item "application_name" is missing/ms,
-  'logfile - prepared db');
+  qr/ERROR - Configuration item "application_name" is missing.*Duration/ms,
+  'logfile - missing application_name');
+
+# Add application_name
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "application_name linz_bde_uploader.t\n";
+close($cfg_fh);
+
+# Run with prepared database, it's missing bde_repository now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, missing bde_repository');
+is( $test->stdout, '', 'stdout, missing bde_repository');
+is( $? >> 8, 1, 'exit status, missing bde_repository');
+@logged = <$log_fh>;
+is( @logged, 4,
+  'logged 4 lines, missing bde_repository.*Duration' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/DEBUG .*application_name='linz_bde_uploader.t'/,
+  'logfile - missing bde_repository (application_name)');
+like( $log,
+  qr/ERROR - Configuration item "bde_repository" is missing/ms,
+  'logfile - missing bde_repository');
+
+# Add bde_repository
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "bde_repository ${tmpdir}\n";
+close($cfg_fh);
+
+# Run with prepared database, it's missing tmp_base_dir now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, missing tmp_base_dir');
+is( $test->stdout, '', 'stdout, missing tmp_base_dir');
+is( $? >> 8, 1, 'exit status, missing tmp_base_dir');
+@logged = <$log_fh>;
+is( @logged, 4,
+  'logged 4 lines, missing tmp_base_dir' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/DEBUG .*application_name='linz_bde_uploader.t'/,
+  'logfile - missing tmp_base_dir (application_name)');
+like( $log,
+  qr/ERROR - Configuration item "tmp_base_dir" is missing/ms,
+  'logfile - missing tmp_base_dir');
 
 close($log_fh);
 done_testing();
