@@ -14,6 +14,7 @@ for further information about LINZ BDE files and repository format.
 * PostgreSQL 9.3 or greater
 * [postgresql-tableversion](https://github.com/linz/postgresql-tableversion)
 * [linz-bde-schema](https://github.com/linz/linz-bde-schema)
+* [bde_copy](https://github.com/linz/linz_bde_copy)
 * Perl 5.12 or greater, plus
     - DBD::Pg
     - Date::Calc
