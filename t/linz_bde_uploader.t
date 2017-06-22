@@ -300,7 +300,7 @@ like( $log,
 
 open($cfg_fh, ">>", "${tmpdir}/cfg1")
   or die "Can't append to ${tmpdir}/cfg1: $!";
-print $cfg_fh "db_schema public\n";
+print $cfg_fh "db_schema bde_control\n";
 close($cfg_fh);
 
 # bde_schema is now required now..
@@ -432,6 +432,20 @@ foreach my $f (@sqlfiles) {
   unlike( $out, qr/ERROR/, "sourcing $f gives no error" );
   #print "XXX $f - $out\n";
 }
+
+# Run with prepared database, it's missing application_name now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, prepared db');
+is( $test->stdout, '', 'stdout, prepared db');
+is( $? >> 8, 1, 'exit status, prepared db');
+@logged = <$log_fh>;
+is( @logged, 3,
+  'logged 3 lines, prepared db' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR - Configuration item "application_name" is missing/ms,
+  'logfile - prepared db');
 
 close($log_fh);
 done_testing();
