@@ -626,7 +626,7 @@ sub GetLevel0Updates
 
     my $rebuild = $self->cfg->rebuild(0);
     
-    if ( $self->cfg->require_all_dataset_files )
+    if ( $self->cfg->require_all_dataset_files(1) )
     {
         my $l0_tableset = $self->tables->level0_subset;
         my ($avail, $missing) = $l0_tableset->is_available_in_dataset($dataset);
