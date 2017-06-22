@@ -73,7 +73,7 @@ close($cfg_fh);
 # Empty configuration
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 like( $test->stderr,
-  qr/Configuration item "log_settings" is missing/,
+  qr/Configuration item "bde_tables_config" is missing/ms,
   'stderr, empty config' );
 is( $test->stdout, '', 'stdout, empty config' );
 is( $? >> 8, 1, 'exit status, empty config' );
