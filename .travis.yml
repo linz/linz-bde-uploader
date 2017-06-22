@@ -53,6 +53,14 @@ before_install:
     | tar xzf - && cd linz-bde-schema-1.0.2
   - sudo make install
   - popd
+  # Install linz_bde_copy
+  - pushd /tmp
+  - wget -q -O -
+    https://github.com/linz/linz_bde_copy/archive/1.2.1.tar.gz
+    | tar xzf - && cd linz_bde_copy-1.2.1
+  - cmake .
+  - make && sudo make install
+  - popd
 
 script:
   - ./configure
