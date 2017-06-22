@@ -110,7 +110,7 @@ like( $log,
 open($cfg_fh, ">", "${tmpdir}/tables.conf")
   or die "Can't write ${tmpdir}/tables.conf: $!";
 print $cfg_fh <<"EOF";
-TABLE crs_test key=id row_tol=0.20,0.80 files test
+TABLE test_table key=id row_tol=0.20,0.80 files test_file
 EOF
 close($cfg_fh);
 
@@ -255,17 +255,15 @@ is( @logged, 4,
   'logged 4 lines, missing bde_repository.*Duration' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
-  qr/DEBUG .*application_name='LINZ BDE Loader'/,
-  'logfile - missing bde_repository (application_name)');
-like( $log,
   qr/ERROR - Configuration item "bde_repository" is missing/ms,
   'logfile - missing bde_repository');
 
 # Add bde_repository
 
+my $repodir = ${tmpdir};
 open($cfg_fh, ">>", "${tmpdir}/cfg1")
   or die "Can't append to ${tmpdir}/cfg1: $!";
-print $cfg_fh "bde_repository ${tmpdir}\n";
+print $cfg_fh "bde_repository ${repodir}\n";
 close($cfg_fh);
 
 # Run with prepared database, it's missing level0 dir now
@@ -279,11 +277,65 @@ is( @logged, 4,
   'logged 4 lines, missing level0 dir' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
-  qr/DEBUG .*application_name='LINZ BDE Loader'/,
-  'logfile - missing level0 dir (application_name)');
-like( $log,
   qr/ERROR - Apply Updates Failed: Level 0 directory.*doesn't exist/ms,
   'logfile - missing level0 dir');
+
+# Craft a level_0 directory
+
+my $level0dir = $repodir . '/level_0';
+mkdir $level0dir or die "Cannot create $level0dir";
+
+# Run with prepared database, it's missing available uploads now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no uploads available');
+is( $test->stdout, '', 'stdout, no uploads available');
+is( $? >> 8, 1, 'exit status, no uploads available');
+@logged = <$log_fh>;
+is( @logged, 4,
+  'logged 4 lines, no uploads available' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
+  'logfile - no uploads available');
+
+# Craft an upload in dataset in level_0 directory
+
+my $level0ds1 = $level0dir . '/20170622170629';
+mkdir $level0ds1 or die "Cannot create $level0ds1";
+my $datadir = "t/data";
+
+# Missing table.conf requested test_file now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, missing test_file');
+is( $test->stdout, '', 'stdout, missing test_file');
+is( $? >> 8, 1, 'exit status, missing test_file');
+@logged = <$log_fh>;
+#is( @logged, 4, 'logged 4 lines, missing test_table input file' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/Level 0 dataset is not complete.*missing: test_file/,
+  'logfile - missing test_file');
+
+# Make test_file.crs available
+
+copy($datadir.'/pab1.crs', $level0ds1.'/test_file.crs') or die "Copy failed: $!";
+
+# Missing test_table table in database 
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, missing test_table');
+is( $test->stdout, '', 'stdout, missing test_table');
+is( $? >> 8, 1, 'exit status, missing test_table');
+@logged = <$log_fh>;
+#is( @logged, 4, 'logged 4 lines, missing test_table input file' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/Table 'bde.test_table' does not exist/,
+  'logfile - missing test_table');
+
+# TODO: check if linz_bde_uploader can create a table, or create one
 
 close($log_fh);
 done_testing();

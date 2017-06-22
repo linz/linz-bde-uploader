@@ -1,0 +1,19 @@
+HEDR	 2.0.0
+SOFTWARE cbe_b30 V1.0.1
+SCHEMA	 V1.0
+USER	 crs_bde
+START	 2016-06-01 17:12:25
+END	 2016-06-01 17:12:25
+SQL	 SELECT * FROM crs_parcel_bndry
+TABLE	crs_parcel_bndry
+COLUMN	 pri_id                         integer NULL
+COLUMN	 sequence                       integer NULL
+COLUMN	 lin_id                         integer NULL
+COLUMN	 reversed                       char NULL
+COLUMN	 audit_id                       integer NOT NULL
+DESC
+SIZE          411453
+{CRS-DATA}
+4457326|1|29694591|Y|80401148|
+4457326|2|29694578|Y|80401149|
+4457326|3|11960041|Y|80401150|
