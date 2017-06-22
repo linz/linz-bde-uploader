@@ -335,7 +335,28 @@ like( $log,
   qr/Table 'bde.test_table' does not exist/,
   'logfile - missing test_table');
 
-# TODO: check if linz_bde_uploader can create a table, or create one
+# Change tables.conf to reference one of the existing BDE tables
+
+open($cfg_fh, ">", "${tmpdir}/tables.conf")
+  or die "Can't write ${tmpdir}/tables.conf: $!";
+print $cfg_fh <<"EOF";
+TABLE crs_parcel_bndry key=audit_id  row_tol=0.20,0.95 files test_file
+EOF
+close($cfg_fh);
+
+# This should supposedly be first successful upload
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, success upload test_file');
+is( $test->stdout, '', 'stdout, success upload test_file');
+is( $? >> 8, 0, 'exit status, success upload test_file');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_file');
+
+# TODO: check actual table content
 
 close($log_fh);
 done_testing();
