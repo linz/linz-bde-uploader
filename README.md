@@ -167,7 +167,8 @@ in each with the naming convention of YYYYMMDDhhmmss for each dataset
 
 * ``tmp_base_dir``: This temp processing directory for uncompressing and
 pre-processing BDE datafile. This directory should have at 15GB of free
-space for large production tables such as `crs_adj_obs_change`
+space for large production tables such as `crs_adj_obs_change`.
+Defaults to `/tmp`
 
 * ``include_tables``: A list of table to load for the run. These table must exist
 in the in the file as defined by `bde_tables_config` (`tables.conf` by default)

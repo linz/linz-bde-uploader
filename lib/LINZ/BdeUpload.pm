@@ -429,7 +429,7 @@ sub new
    
     # Check for the base scratch directory - create it if it doesn't exist
     
-    my $scratch = $cfg->tmp_base_dir;
+    my $scratch = $cfg->tmp_base_dir('/tmp');
     if( ! -d $scratch )
     {
         mkpath($scratch);

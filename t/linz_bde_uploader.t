@@ -268,22 +268,22 @@ open($cfg_fh, ">>", "${tmpdir}/cfg1")
 print $cfg_fh "bde_repository ${tmpdir}\n";
 close($cfg_fh);
 
-# Run with prepared database, it's missing tmp_base_dir now
+# Run with prepared database, it's missing level0 dir now
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, missing tmp_base_dir');
-is( $test->stdout, '', 'stdout, missing tmp_base_dir');
-is( $? >> 8, 1, 'exit status, missing tmp_base_dir');
+is( $test->stderr, '', 'stderr, missing level0 dir');
+is( $test->stdout, '', 'stdout, missing level0 dir');
+is( $? >> 8, 1, 'exit status, missing level0 dir');
 @logged = <$log_fh>;
 is( @logged, 4,
-  'logged 4 lines, missing tmp_base_dir' ); # WARNING: might depend on verbosity
+  'logged 4 lines, missing level0 dir' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/DEBUG .*application_name='LINZ BDE Loader'/,
-  'logfile - missing tmp_base_dir (application_name)');
+  'logfile - missing level0 dir (application_name)');
 like( $log,
-  qr/ERROR - Configuration item "tmp_base_dir" is missing/ms,
-  'logfile - missing tmp_base_dir');
+  qr/ERROR - Apply Updates Failed: Level 0 directory.*doesn't exist/ms,
+  'logfile - missing level0 dir');
 
 close($log_fh);
 done_testing();
