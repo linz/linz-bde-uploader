@@ -173,9 +173,9 @@ try
     }
     else
     {
-        my $log_config = $cfg->log_settings;
-        if ($log_config)
+        if ( $cfg->has('log_settings') )
         {
+            my $log_config = $cfg->log_settings;
             if ( $log_config !~ /^[^#]?log4perl\.(root)?[Ll]ogger\s+\=\s+
                 (FATAL|ERROR|WARN|INFO|DEBUG|TRACE|ALL)/mx )
             {
