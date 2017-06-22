@@ -149,7 +149,7 @@ like( $log,
   qr/ERROR.*FATAL.*database "nonexistent" does not exist.*Duration of job/ms,
   'logfile - nonexistent db');
 
-# Dry run connects anyway
+# Dry run logs to stdout instead of logfile
 
 $test->run( args => "-full -dry-run -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, nonexistent db, dry-run');
