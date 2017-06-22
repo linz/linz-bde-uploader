@@ -12,7 +12,7 @@ COLUMN	 lin_id                         integer NULL
 COLUMN	 reversed                       char NULL
 COLUMN	 audit_id                       integer NOT NULL
 DESC
-SIZE          411453
+SIZE          562
 {CRS-DATA}
 4457326|1|29694591|Y|80401148|
 4457326|2|29694578|Y|80401149|
