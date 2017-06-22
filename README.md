@@ -76,30 +76,40 @@ perl Build.PL \
     --install_path sql=/my/sql/dir
 ```
 
-### Setup under *UNIX
+### setup under *UNIX*
 
-A UTF8 database needs to be created for the management of the BDE data.
+#### Database preparation
+
+For a database to be usable as the target of a `linz_bde_uploader`
+run, it needs to be prepared in multiple steps.
+
+First step is creating the BDE schema. 
 This can be done following the instructions in
-[linz-bde-schema](https://github.com/linz/linz-bde-schema)
+[linz-bde-schema](https://github.com/linz/linz-bde-schema).
+The BDE schema creation scripts will take care of ensuring required
+cluster-global roles exist and database-local objects (schemas,
+tables, extensions, functions etc) are loaded.
 
-If you haven't already installed the PostgreSQL `table_version` extension then do
-so:
+As the `table_version` extension is an optional component for
+the BDE schema, if you haven't already installed it you'll need
+to do it as the second step:
 
 ```shell
 psql $DB_NAME -c "CREATE EXTENSION IF NOT EXISTS table_version"
 ```
 
-You can then execute the installed linz-bde-uploader SQL support files with
-something like:
+Third step is executing the installed linz-bde-uploader SQL support
+files with something like the following:
 
 ```shell
 for file in /usr/share/linz-bde-uploader/sql/*.sql
     do psql $DB_NAME -f $file -v ON_ERROR_STOP=1
 done
 ```
+#### User setup
 
 Lastly the `linz_bde_uploader` software should be run under a UNIX account that
-also has PostgreSQL ``bde_dba`` database access. It is best to first create a
+also has PostgreSQL `bde_dba` database access. It is best to first create a
 system user account as well so ident authentication can be used.
 
 ```shell
@@ -122,7 +132,10 @@ BEGIN
 END
 $$;
 ```
-Also creating a standard system log directory in /var/log would be a good idea:
+
+#### Logging setup
+
+Creating a standard system log directory in /var/log would be a good idea:
 
 ```shell
 BDE_LOG_DIR=/var/log/linz-bde-uploader
