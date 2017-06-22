@@ -19,6 +19,7 @@ use warnings;
 
 our $VERSION = '@@VERSION@@';
 
+use File::Basename qw( dirname );
 use FindBin;
 use lib $FindBin::Bin;
 use lib "$FindBin::Bin/../lib";
@@ -186,8 +187,9 @@ try
         }
         else
         {
+            Log::Log4perl->easy_init( { level    => $INFO,
+                                        file     => "STDOUT" } );
             $logger = get_logger("");
-            $logger->level($INFO);
         }
         
         if($listing_file)
@@ -219,6 +221,12 @@ try
         $logger->level($LOG_LEVELS{$log_level});
     }
     
+    # Set default value for bde_tables_config
+    if ( ! $cfg->has('bde_tables_config') ) {
+      my $bde_tables_config = dirname($cfgpath) . '/tables.conf';
+      $cfg->bde_tables_config( $bde_tables_config );
+    }
+
     $upload = new LINZ::BdeUpload($cfg);
     if(!$dry_run)
     {
