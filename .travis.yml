@@ -48,8 +48,9 @@ before_install:
   - popd
   # Install linz-bde-schema
   - pushd /tmp
-  - wget https://github.com/linz/linz-bde-schema/archive/1.0.2.tar.gz
-  - tar xzf 1.0.2.tar.gz && cd linz-bde-schema-1.0.2
+  - wget -q -O - 
+    https://github.com/linz/linz-bde-schema/archive/1.0.2.tar.gz
+    | tar xzf - && cd linz-bde-schema-1.0.2
   - sudo make install
   - popd
 
