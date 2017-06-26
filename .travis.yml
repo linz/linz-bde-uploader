@@ -29,6 +29,7 @@ before_install:
     fakeroot
     libtest-cmd-perl
     libtest-exception-perl
+  - cpanm Test::Cmd
   # Install dbpatch PostgreSQL extension
   - sudo pgxn install dbpatch
   # Install table_version PostgreSQL extension
