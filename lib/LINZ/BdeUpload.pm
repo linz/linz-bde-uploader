@@ -1118,6 +1118,12 @@ sub BuildTempFile
     my($self,$dataset,$reader) = @_;
     my $tmpname = $self->tmp."/".$reader->name."_".$dataset->name."_".$self->fid.".unl";
     my $cfg = $self->cfg->bde_copy_configuration('');
+    # Ensure file_separator and line_terminator configurations
+    # are those expected by the COPY command as issued by the
+    # bde_UploadDataToTempTable function in sql/02-bde_control_functions.sql
+    # See https://github.com/linz/linz_bde_uploader/issues/90
+    $cfg .= "field_separator |\n";
+    $cfg .= "line_terminator \x0A\n";
     my $log = $tmpname.".log";
     my $result = $reader->copy
         (
