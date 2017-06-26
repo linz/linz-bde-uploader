@@ -70,4 +70,4 @@ script:
   - make dist
   - make distcheck
   # Test building deb package
-  - git clean -dxf && dpkg-buildpackage --no-check-builddeps -b -uc -us
+  - git clean -dxf && dpkg-buildpackage -d -b -uc -us
