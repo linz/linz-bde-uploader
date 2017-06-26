@@ -1123,7 +1123,7 @@ sub BuildTempFile
     # bde_UploadDataToTempTable function in sql/02-bde_control_functions.sql
     # See https://github.com/linz/linz_bde_uploader/issues/90
     $cfg .= "field_separator |\n";
-    $cfg .= "line_terminator \x0A\n";
+    $cfg .= "line_terminator \\x0A\n";
     my $log = $tmpname.".log";
     my $result = $reader->copy
         (
