@@ -356,7 +356,31 @@ like( $log,
   qr/INFO - Job.*finished successfully/,
   'logfile - success upload test_file');
 
-# TODO: check actual table content
+# check actual table content
+
+my $res  = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.crs_parcel_bndry ORDER BY pri_id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'crs_parcel_bndry has 3 entries' );
+
+is( $res->[0]{'pri_id'}, '4457326', 'crs_parcel_bndry[0].pri_id' );
+is( $res->[0]{'sequence'}, '3', 'crs_parcel_bndry[0].sequence' );
+is( $res->[0]{'lin_id'}, '11960041', 'crs_parcel_bndry[0].lin_id' );
+is( $res->[0]{'reversed'}, 'Y', 'crs_parcel_bndry[0].reversed' );
+is( $res->[0]{'audit_id'}, '80401150', 'crs_parcel_bndry[0].audit_id' );
+
+is( $res->[1]{'pri_id'}, '4457327', 'crs_parcel_bndry[1].pri_id' );
+is( $res->[1]{'sequence'}, '2', 'crs_parcel_bndry[1].sequence' );
+is( $res->[1]{'lin_id'}, '29694578', 'crs_parcel_bndry[1].lin_id' );
+is( $res->[1]{'reversed'}, 'N', 'crs_parcel_bndry[1].reversed' );
+is( $res->[1]{'audit_id'}, '80401149', 'crs_parcel_bndry[1].audit_id' );
+
+is( $res->[2]{'pri_id'}, '4457328', 'crs_parcel_bndry[2].pri_id' );
+is( $res->[2]{'sequence'}, '1', 'crs_parcel_bndry[2].sequence' );
+is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id' );
+is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed' );
+is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id' );
 
 close($log_fh);
 done_testing();
