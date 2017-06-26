@@ -27,7 +27,7 @@ before_install:
   - sudo apt-get install
     debhelper
     fakeroot
-  - cpanm Test::Cmd
+  - cpanm Test::Cmd Test::Exception
   # Install dbpatch PostgreSQL extension
   - sudo pgxn install dbpatch
   # Install table_version PostgreSQL extension
