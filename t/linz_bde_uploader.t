@@ -664,6 +664,84 @@ is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id (6)' );
 is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed (6)' );
 is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id (6)' );
 
+# Pretend a job is active
+
+$res = $dbh->do(<<END_OF_SQL
+INSERT INTO bde_control.upload VALUES (
+  nextval('bde_control.upload_id_seq'::regclass),
+  'bde',
+  '2017-06-28 13:00:00',
+  '2017-06-28 13:00:00', 'A')
+END_OF_SQL
+) or die "Could not INSERT INTO bde_control.upload";
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '7', 'upload[7].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[7].schema-name' );
+is( $res->[0]{'status'}, 'A', 'upload[7].status' );
+
+
+# Attempt to run a new job now
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -r" );
+is( $test->stderr, '', 'stderr, another job is already active (8)');
+is( $test->stdout, '', 'stdout, another job is already active (8)');
+is( $? >> 8, 1, 'exit status, another job is already active (8)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/Cannot create upload job - another job is already active/,
+  'logfile - another job is already active (8)');
+
+# Override lock to run a new job now
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -r -override-locks" );
+is( $test->stderr, '', 'stderr, override-locks (8)');
+is( $test->stdout, '', 'stdout, override-locks (8)');
+is( $? >> 8, 0, 'exit status, override-locks (8)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - override-locks (8)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} });
+is( $res->[0]{'id'}, '8', 'upload[8].id' );
+is( $res->[0]{'status'}, 'C', 'upload[8].status' );
+
+# Pretend job 8 is still active
+
+$res = $dbh->do("UPDATE bde_control.upload set status = 'A' where id = 8")
+  or die "Could not UPDATE bde_control.upload";
+
+# override-locks can be passed as -o too
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
+is( $test->stderr, '', 'stderr, override-locks (9)');
+is( $test->stdout, '', 'stdout, override-locks (9)');
+is( $? >> 8, 0, 'exit status, override-locks (9)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - override-locks (9)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} });
+is( $res->[0]{'id'}, '9', 'upload[8].id' );
+is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
 close($log_fh);
-done_testing(169);
+done_testing(188);
