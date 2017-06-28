@@ -574,7 +574,96 @@ is( $res->[0]{'id'}, '4', 'upload[4].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[4].schema-name' );
 is( $res->[0]{'status'}, 'C', 'upload[4].status' );
 
+# Run full upload again, using -b for -before 
+# No new data to upload
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701" );
+is( $test->stderr, '', 'stderr, no dataset updates to apply(5)');
+is( $test->stdout, '', 'stdout, no dataset updates to apply (5)');
+is( $? >> 8, 0, 'exit status, no dataset updates to apply (5)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/No dataset updates to apply/,
+  'logfile - no dataset updates to apply (5)');
+
+# Run again but with -rebuild
+# No new data to upload
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -rebuild" );
+is( $test->stderr, '', 'stderr, success upload test_file (5)');
+is( $test->stdout, '', 'stdout, success upload test_file (5)');
+is( $? >> 8, 0, 'exit status, success upload test_file (5)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_file (5)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '5', 'upload[5].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[5].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[5].status' );
+
+# Update target table, to check it is properly rebuilt
+
+$res = $dbh->do(
+  'UPDATE bde.crs_parcel_bndry set sequence = -sequence',
+) or die "Could not update bde.crs_parcel_bndry";
+
+# -rebuild can be also passed as -r
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -r" );
+is( $test->stderr, '', 'stderr, success upload test_file (6)');
+is( $test->stdout, '', 'stdout, success upload test_file (6)');
+is( $? >> 8, 0, 'exit status, success upload test_file (6)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_file (6)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '6', 'upload[6].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[6].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[6].status' );
+
+# check actual table content
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.crs_parcel_bndry ORDER BY pri_id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'crs_parcel_bndry has 3 entries' );
+
+is( $res->[0]{'pri_id'}, '4457326', 'crs_parcel_bndry[0].pri_id (6)' );
+is( $res->[0]{'sequence'}, '3', 'crs_parcel_bndry[0].sequence (6)' );
+is( $res->[0]{'lin_id'}, '11960041', 'crs_parcel_bndry[0].lin_id (6)' );
+is( $res->[0]{'reversed'}, 'Y', 'crs_parcel_bndry[0].reversed (6)' );
+is( $res->[0]{'audit_id'}, '80401150', 'crs_parcel_bndry[0].audit_id (6)' );
+
+is( $res->[1]{'pri_id'}, '4457327', 'crs_parcel_bndry[1].pri_id (6)' );
+is( $res->[1]{'sequence'}, '2', 'crs_parcel_bndry[1].sequence (6)' );
+is( $res->[1]{'lin_id'}, '29694578', 'crs_parcel_bndry[1].lin_id (6)' );
+is( $res->[1]{'reversed'}, 'N', 'crs_parcel_bndry[1].reversed (6)' );
+is( $res->[1]{'audit_id'}, '80401149', 'crs_parcel_bndry[1].audit_id (6)' );
+
+is( $res->[2]{'pri_id'}, '4457328', 'crs_parcel_bndry[2].pri_id (6)' );
+is( $res->[2]{'sequence'}, '1', 'crs_parcel_bndry[2].sequence (6)' );
+is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id (6)' );
+is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed (6)' );
+is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id (6)' );
 
 
 close($log_fh);
-done_testing(135);
+done_testing(169);
