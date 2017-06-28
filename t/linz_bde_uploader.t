@@ -179,6 +179,38 @@ is( $? >> 8, 1, 'exit status, nonexistent db, dry-run (-d)');
 is( @logged, 0,
   'logged 0 lines, nonexistent db, dry-run (-d)' ); # WARNING: might depend on verbosity
 
+# Create override config for testing
+open($cfg_fh, ">", "${tmpdir}/cfg1.ext")
+  or die "Can't append to ${tmpdir}/cfg1.ext: $!";
+print $cfg_fh <<"EOF";
+db_connection dbname=nonexist_override
+EOF
+close($cfg_fh);
+
+# -config-extension (or -x) adds an override configuration
+
+$test->run( args => "-full -d -config-path ${tmpdir}/cfg1 -config-extension ext" );
+is( $test->stderr, '', 'stderr, nonexist_override db, dry-run');
+like( $test->stdout,
+  qr/FATAL.*database "nonexist_override" does not exist.*Duration of job/ms,
+  'logfile - nonexist_override db, dry-run');
+is( $? >> 8, 1, 'exit status, nonexist_override db, dry-run');
+@logged = <$log_fh>;
+is( @logged, 0,
+  'logged 0 lines, nonexist_override db, dry-run' ); # WARNING: might depend on verbosity
+
+# -config-extension can also be passed as -x 
+
+$test->run( args => "-full -d -config-path ${tmpdir}/cfg1 -x ext" );
+is( $test->stderr, '', 'stderr, nonexist_override db, dry-run (-x)');
+like( $test->stdout,
+  qr/FATAL.*database "nonexist_override" does not exist.*Duration of job/ms,
+  'logfile - nonexist_override db, dry-run (-x)');
+is( $? >> 8, 1, 'exit status, nonexist_override db, dry-run (-x)');
+@logged = <$log_fh>;
+is( @logged, 0,
+  'logged 0 lines, nonexist_override db, dry-run (-x)' ); # WARNING: might depend on verbosity
+
 # A configuration with .test suffix will be read by default to
 # override the main configuration
 # Set database connection to the test database
@@ -545,4 +577,4 @@ is( $res->[0]{'status'}, 'C', 'upload[4].status' );
 
 
 close($log_fh);
-done_testing(127);
+done_testing(135);
