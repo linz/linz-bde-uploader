@@ -167,6 +167,18 @@ is( $? >> 8, 1, 'exit status, nonexistent db, dry-run');
 is( @logged, 0,
   'logged 0 lines, nonexistent db, dry-run' ); # WARNING: might depend on verbosity
 
+# Dry run can also be specified with -d
+
+$test->run( args => "-full -d -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, nonexistent db, dry-run (-d)');
+like( $test->stdout,
+  qr/FATAL.*database "nonexistent" does not exist.*Duration of job/ms,
+  'logfile - nonexistent db, dry-run (-d)');
+is( $? >> 8, 1, 'exit status, nonexistent db, dry-run (-d)');
+@logged = <$log_fh>;
+is( @logged, 0,
+  'logged 0 lines, nonexistent db, dry-run (-d)' ); # WARNING: might depend on verbosity
+
 # A configuration with .test suffix will be read by default to
 # override the main configuration
 # Set database connection to the test database
