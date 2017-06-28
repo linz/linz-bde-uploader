@@ -262,6 +262,14 @@ foreach my $f (@sqlfiles) {
   #print "XXX $f - $out\n";
 }
 
+# Check bde_control.upload
+
+my $res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( @{$res}, 0, 'bde_control.upload is empty' );
+
 # Run with prepared database, it's missing bde_repository now
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
@@ -298,6 +306,14 @@ like( $log,
   qr/ERROR - Apply Updates Failed: Level 0 directory.*doesn't exist/ms,
   'logfile - missing level0 dir');
 
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( @{$res}, 0, 'bde_control.upload is empty' );
+
 # Craft a level_0 directory
 
 my $level0dir = $repodir . '/level_0';
@@ -316,6 +332,14 @@ $log = join '', @logged;
 like( $log,
   qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
   'logfile - no uploads available');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( @{$res}, 0, 'bde_control.upload is empty' );
 
 # Craft an upload in dataset in level_0 directory
 
@@ -336,6 +360,14 @@ like( $log,
   qr/Level 0 dataset is not complete.*missing: test_file/,
   'logfile - missing test_file');
 
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( @{$res}, 0, 'bde_control.upload is empty' );
+
 # Make test_file.crs available
 
 copy($datadir.'/pab1.crs', $level0ds1.'/test_file.crs') or die "Copy failed: $!";
@@ -352,6 +384,17 @@ $log = join '', @logged;
 like( $log,
   qr/Table 'bde.test_table' does not exist/,
   'logfile - missing test_table');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( @{$res}, 1, 'bde_control.upload is empty' );
+is( $res->[0]{'id'}, '1', 'upload[3].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[3].schema-name' );
+is( $res->[0]{'status'}, 'E', 'upload[3].status' );
 
 # Change tables.conf to reference one of the existing BDE tables
 
@@ -376,7 +419,7 @@ like( $log,
 
 # check actual table content
 
-my $res  = $dbh->selectall_arrayref(
+$res = $dbh->selectall_arrayref(
   'SELECT * FROM bde.crs_parcel_bndry ORDER BY pri_id',
   { Slice => {} }
 );
@@ -400,5 +443,64 @@ is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id' );
 is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed' );
 is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id' );
 
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '2', 'upload[2].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[2].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[2].status' );
+
+# Run full upload again - no updates to apply this time (by date)
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, success upload test_file (2)');
+is( $test->stdout, '', 'stdout, success upload test_file (2)');
+is( $? >> 8, 0, 'exit status, success upload test_file (2)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - No dataset updates to apply/,
+  'logfile - success upload test_file (2)');
+
+# Rename dataset dir
+
+my $level0ds2 = $level0dir . '/20170628110348';
+rename($level0ds1, $level0ds2)
+  or die "Cannot rename $level0ds1 to $level0ds2: $!";
+
+# Run full upload again, should find the new dataset now
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, success upload test_file (3)');
+is( $test->stdout, '', 'stdout, success upload test_file (3)');
+is( $? >> 8, 0, 'exit status, success upload test_file (3)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_file (3)');
+
+# check the new table content
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.crs_parcel_bndry ORDER BY pri_id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'crs_parcel_bndry has still only 3 entries' );
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '3', 'upload[3].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[3].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[3].status' );
+
+
 close($log_fh);
-done_testing();
+done_testing(116);
