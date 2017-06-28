@@ -501,6 +501,48 @@ is( $res->[0]{'id'}, '3', 'upload[3].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[3].schema-name' );
 is( $res->[0]{'status'}, 'C', 'upload[3].status' );
 
+# Rename dataset dir again
+
+my $level0ds3 = $level0dir . '/20170628115115';
+rename($level0ds2, $level0ds3)
+  or die "Cannot rename $level0ds2 to $level0ds3: $!";
+
+# Run full upload again but only up to -before any dataset is
+# available
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170625" );
+is( $test->stderr, '', 'stderr, no uploads available (4)');
+is( $test->stdout, '', 'stdout, no uploads available (4)');
+is( $? >> 8, 1, 'exit status, no uploads available (4)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
+  'logfile - success upload test_file (3)');
+
+# Now run full upload again but -before including available dataset
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170701" );
+is( $test->stderr, '', 'stderr, success upload test_file (4)');
+is( $test->stdout, '', 'stdout, success upload test_file (4)');
+is( $? >> 8, 0, 'exit status, success upload test_file (4)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_file (4)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '4', 'upload[4].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[4].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[4].status' );
+
+
 
 close($log_fh);
-done_testing(116);
+done_testing(127);
