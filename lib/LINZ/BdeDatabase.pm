@@ -376,7 +376,7 @@ sub uploadId
     {
         if( ! $self->{_allowConcurrent} && ! $self->{_overrideLocks} && $self->anyUploadIsActive )
         {
-            die "Cannot create upload job - another job is already active\n";
+            die "Cannot create upload job - another job is already active (or zombied)\n";
         }
         $self->{uploadId} = $self->createUpload;
         INFO('Job ' . $self->{uploadId} . ' created');
