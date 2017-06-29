@@ -84,7 +84,7 @@ perl Build.PL \
 For a database to be usable as the target of a `linz_bde_uploader`
 run, it needs to be prepared in multiple steps.
 
-First step is creating the BDE schema. 
+First step is creating the BDE schema.
 This can be done following the instructions in
 [linz-bde-schema](https://github.com/linz/linz-bde-schema).
 The BDE schema creation scripts will take care of ensuring required
@@ -183,7 +183,7 @@ completion or error reports to if email logging is enabled.
 
 * ``log_email_address``: The email address that the mail server will send the
 completion or error reports to. multiple emails can be listing with a "," separator.
-    
+
 ## Running `linz_bde_uploader`
 
 A simple example to upload latest available full set of bde files into the

@@ -199,7 +199,7 @@ is( $? >> 8, 1, 'exit status, nonexist_override db, dry-run');
 is( @logged, 0,
   'logged 0 lines, nonexist_override db, dry-run' ); # WARNING: might depend on verbosity
 
-# -config-extension can also be passed as -x 
+# -config-extension can also be passed as -x
 
 $test->run( args => "-full -d -config-path ${tmpdir}/cfg1 -x ext" );
 is( $test->stderr, '', 'stderr, nonexist_override db, dry-run (-x)');
@@ -404,7 +404,7 @@ is( @{$res}, 0, 'bde_control.upload is empty' );
 
 copy($datadir.'/pab1.crs', $level0ds1.'/test_file.crs') or die "Copy failed: $!";
 
-# Missing test_table table in database 
+# Missing test_table table in database
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing test_table');
@@ -574,7 +574,7 @@ is( $res->[0]{'id'}, '4', 'upload[4].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[4].schema-name' );
 is( $res->[0]{'status'}, 'C', 'upload[4].status' );
 
-# Run full upload again, using -b for -before 
+# Run full upload again, using -b for -before
 # No new data to upload
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701" );

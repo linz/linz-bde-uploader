@@ -6,7 +6,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -47,7 +47,7 @@ sub process_script_files {
 
     my $script_dir = File::Spec->catdir($self->blib, 'script');
     File::Path::mkpath( $script_dir );
-  
+
     foreach my $filepath (keys %$files) {
         my $file = File::Basename::basename($filepath);
         if ( !WIN32 )
@@ -58,11 +58,11 @@ sub process_script_files {
         my $to_file = File::Spec->catfile($script_dir, $file);
 
         my $result = $self->copy_if_modified(
-            from    => $filepath, 
-            to      => $to_file, 
+            from    => $filepath,
+            to      => $to_file,
             flatten => 'flatten'
         ) || next;
-        
+
         $self->fix_shebang_line($result) unless $self->is_vmsish;
         $self->substitute_version($result);
         $self->make_executable($result);
@@ -101,7 +101,7 @@ sub process_sql_files {
             $dest =~ s/\.[^.]+$//;
             $has_version = 1;
         }
-        
+
         my $result = $self->copy_if_modified(
             from => $file,
             to   => File::Spec->catfile($self->blib, $dest),
@@ -118,7 +118,7 @@ sub _set_extra_install_paths
     my $prefix = $self->prefix || ( $self->installdirs eq 'vendor' ? $Config::Config{'prefix'} : '/usr/local' );
     my $sysconfdir =  $prefix eq '/usr' ? '/etc' : File::Spec->catdir($prefix, 'etc');
     my $datadir = File::Spec->catdir($prefix, 'share');
-    
+
     $self->install_path('conf' => File::Spec->catdir($sysconfdir, $PACKAGE_DIR));
     $self->install_path('sql'  => File::Spec->catdir($datadir, $PACKAGE_DIR, 'sql'));
 }
@@ -126,11 +126,11 @@ sub _set_extra_install_paths
 sub _find_files
 {
     my ($self, $type, $dir) = @_;
-    
+
     if (my $files = $self->{properties}{"${type}_files"}) {
       return { map $self->localize_file_path($_), %$files };
     }
-  
+
     return {} unless -d $dir;
     return { map {$_, $_}
         map $self->localize_file_path($_),
