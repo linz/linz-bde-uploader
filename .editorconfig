@@ -1,0 +1,16 @@
+# http://editorconfig.org
+
+# top-most EditorConfig file
+root = true
+
+# every file needs these
+[*]
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# every file has 4-spaces indentation
+[*]
+indent_style = space
+indent_size = 4
