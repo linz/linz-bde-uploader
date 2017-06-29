@@ -1,4 +1,4 @@
-﻿--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --
 -- linz_bde_uploader -  LINZ BDE uploader for PostgreSQL
 --
@@ -6,7 +6,7 @@
 -- Land Information New Zealand and the New Zealand Government.
 -- All rights reserved
 --
--- This program is released under the terms of the new BSD license. See the 
+-- This program is released under the terms of the new BSD license. See the
 -- LICENSE file for more information.
 --
 --------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ to multiple tables.  The tables will all be in a single BDE schema, defined
 in this table.
 
 Each upload job is identified by an id.  When the upload is being applied
-the working files are placed in a temporary schema named after this id 
+the working files are placed in a temporary schema named after this id
 (bde_upload_##) where ## is the id.
 
 end_time will be periodically updated during the running of the job and will
@@ -136,8 +136,8 @@ GRANT SELECT ON TABLE upload_stats TO bde_user;
 
 COMMENT ON TABLE upload_stats IS
 $comment$
-Statistics from uploads.  
-tbl_id is used to identify the table being uploaded. 
+Statistics from uploads.
+tbl_id is used to identify the table being uploaded.
 type is the data set type, 0 (level 0) or 5 (level 5)
 incremental is true if the table data was updated, and false if the table data was completely refreshed from a level 0
 dataset is the name of the upload dataset (yyyymmddhhmmss)
