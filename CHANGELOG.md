@@ -53,11 +53,11 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [1.5.8] - 2016-04-13
 ### Changed
-- Improve logging of event hooks. 
+- Improve logging of event hooks.
 
 ## [1.5.7] - 2016-04-01
 ### Fixed
-- Fix missing required package in build script 
+- Fix missing required package in build script
 
 ### Added
   * Added pending parcels import to LDS schema
@@ -106,7 +106,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [1.5.0] - 2015-04-09
 ### Changed
  - Added more information about process holding table locks
- 
+
 ### Added
  - Added offshore Island support to simplified parcels layers
  - Added support for UTF-8 support from Landonline data
@@ -263,7 +263,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [1.1.2] - 2012-09-18
 ### Fixed
-- Fix for duplication Geodetic code error message 
+- Fix for duplication Geodetic code error message
 
 ## [1.1.1] - 2012-03-20
 ### Fixed
@@ -297,7 +297,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Fixed issue with logging before database connection is made
 
 ### Changed
-- Refactor handling of incremental data application. 
+- Refactor handling of incremental data application.
 
 ## [1.0.0] - 2011-05-06
 ### Added
