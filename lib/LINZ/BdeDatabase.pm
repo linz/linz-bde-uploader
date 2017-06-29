@@ -210,7 +210,7 @@ package LINZ::BdeDatabase;
 use Log::Log4perl qw(:easy :levels get_logger);
 use fields qw{
     _connection _user _pwd _dbh _pg_server_version _startSql
-    _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId
+    _finishSql _startDatasetSql _endDatasetSql _errorLevel _dbschema _lastUploadId
     _overrideLocks _usetbltransaction _usedstransaction _intransaction
     _locktimeout _allowConcurrent schema uploadId stack
 };
@@ -294,6 +294,7 @@ sub new
     $self->{_usedstransaction} = $cfg->use_dataset_transaction(1) ? 1 : 0;
     $self->{_locktimeout} = $cfg->table_exclusive_lock_timeout(60)+0;
     $self->{_allowConcurrent} = $cfg->allow_concurrent_uploads(0);
+    $self->{_errorLevel} = $cfg->db_error_level('1') + 0;
 
     $self->{schema} = $cfg->bde_schema('bde');
 
@@ -314,7 +315,7 @@ sub new
             PrintError    =>0,
             PrintWarn     =>1,
             RaiseError    =>1,
-            pg_errorlevel =>2,
+            pg_errorlevel => $self->{_errorLevel},
         }
     )
        || die "Cannot connect to database\n",DBI->errstr;
