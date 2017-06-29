@@ -1858,6 +1858,9 @@ DECLARE
     v_task        TEXT;
     v_depsql      TEXT[];
 BEGIN
+
+    RAISE DEBUG 'bde_ApplyLevel0Update(%, %, %, %, %) called',
+      p_upload, p_table_name, p_bdetime, p_details, p_incremental;
     
     v_task := 'Setting up L0 update';
     
