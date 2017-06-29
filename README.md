@@ -162,6 +162,10 @@ Key parameters to change in the `linz_bde_uploader.conf` config are:
 * ``db_connection``: The PostgreSQL connection string for setting the database
 connection string. e.g `dbname=linz_db`
 
+* ``db_error_level``: The PostgreSQL error level, can be 0 for TERSE,
+1 for DEFAULT (the default value), 2 for VERBOSE.
+See https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+
 * ``bde_repository``: Set the path to the directory of BDE unload files.
 This directory should have a `level_0` and `level_5` subdirectory with child folders
 in each with the naming convention of YYYYMMDDhhmmss for each dataset
