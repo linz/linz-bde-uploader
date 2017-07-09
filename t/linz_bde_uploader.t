@@ -84,7 +84,28 @@ like( $test->stdout,
   'stdout, empty config' );
 is( $? >> 8, 1, 'exit status, empty config' );
 
-# Add log_settings configuration
+# Add empty log_settings configuration
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh <<"EOF";
+log_settings <<END_OF_LOG_SETTINGS
+END_OF_LOG_SETTINGS
+EOF
+close($cfg_fh);
+
+# Empty log_settings still writes to stderr
+# See https://github.com/linz/linz_bde_uploader/issues/103
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, empty log_settings' );
+like( $test->stdout,
+  qr/.*tables.conf.*No such file/ms,
+  'stdout, empty config' );
+is( $? >> 8, 1, 'exit status, empty log_settings' );
+
+# TODO: Add log_settings w/out a root
+# See https://github.com/linz/linz_bde_uploader/issues/103
+
+# Add sane log_settings configuration
 open($cfg_fh, ">>", "${tmpdir}/cfg1")
   or die "Can't append to ${tmpdir}/cfg1: $!";
 print $cfg_fh <<"EOF";
@@ -765,4 +786,4 @@ is( $res->[0]{'id'}, '9', 'upload[8].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
 close($log_fh);
-done_testing(193);
+done_testing(196);
