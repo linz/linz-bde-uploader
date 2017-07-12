@@ -256,6 +256,36 @@ like( $log,
   qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
   'logfile - empty db');
 
+# Run with both .test config and config-extension (-x)
+#
+# The .test config is parsed last, so overrides any
+# setting found in the config extension (db_connection, in this case)
+#
+# We change log_settings in the extension file to test that it is
+# still parsed (as current .text config has no log_settings)
+#
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1.ext")
+  or die "Can't append to ${tmpdir}/cfg1.ext: $!";
+print $cfg_fh <<"EOF";
+log_settings <<END_OF_LOG_SETTINGS
+log4perl.logger = DEBUG, Screen
+log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.stderr = 1
+log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+END_OF_LOG_SETTINGS
+EOF
+close($cfg_fh);
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1 -x ext" );
+like( $test->stderr,
+    qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
+    'stderr, empty db (-x)');
+is( $test->stdout, '', 'stdout, empty db (-x)');
+
+# Unlink config extension file, not needed anymore
+unlink("${tmpdir}/cfg1.ext");
+
 # Set db_error_level to terse
 
 open($cfg_fh, ">>", "${tmpdir}/cfg1")
@@ -786,4 +816,4 @@ is( $res->[0]{'id'}, '9', 'upload[8].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
 close($log_fh);
-done_testing(196);
+done_testing(198);

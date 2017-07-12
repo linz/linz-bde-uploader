@@ -385,6 +385,10 @@ Select the configuration file that will be used.  Default is
 ~/config/linz_bde_uploader.cfg, where ~ is the directory in which the
 linz_bde_uploader.pl script is located.
 
+If a file I<cfgpath>.test exists, it is parsed after all the other
+configuration files (including the one specified via -config-extension)
+allowing for override of all configuration items.
+
 =item -config-extension or -x  I<cfgext>
 
 Extra configuration extension.  Overrides selected configuration items with
