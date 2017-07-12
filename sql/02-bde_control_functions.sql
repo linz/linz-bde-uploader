@@ -1919,13 +1919,14 @@ BEGIN
 
     -- Analyze the table
 
-    v_task := 'Analyzing temp table';
+    v_task := 'Analyzing temp table ' || v_tmptable;
 
-    RAISE INFO 'Analyzing %', v_tmptable;
+    RAISE INFO '%', v_task;
     EXECUTE 'ANALYZE ' || v_tmptable;
 
     IF p_incremental THEN
         v_task := 'Applying table differences';
+        RAISE INFO '%', v_task;
         SELECT
             number_inserts,
             number_updates,
@@ -1955,17 +1956,20 @@ BEGIN
             PERFORM bde_CheckTableCount(p_upload, p_table_name);
         END IF;
 
+        RAISE INFO 'Dropping table %', v_tmptable;
         EXECUTE 'DROP TABLE ' || v_tmptable;
     ELSE
         -- Get dependent object SQL
 
         v_task := 'Retrieving dependent object information';
+        RAISE INFO '%', v_task;
 
         v_depsql := _bde_GetDependentObjectSql(p_upload,v_bdetable);
 
         -- Is this too expensive on pg?
 
         v_task := 'Counting current and new version of table';
+        RAISE INFO '%', v_task;
 
         EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
         EXECUTE 'SELECT COUNT(*) FROM ' || v_tmptable INTO v_nins;
@@ -1973,29 +1977,37 @@ BEGIN
 
         -- Replace the BDE table with the new version
 
-        v_task := 'Dropping the current version of the table';
+        v_task := 'Dropping current version of the table ' || v_bdetable;
+        RAISE INFO '%', v_task;
 
-        RAISE INFO 'Dropping %', v_bdetable;
         PERFORM _bde_GetExclusiveLock(p_upload,v_bdetable);
         v_sql := 'DROP TABLE ' || v_bdetable || ' CASCADE';
         RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
 
         v_task := 'Renaming the new version to replace the current version';
-        RAISE DEBUG 'Moving % into % schema', v_tmptable, v_bde_schema;
+        RAISE INFO '%', v_task;
         v_sql := 'ALTER TABLE ' || v_tmptable || ' SET SCHEMA ' || v_bde_schema;
+        RAISE DEBUG 'Moving % into % schema: %', v_tmptable, v_bde_schema, v_sql;
         EXECUTE v_sql;
 
         -- Restore the dependent objects
 
+        v_task := 'Restoring dependent objects';
+        RAISE INFO '%', v_task;
+
+        -- TODO: avoid the call to bde_ExecuteSqlArray,
+        --       not really needed as we are catching
+        --       exceptions ourselves
         PERFORM bde_ExecuteSqlArray(
-            p_upload,'Restoring dependent objects',v_depsql
+            p_upload,v_task,v_depsql
         );
     END IF;
 
     -- Record the update that has been applied
 
     v_task := 'Recording the upload';
+    RAISE INFO '%', v_task;
     PERFORM _bde_RecordDatasetLoaded(
         p_upload,
         p_table_name,
@@ -2473,6 +2485,10 @@ LANGUAGE plpgsql;
 
 ALTER FUNCTION _bde_GetOwnerAccessSql(REGCLASS, REGCLASS) OWNER TO bde_dba;
 
+-- Execute each of the SQL statements in p_sqlarray,
+-- intercepting any exception by re-throwing it with
+-- custom message (p_task) and full SQL included in
+-- the re-thrown exception message.
 CREATE OR REPLACE FUNCTION bde_ExecuteSqlArray(
     p_upload INTEGER,
     p_task text,
@@ -2491,7 +2507,7 @@ BEGIN
     FOR v_sql IN select * from unnest(p_sqlarray)
     LOOP
         BEGIN
-            RAISE DEBUG 'SQL: %', v_sql;
+            RAISE INFO 'In task %, executing SQL: %', p_task, v_sql;
             EXECUTE v_sql;
         EXCEPTION
             WHEN others THEN
@@ -2954,7 +2970,11 @@ DECLARE
     v_dataset        TEXT;
     v_tables_updated BIGINT;
 BEGIN
+
     v_dataset := bde_GetOption(p_upload, '_dataset');
+
+    RAISE INFO 'Completing dataset revision for dataset %', v_dataset;
+
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
     END IF;
@@ -2991,6 +3011,8 @@ BEGIN
     END IF;
 
     PERFORM bde_SetOption(p_upload,'_revision', NULL);
+
+    RAISE INFO 'Finished completing dataset revision for dataset %', v_dataset;
 
     RETURN v_status;
 END;
