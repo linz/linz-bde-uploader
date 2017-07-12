@@ -1955,6 +1955,7 @@ BEGIN
                 RAISE WARNING 'level 0 incremental applied % deletes for % in %',
                     v_ndel, p_table_name, v_dataset;
             END IF;
+            RAISE INFO 'Checking table count';
             PERFORM bde_CheckTableCount(p_upload, p_table_name);
         END IF;
 
