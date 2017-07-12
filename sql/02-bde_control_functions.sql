@@ -1863,6 +1863,7 @@ BEGIN
       p_upload, p_table_name, p_bdetime, p_details, p_incremental;
 
     v_task := 'Setting up L0 update';
+    RAISE INFO '%', v_task;
 
     -- A good time to ensure that the lock doesn't get revoked
     PERFORM _bde_RefreshLock(p_upload);
@@ -1896,6 +1897,7 @@ BEGIN
     -- etc) from the bde table to the temp table
 
     v_task := 'Copying schema information to temp table';
+    RAISE INFO '%', v_task;
 
     IF p_incremental THEN
         PERFORM _bde_CopyStatisticsInformation(p_upload,v_bdetable,v_tmptable);
