@@ -1632,6 +1632,7 @@ BEGIN
     -- what stage the update has got to.
 
     v_task := 'Setting up L5 update';
+    RAISE INFO '%', v_task;
 
     -- A good time to ensure that the lock doesn't get revoked
 
@@ -1671,6 +1672,7 @@ BEGIN
     -- If this works then don't need to use distinct with insert.
 
     v_task := 'Indexing working table';
+    RAISE INFO '%', v_task;
 
     v_distinct := 'DISTINCT';
     BEGIN
@@ -1699,6 +1701,7 @@ BEGIN
     v_nins     := 0;
 
     v_task := 'Preparing incremental change table';
+    RAISE INFO '%', v_task;
 
     PERFORM _bde_PrepareChangeTable(p_upload,v_changetable);
 
@@ -1709,6 +1712,8 @@ BEGIN
     -- This should make subsequent processing faster.
 
     v_task := 'Selecting incremental records';
+    RAISE INFO '%', v_task;
+
     DROP TABLE IF EXISTS _tmp_inc_change;
 
     CREATE TEMP TABLE _tmp_inc_change (
@@ -1756,6 +1761,7 @@ BEGIN
         END IF;
 
         v_task := 'Performing consistency checks of incremental data';
+        RAISE INFO '%', v_task;
 
         v_rcount := _bde_FixChangedIncKeyRecords(
             v_bdetable, v_tmptable, v_key_column
@@ -1767,6 +1773,7 @@ BEGIN
         END IF;
 
         v_task := 'Creating incremental row update actions';
+        RAISE INFO '%', v_task;
 
         PERFORM _bde_CreateIncDeletes(v_bdetable, v_tmptable, v_key_column);
         PERFORM _bde_CreateIncInserts(v_bdetable, v_tmptable, v_key_column);
@@ -1778,6 +1785,7 @@ BEGIN
         SELECT count(*) INTO v_nnullupd FROM _tmp_inc_actions WHERE action = '0';
 
         v_task := 'Applying incremental row updates';
+        RAISE INFO '%', v_task;
 
         SELECT * FROM table_version._ver_apply_changes(
             v_bdetable, v_tmptable, '_tmp_inc_actions', v_key_column
@@ -1792,6 +1800,7 @@ BEGIN
     -- Record the update that has been applied
 
     v_task := 'Recording update statistics';
+    RAISE INFO '%', v_task;
 
     PERFORM _bde_RecordDatasetLoaded(
         p_upload,
@@ -1810,6 +1819,7 @@ BEGIN
     -- Remove the scratch table
 
     v_task := 'Dropping temp tables';
+    RAISE INFO '%', v_task;
 
     EXECUTE 'DROP TABLE ' || v_tmptable;
     DROP TABLE _tmp_inc_change;
@@ -2543,6 +2553,7 @@ BEGIN
     -- Apply each of the constraints
 
     v_task := 'Applying constraints to temp table';
+    RAISE INFO '%', v_task;
     v_sql := '';
 
     FOR v_sql IN
@@ -2559,6 +2570,7 @@ BEGIN
     -- And each index
 
     v_task := 'Generating indexes for temp table';
+    RAISE INFO '%', v_task;
 
     FOR v_sql IN
         SELECT pg_get_indexdef(indexrelid)
@@ -2582,12 +2594,14 @@ BEGIN
     -- Copy columns statistics information
 
     v_task := 'Copying column statistics information';
+    RAISE INFO '%', v_task;
 
     PERFORM _bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
 
     -- Copy ownership and access rights
 
     v_task := 'Copying ownership and access information';
+    RAISE INFO '%', v_task;
 
     PERFORM bde_ExecuteSqlArray(p_upload,v_task,
         _bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
