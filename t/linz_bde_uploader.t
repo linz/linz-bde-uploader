@@ -381,8 +381,8 @@ is( $test->stderr, '', 'stderr, missing bde_repository');
 is( $test->stdout, '', 'stdout, missing bde_repository');
 is( $? >> 8, 1, 'exit status, missing bde_repository');
 @logged = <$log_fh>;
-is( @logged, 4,
-  'logged 4 lines, missing bde_repository.*Duration' ); # WARNING: might depend on verbosity
+is( @logged, 3,
+  'logged 3 lines, missing bde_repository.*Duration' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR - Configuration item "bde_repository" is missing/ms,
@@ -403,8 +403,8 @@ is( $test->stderr, '', 'stderr, missing level0 dir');
 is( $test->stdout, '', 'stdout, missing level0 dir');
 is( $? >> 8, 1, 'exit status, missing level0 dir');
 @logged = <$log_fh>;
-is( @logged, 4,
-  'logged 4 lines, missing level0 dir' ); # WARNING: might depend on verbosity
+is( @logged, 3,
+  'logged 3 lines, missing level0 dir' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR - Apply Updates Failed: Level 0 directory.*doesn't exist/ms,
@@ -430,8 +430,8 @@ is( $test->stderr, '', 'stderr, no uploads available');
 is( $test->stdout, '', 'stdout, no uploads available');
 is( $? >> 8, 1, 'exit status, no uploads available');
 @logged = <$log_fh>;
-is( @logged, 4,
-  'logged 4 lines, no uploads available' ); # WARNING: might depend on verbosity
+is( @logged, 3,
+  'logged 3 lines, no uploads available' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
