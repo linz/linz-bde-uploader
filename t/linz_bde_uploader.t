@@ -437,6 +437,25 @@ like( $log,
   qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
   'logfile - no uploads available');
 
+# Check that appname can be set in configuration
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "application_name TEST_APP_NAME\n";
+close($cfg_fh);
+
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, no uploads available, application_name');
+is( $test->stdout, '', 'stdout, no uploads available, application_name');
+is( $? >> 8, 1, 'exit status, no uploads available, application_name');
+@logged = <$log_fh>;
+is( @logged, 4,
+  'logged 4 lines, no uploads available, application_name' ); # WARNING: might depend on verbosity
+$log = join '', @logged;
+like( $log,
+  qr/SET application_name='TEST_APP_NAME'/ms,
+  'logfile - no uploads available, application_name');
+
 # Check bde_control.upload
 
 $res = $dbh->selectall_arrayref(
@@ -816,4 +835,4 @@ is( $res->[0]{'id'}, '9', 'upload[8].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
 close($log_fh);
-done_testing(198);
+done_testing(203);
