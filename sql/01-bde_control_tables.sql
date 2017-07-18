@@ -57,9 +57,13 @@ the working files are placed in a temporary schema named after this id
 (bde_upload_##) where ## is the id.
 
 end_time will be periodically updated during the running of the job and will
-be used to determine if the job is still active
+be used to determine if the job is still active.
 
-status values are U (uninitialized), A (active), C (completed successfully), and E (completed with errors)
+status values are:
+  U (uninitialized)
+  A (active)
+  C (completed successfully)
+  E (completed with errors)
 
 $comment$;
 
@@ -91,25 +95,71 @@ GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_table TO bde_admin;
 GRANT SELECT ON TABLE upload_table TO bde_user;
 
 COMMENT ON TABLE upload_table IS
-$comment$
-Tracks the status of uploads for each table
-table_key_column is unique non-composite, not null integer or bigint column used for identifying the table row for incremental updates. This identifier must be the same as defined in the cbe_tables.tablekeycolumn
-last_upload_id is the id of the last upload job affecting this table
-last_upload_dataset is the dataset id of the last level 5 or 0 uploaded (since the level 0 upload will override any level 5 uploads that have been applied).
-last_upload_type is either 0 or 5
-last_upload_incremental is true if the table data was updated, and false if the table data was completely refreshed from a level 0
-last_upload_details is a text string with details of the last upload
-   (currently will contain constituent files and end times, for checking L5 uploads against.)
-last_upload_time records when the upload was applied
-last_upload_bdetime is a timestamp for the last BDE upload applied
-last_level0_dataset is the dataset id of the last level 0 uploaded
-upl_id_lock is the id of an upload currently locking the table (this is
-  in the sense of a process lock, not a database lock)
-row_tol_warning is the minimum ratio of the number of number of rows in the table after a level 0 update  to the number before the update before a warning is logged
-row_tol_error is the minimum ratio of the number of number of rows in the table after a level 0 update  to the number before the update before an exception is thrown
-$comment$;
--- upload_stats
+'Tracks the status of uploads for each table.';
 
+COMMENT ON COLUMN upload_table.key_column IS $comment$
+the name of a unique non-composite, not null
+integer or bigint column used for identifying the table row for
+incremental updates. This identifier must be the same as defined in
+the cbe_tables.tablekeycolumn field of the Landonline INFORMIX
+database.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_id IS $comment$
+the id of the last upload job affecting this table,
+referencing the id field of the upload table.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_dataset IS $comment$
+the dataset id of the last level 5 or 0 uploaded
+(since the level 0 upload will override any level 5 uploads that have
+been applied).
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_type IS $comment$
+either 0 or 5.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_incremental IS $comment$
+true if the table data was updated, and
+false if the table data was completely refreshed from a level 0.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_details IS $comment$
+a text string with details of the last upload (currently will contain
+constituent files and end times, for checking L5 uploads against).
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_time IS $comment$
+records when the table upload was started.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_upload_bdetime IS $comment$
+timestamp found in the last BDE file uploaded.
+$comment$;
+
+COMMENT ON COLUMN upload_table.last_level0_dataset IS $comment$
+the dataset id of the last level 0 uploaded.
+$comment$;
+
+COMMENT ON COLUMN upload_table.upl_id_lock IS $comment$
+the id of an upload currently locking the table (this is
+in the sense of a process lock, not a database lock).
+$comment$;
+
+COMMENT ON COLUMN upload_table.row_tol_warning IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before a warning is raised, expressed as the ratio of new to
+old rows count.
+$comment$;
+
+COMMENT ON COLUMN upload_table.row_tol_error IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before an exception is thrown, expressed as
+the ratio of new to old rows count.
+$comment$;
+
+-- upload_stats
 CREATE TABLE upload_stats
 (
     id SERIAL NOT NULL PRIMARY KEY,
