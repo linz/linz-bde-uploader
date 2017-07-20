@@ -399,9 +399,13 @@ BEGIN
     WHERE
         upl_id_lock = p_upload;
 
-    -- Drop the schema used by the lock
+    -- Drop the schema used by the lock, unless asked to keep it
 
-    EXECUTE 'DROP SCHEMA IF EXISTS ' || bde_TmpSchema(p_upload) || ' CASCADE';
+    IF bde_GetOption(p_upload, 'keep_temp_schema')::bool THEN
+        RAISE NOTICE 'Keeping temporary schema % as requested by options', bde_TmpSchema(p_upload);
+    ELSE
+        EXECUTE 'DROP SCHEMA IF EXISTS ' || bde_TmpSchema(p_upload) || ' CASCADE';
+    END IF;
 END
 $body$
 LANGUAGE plpgsql;
