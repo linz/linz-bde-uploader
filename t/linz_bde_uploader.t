@@ -834,5 +834,30 @@ $res = $dbh->selectall_arrayref(
 is( $res->[0]{'id'}, '9', 'upload[8].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
+# Test keeping temporary schema
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "db_upload_complete_sql <<EOT\n";
+print $cfg_fh "SELECT bde_control.bde_SetOption({{id}},'keep_temp_schema','yes');\n";
+print $cfg_fh "EOT\n";
+close($cfg_fh);
+
+$test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
+is( $? >> 8, 0, 'exit status, keep_temp_schema (10)');
+is( $test->stderr, '', 'stderr, keep_temp_schema (10)' );
+is( $test->stdout, '', 'stdout, keep_temp_schema (10)' );
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfullyXXX/,
+  'logfile - keep_temp_schema (10)');
+
+$res = $dbh->selectall_arrayref(
+  "SELECT nspname FROM pg_namespace where nspname like 'bde_upload_%'",
+  { Slice => {} });
+is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
+is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
+
 close($log_fh);
 done_testing(203);
