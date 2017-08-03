@@ -122,7 +122,8 @@ if($apply_level0_inc && !$apply_level0)
 
 if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
 {
-    print STDERR "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
+    # NOTE: $apply_level0_inc implies $apply_level0
+    print STDERR "Need at least one option of -full, -incremental, -full-incremental, -purge, or -remove-zombie\n";
     help(0, *STDERR, 1);
 }
 
@@ -415,12 +416,17 @@ Apply any pending level 0 updates
 Apply any pending level 0 updates not replacing table data, rather apply
 differences between the current table data and the pending level 0 data. This
 is useful when versioning is enabled on tables.
+Also works in absence of a previously populated table, but it is
+faster to use -full in that case, to avoid incurring in the cost of
+computing table difference against empty tables.
 
 =item -incremental or -i
 
-Apply any pending level 5 updates. If level 5 file is a full unload of the table
-data, then differences will be calculated between the current table and the new,
-file data. Those difference will then be applied as as an incremental update.
+Apply any pending level 5 updates.
+Differences will be calculated between the current table and the new file data.
+Those difference will then be applied as an incremental update.
+Only works in presence of a previously populated table, lacking of
+which results in skipping the upload for that table.
 
 =item -rebuild or -r
 
