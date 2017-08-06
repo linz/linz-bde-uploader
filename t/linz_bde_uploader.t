@@ -57,7 +57,7 @@ END {
 my $test = Test::Cmd->new( prog => $script, workdir => '' );
 $test->run();
 
-like( $test->stderr, qr/at least .* -full, -incremental, -purge, or -remove-zombie/,
+like( $test->stderr, qr/at least .* -full, -incremental, -full-incremental, -purge, or -remove-zombie/,
   'complain on stderr when no args');
 like( $test->stderr, qr/Syntax/,
   'prints syntax on stderr when no args');
