@@ -3064,7 +3064,7 @@ BEGIN
             v_comment := E'\n\n' || v_comment;
         END IF;
 
-        v_comment := 'Version: ' ||  '$Id$'
+        v_comment := 'Version: ' ||  '@@VERSION@@ @@REVISION@@'
                     || E'\n' || 'Installed: ' ||
                     to_char(current_timestamp,'YYYY-MM-DD HH:MI') || v_comment;
 

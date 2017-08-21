@@ -76,11 +76,18 @@ sub substitute_version {
     my @lines = <FILE>;
     close(FILE);
     my $version = $self->dist_version;
+    my $revision = '';
+    $revision = `pwd`;
+    if ( `which git` && -d '.git' ) {
+        $revision = `git rev-parse --short HEAD`
+    }
     my @newlines;
-    my $updated;
+    my $updated = 0;
     foreach(@lines) {
        my $matched = $_ =~ s/\@\@VERSION\@\@/$version/g;
-       $updated = 1 if $matched;
+       $updated++ if $matched;
+       $matched = $_ =~ s/\@\@REVISION\@\@/$revision/g;
+       $updated++ if $matched;
        push(@newlines,$_);
     }
     if ($updated) {
