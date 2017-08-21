@@ -69,6 +69,28 @@ sub process_script_files {
     }
 }
 
+sub process_pm_files {
+    my $self = shift;
+    my $files = $self->find_pm_files;
+    return unless keys %$files;
+
+    my $lib_dir = File::Spec->catdir($self->blib, 'lib/LINZ');
+    File::Path::mkpath( $lib_dir );
+
+    foreach my $filepath (keys %$files) {
+        my $file = File::Basename::basename($filepath);
+        my $to_file = File::Spec->catfile($lib_dir, $file);
+
+        my $result = $self->copy_if_modified(
+            from    => $filepath,
+            to      => $to_file,
+            flatten => 'flatten'
+        ) || next;
+
+        $self->substitute_version($result);
+    }
+}
+
 sub substitute_version {
     my $self = shift;
     my $file = shift;

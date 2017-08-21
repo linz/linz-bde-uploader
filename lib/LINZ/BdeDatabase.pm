@@ -20,7 +20,7 @@ Interface between the BdeUpload process and a database
 
 =head1 Version
 
-Version: $Id$
+Version: @@VERSION@@ @@REVISION@@
 
 =over
 
