@@ -82,7 +82,7 @@ $body$
     (SELECT oid FROM pg_namespace WHERE LOWER(nspname) =  LOWER($1))
     AND p.proname ILIKE E'bde\\_%'
 $body$
-LANGUAGE sql;
+LANGUAGE sql STABLE;
 
 ALTER FUNCTION bde_GetBdeFunctions(name) OWNER TO bde_dba;
 
@@ -96,7 +96,7 @@ AS
 $body$
     SELECT nspname FROM pg_namespace WHERE LOWER(nspname) = LOWER($1)
 $body$
-LANGUAGE sql;
+LANGUAGE sql STABLE;
 
 ALTER FUNCTION bde_CheckSchemaName(name) OWNER TO bde_dba;
 
@@ -130,7 +130,7 @@ $body$
         LOWER(schema_name) = LOWER($1) AND
         LOWER(table_name) = LOWER($2);
 $body$
-LANGUAGE sql;
+LANGUAGE sql STABLE;
 
 ALTER FUNCTION bde_LastUploadStats(name, name) OWNER TO bde_dba;
 
@@ -145,7 +145,7 @@ $body$
 SELECT COUNT(*)::INTEGER FROM bde_control.upload
     WHERE id=$1 AND status='A';
 $body$
-language sql;
+language sql STABLE;
 
 ALTER FUNCTION bde_uploadIsActive(int) OWNER TO bde_dba;
 
@@ -159,7 +159,7 @@ $body$
 SELECT COUNT(*)::INTEGER FROM bde_control.upload
     WHERE status='A';
 $body$
-language sql;
+language sql STABLE;
 
 ALTER FUNCTION bde_anyUploadIsActive() OWNER TO bde_dba;
 
@@ -211,7 +211,7 @@ BEGIN
     RETURN v_count;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_ReleaseExpiredLocks(REAL) OWNER TO bde_dba;
 
@@ -254,7 +254,7 @@ BEGIN
     RETURN 0;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_RemoveOldJobData(INTEGER) OWNER TO bde_dba;
 
@@ -300,7 +300,7 @@ BEGIN
     RETURN v_upload;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CreateUpload(NAME) OWNER TO bde_dba;
 
@@ -338,7 +338,7 @@ BEGIN
     PERFORM _bde_ReleaseLocks(p_upload);
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_FinishUpload(INTEGER, BOOLEAN) OWNER TO bde_dba;
 
@@ -364,7 +364,7 @@ BEGIN
     RETURN v_count > 0;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_RefreshLock(INTEGER) OWNER TO bde_dba;
 
@@ -408,7 +408,7 @@ BEGIN
     END IF;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_ReleaseLocks(INTEGER) OWNER TO bde_dba;
 
@@ -433,7 +433,7 @@ $body$
          status NOT IN ('E','C') AND
          (clock_timestamp()::timestamp - end_time) < ($2||'H')::interval
 $body$
-LANGUAGE sql;
+LANGUAGE sql VOLATILE;
 
 ALTER FUNCTION _bde_LockIsCurrent(INTEGER, REAL) OWNER TO bde_dba;
 
@@ -531,7 +531,7 @@ BEGIN
     RETURN v_status;
 END;
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_AddTable(INTEGER, NAME, NAME, REAL, REAL) OWNER TO bde_dba;
 
@@ -564,7 +564,7 @@ BEGIN
 
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_BeginUploadTable(INTEGER, NAME, INT) OWNER TO bde_dba;
 
@@ -580,7 +580,7 @@ BEGIN
     RETURN _bde_UnlockTable( p_upload, p_bde_table );
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_EndUploadTable(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -627,7 +627,7 @@ BEGIN
      RETURN v_ok;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_LockTable(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -651,7 +651,7 @@ BEGIN
     );
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_HaveTableLock(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -686,7 +686,7 @@ BEGIN
     RETURN v_result;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_UnlockTable(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -757,7 +757,7 @@ BEGIN
     END IF;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_GetExclusiveLock(INTEGER, REGCLASS) OWNER TO bde_dba;
 
@@ -794,7 +794,7 @@ BEGIN
     RETURN v_c;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_SetOption(INTEGER, VARCHAR(255), TEXT) OWNER TO bde_dba;
 
@@ -818,7 +818,7 @@ BEGIN
     RETURN v_result;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_GetOption(INTEGER, VARCHAR(255)) OWNER TO bde_dba;
 
@@ -832,7 +832,7 @@ BEGIN
     return (SELECT schema_name FROM bde_control.upload WHERE id=p_upload);
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_BdeSchema(INTEGER) OWNER TO bde_dba;
 
@@ -844,7 +844,7 @@ AS
 $body$
     SELECT ('bde_upload_' || $1)::name as result;
 $body$
-LANGUAGE sql;
+LANGUAGE sql IMMUTABLE STRICT;
 
 ALTER FUNCTION bde_TmpSchema(INTEGER) OWNER TO bde_dba;
 
@@ -856,7 +856,7 @@ AS
 $body$
     SELECT $1 ilike 'bde_upload_%' as result;
 $body$
-LANGUAGE sql;
+LANGUAGE sql IMMUTABLE STRICT;
 
 ALTER FUNCTION _bde_IsTmpSchema(NAME) OWNER TO bde_dba;
 
@@ -870,7 +870,7 @@ $body$
         select bde_TmpSchema(id) FROM bde_control.upload WHERE status='A'
     ) as result;
 $body$
-LANGUAGE sql;
+LANGUAGE sql STABLE;
 
 ALTER FUNCTION _bde_IsActiveTmpSchema(NAME) OWNER TO bde_dba;
 
@@ -898,7 +898,7 @@ BEGIN
     );
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_UploadTableId(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -918,7 +918,7 @@ BEGIN
 
     RETURN v_upload_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_TimestampEvent(INTEGER, TEXT) OWNER TO bde_dba;
 
@@ -942,7 +942,7 @@ BEGIN
 
     RETURN v_table_oid IS NOT NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CreateEventLog(INTEGER) OWNER TO bde_dba;
 
@@ -966,7 +966,7 @@ BEGIN
 
     RETURN v_duration;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_EventDuration(INTEGER, TEXT) OWNER TO bde_dba;
 
@@ -1054,7 +1054,7 @@ BEGIN
     RETURN 1;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_RecordDatasetLoaded(
     INTEGER,
@@ -1115,7 +1115,7 @@ BEGIN
     RETURN 1;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_StartDataset(INTEGER, VARCHAR(14)) OWNER TO bde_dba;
 
@@ -1145,7 +1145,7 @@ BEGIN
     );
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_TableOid(NAME, NAME) OWNER TO bde_dba;
 
@@ -1163,7 +1163,7 @@ BEGIN
    RETURN bde_TableOid(bde_BdeSchema(p_upload),p_tablename) IS NOT NULL;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_BdeTableExists(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -1181,7 +1181,7 @@ BEGIN
     RETURN _bde_WorkingCopyTableOid(p_upload, p_tablename) IS NOT NULL;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_TempTableExists(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -1206,7 +1206,7 @@ BEGIN
     RETURN v_table_oid;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_WorkingCopyTableOid(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -1226,7 +1226,7 @@ AS $$
         pg_catalog.pg_table_is_visible(c.oid) AND
         c.relkind = 'r' AND
         c.relname = $1;
-$$ LANGUAGE sql;
+$$ LANGUAGE sql STABLE;
 
 ALTER FUNCTION bde_TempTableOid(NAME) OWNER TO bde_dba;
 
@@ -1281,7 +1281,7 @@ BEGIN
     RETURN 1;
 END
 $code$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CreateWorkingCopy(INTEGER, NAME, BOOLEAN) OWNER TO bde_dba;
 
@@ -1306,7 +1306,7 @@ BEGIN
     RETURN 1;
 END
 $code$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_DropWorkingCopy(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -1351,7 +1351,7 @@ BEGIN
     RETURN v_usecolumns;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_SelectValidColumns(INTEGER, NAME, TEXT) OWNER TO bde_dba;
 
@@ -1379,7 +1379,7 @@ BEGIN
    RETURN v_qcolumns;
 END
 $body$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 
 ALTER FUNCTION _bde_QuoteColumnNames(TEXT) OWNER TO bde_dba;
 
@@ -1430,7 +1430,7 @@ EXCEPTION
         p_datafile, p_table_name, v_sql, SQLERRM;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_UploadDataToTempTable(INTEGER, NAME, TEXT, TEXT)
     OWNER TO bde_dba;
@@ -1443,7 +1443,7 @@ AS
 $$
    SELECT '_incremental'::name
 $$
-LANGUAGE sql;
+LANGUAGE sql IMMUTABLE;
 
 ALTER FUNCTION _bde_ChangeTableName() OWNER TO bde_dba;
 
@@ -1489,7 +1489,7 @@ BEGIN
     RETURN v_incremental_table;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CreateL5ChangeTable(INTEGER, BOOLEAN) OWNER TO bde_dba;
 
@@ -1518,7 +1518,7 @@ BEGIN
     RETURN 1;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_PrepareChangeTable(INTEGER, REGCLASS) OWNER TO bde_dba;
 
@@ -1561,7 +1561,7 @@ BEGIN
     RETURN v_join;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_PrimaryKeyJoin(REGCLASS, NAME, NAME) OWNER TO bde_dba;
 
@@ -1599,7 +1599,7 @@ BEGIN
     RETURN v_key_column;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_GetValidIncrementKey(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -1840,7 +1840,7 @@ EXCEPTION
         END IF;
     RAISE EXCEPTION '%', v_errmsg;
 END;
-$$ LANGUAGE plpgsql
+$$ LANGUAGE plpgsql VOLATILE;
 SET search_path FROM CURRENT;
 
 ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
@@ -2047,7 +2047,7 @@ EXCEPTION
             'Level 0 update of table % from dataset % failed in %. Error: %',
             p_table_name, v_dataset, v_task, SQLERRM;
 END
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
@@ -2122,7 +2122,7 @@ BEGIN
     RETURN v_status;
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_CheckTableCount(INTEGER, NAME) OWNER TO bde_dba;
 
@@ -2146,7 +2146,7 @@ BEGIN
     RETURN v_expanded;
 END
 $body$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 
 ALTER FUNCTION bde_ExpandTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 
@@ -2176,7 +2176,7 @@ BEGIN
     RETURN v_count;
 END
 $body$
-LANGUAGE 'plpgsql';
+LANGUAGE 'plpgsql' VOLATILE;
 
 ALTER FUNCTION bde_ExecuteTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 
@@ -2262,7 +2262,7 @@ BEGIN
     RETURN v_changed;
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_FixChangedIncKeyRecords(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
@@ -2298,7 +2298,7 @@ BEGIN
     );
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CreateIncDeletes(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
@@ -2334,7 +2334,7 @@ BEGIN
     );
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CreateIncInserts(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
@@ -2409,7 +2409,7 @@ BEGIN
     );
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
@@ -2426,7 +2426,9 @@ BEGIN
     RETURN ARRAY[]::text[];
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql IMMUTABLE; -- pointless empty function ?
+-- TODO: does this function need to be implemented ?
+--       Would become STABLE then...
 
 ALTER FUNCTION _bde_GetDependentObjectSql(INTEGER, REGCLASS) OWNER TO bde_dba;
 
@@ -2498,7 +2500,7 @@ BEGIN
     RETURN v_result;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION _bde_GetOwnerAccessSql(REGCLASS, REGCLASS) OWNER TO bde_dba;
 
@@ -2536,7 +2538,9 @@ BEGIN
     RETURN v_result;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
+-- we cannot know what the passed SQL does, so this
+-- is marked as VOLATILE
 
 ALTER FUNCTION bde_ExecuteSqlArray(INTEGER, TEXT, TEXT[]) OWNER TO bde_dba;
 
@@ -2617,7 +2621,7 @@ EXCEPTION
         RAISE EXCEPTION E'Failed in task %\n%\n%',v_task,v_sql,SQLERRM;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CopySchemaInformation(INTEGER, regclass, regclass)
     OWNER TO bde_dba;
@@ -2651,7 +2655,7 @@ BEGIN
     RETURN 0;
 END;
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION _bde_CopyStatisticsInformation(INTEGER, regclass, regclass)
     OWNER TO bde_dba;
@@ -2700,7 +2704,9 @@ BEGIN
     RETURN v_nproc;
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
+-- We cannot know what the called function does, so we
+-- mark this function as VOLATILE
 
 ALTER FUNCTION _bde_RunBdeFunctions(INTEGER, NAME, TEXT) OWNER TO bde_dba;
 
@@ -2714,7 +2720,9 @@ BEGIN
     RETURN _bde_RunBdeFunctions(p_upload,'bde_postlevel0_','Post level 0');
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
+-- We cannot know what the called function does, so we
+-- mark this function as VOLATILE
 
 ALTER FUNCTION bde_ApplyPostLevel0Functions(INTEGER) OWNER TO bde_dba;
 
@@ -2729,7 +2737,9 @@ BEGIN
     RETURN _bde_RunBdeFunctions(p_upload,'bde_postupload_','Post upload');
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql VOLATILE;
+-- We cannot know what the called function does, so we
+-- mark this function as VOLATILE
 
 ALTER FUNCTION bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_dba;
 
@@ -2867,7 +2877,7 @@ BEGIN
 
 END
 $body$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_TablesAffected(INTEGER, NAME[], TEXT) OWNER TO bde_dba;
 
@@ -2928,7 +2938,7 @@ BEGIN
 
     RETURN v_exists;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
 ALTER FUNCTION bde_TableKeyIsValid(REGCLASS, NAME) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION bde_TableKeyIsValid(REGCLASS, NAME) FROM PUBLIC;
@@ -2975,7 +2985,7 @@ BEGIN
 
     RETURN v_revision;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CreateDatasetRevision(INTEGER) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION bde_CreateDatasetRevision(INTEGER)  FROM PUBLIC;
@@ -3037,7 +3047,7 @@ BEGIN
 
     RETURN v_status;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CompleteDatasetRevision(INTEGER) OWNER TO bde_dba;
 REVOKE ALL ON FUNCTION bde_CompleteDatasetRevision(INTEGER)  FROM PUBLIC;
