@@ -379,7 +379,6 @@ is( $? >> 8, 2, 'exit status, schema-load with non-existent db' );
 $schemaload->run( args => ${testdbname} );
 # NOTE: table_version already exists only if we load it in previous
 #       steps
-is( $schemaload->stderr, '', 'stderr correct call');
 unlike( $schemaload->stderr, qr/ERROR/,
     'stderr correct call has no ERROR printed'
     );
@@ -883,4 +882,4 @@ is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
 is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
 
 close($log_fh);
-done_testing(216);
+done_testing(215);
