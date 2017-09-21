@@ -65,6 +65,7 @@ sub process_script_files {
 
         $self->fix_shebang_line($result) unless $self->is_vmsish;
         $self->substitute_version($result);
+        $self->substitute_prefix($result);
         $self->make_executable($result);
     }
 }
@@ -109,6 +110,27 @@ sub substitute_version {
        my $matched = $_ =~ s/\@\@VERSION\@\@/$version/g;
        $updated++ if $matched;
        $matched = $_ =~ s/\@\@REVISION\@\@/$revision/g;
+       $updated++ if $matched;
+       push(@newlines,$_);
+    }
+    if ($updated) {
+        open(FILE, ">$file.new") || die "Can't write to '$file': $!";
+        print FILE @newlines;
+        close(FILE);
+        rename "$file.new", $file;
+    }
+}
+
+sub substitute_prefix {
+    my $self = shift;
+    my $file = shift;
+    open(FILE, "<$file") || die "Can't process '$file': $!";
+    my @lines = <FILE>;
+    close(FILE);
+    my $prefix = $self->prefix || ( $self->installdirs eq 'vendor' ? $Config::Config{'prefix'} : '/usr/local' );
+    my @newlines;
+    foreach(@lines) {
+       my $matched = $_ =~ s/\@\@PREFIX\@\@/$prefix/g;
        $updated++ if $matched;
        push(@newlines,$_);
     }
