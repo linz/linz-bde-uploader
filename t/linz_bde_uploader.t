@@ -357,12 +357,37 @@ foreach my $f (@sqlfiles) {
 
 # Install local support functions
 
-@sqlfiles = <$sqldir/*>;
-foreach my $f (@sqlfiles) {
-  my $out = `psql --set ON_ERROR_STOP=1 "${testdbname}" -f $f 2>&1`;
-  unlike( $out, qr/ERROR/, "sourcing $f gives no error" );
-  #print "XXX $f - $out\n";
-}
+$ENV{'BDEUPLOADER_SQLDIR'} = $sqldir;
+my $schemaload = Test::Cmd->new(
+    prog => 'blib/script/linz-bde-uploader-schema-load',
+    workdir => '' );
+$schemaload->run();
+like( $schemaload->stderr, qr/Usage.*database/,
+    'prints syntax on stderr when calling schema-load with no arg'
+    );
+is( $schemaload->stdout, '',
+    'empty stdout on calling schema-load with no arg');
+is( $? >> 8, 255, 'exit status, schema-load with no args' );
+$schemaload->run( args => 'unexistent_db' );
+like( $schemaload->stderr, qr/database "unexistent_db" does not exist/,
+    'prints error on stderr when passing non-existent db to schema-load'
+    );
+is( $schemaload->stdout, '',
+    'empty stdout on schema-load with non-existent db');
+is( $? >> 8, 2, 'exit status, schema-load with non-existent db' );
+
+$schemaload->run( args => ${testdbname} );
+# NOTE: table_version already exists only if we load it in previous
+#       steps
+is( $schemaload->stderr, '', 'stderr correct call');
+unlike( $schemaload->stderr, qr/ERROR/,
+    'stderr correct call has no ERROR printed'
+    );
+like( $schemaload->stdout, qr/Loading/,
+    'stdout on calling schema-load with correct arg' );
+unlike( $schemaload->stdout, qr/ERROR/,
+    'no ERROR in stdout on calling schema-load with correct arg' );
+is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
 
 # Check bde_control.upload
 
@@ -858,4 +883,4 @@ is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
 is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
 
 close($log_fh);
-done_testing(209);
+done_testing(216);

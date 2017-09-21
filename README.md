@@ -91,22 +91,14 @@ The BDE schema creation scripts will take care of ensuring required
 cluster-global roles exist and database-local objects (schemas,
 tables, extensions, functions etc) are loaded.
 
-As the `table_version` extension is an optional component for
-the BDE schema, if you haven't already installed it you'll need
-to do it as the second step:
+Second step is preparing the target database for  use of
+`linz-bde-uploader`, which implies loading support schema
+`bde_control` with expected tables and functions.
 
 ```shell
-psql $DB_NAME -c "CREATE EXTENSION IF NOT EXISTS table_version"
+linz-bde-uploader-schema-load $DB_NAME
 ```
 
-Third step is executing the installed linz-bde-uploader SQL support
-files with something like the following:
-
-```shell
-for file in /usr/share/linz-bde-uploader/sql/*.sql
-    do psql $DB_NAME -f $file -v ON_ERROR_STOP=1
-done
-```
 #### User setup
 
 Lastly the `linz_bde_uploader` software should be run under a UNIX account that
