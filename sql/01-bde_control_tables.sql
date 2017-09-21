@@ -200,4 +200,4 @@ ndelete is the number of records deleted
 $comment$;
 
 END;
-$SCHEMA$
+$SCHEMA$;
