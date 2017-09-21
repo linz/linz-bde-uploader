@@ -93,11 +93,16 @@ tables, extensions, functions etc) are loaded.
 
 Second step is preparing the target database for  use of
 `linz-bde-uploader`, which implies loading support schema
-`bde_control` with expected tables and functions.
+`bde_control` with expected tables and functions. It can
+be done by running the loader script:
 
 ```shell
 linz-bde-uploader-schema-load $DB_NAME
 ```
+
+The script will load SQL files from the install location
+but can be instructed to load them from a custom directory
+by setting a `BDEUPLOADER_SQLDIR` environment variable.
 
 #### User setup
 
