@@ -16,6 +16,7 @@
 ################################################################################
 use strict;
 use warnings;
+use Getopt::Long;
 
 our $PREFIX = '@@PREFIX@@';
 our $SCRIPTSDIR="${PREFIX}/share/linz-bde-uploader/sql/";
@@ -25,7 +26,23 @@ if ( defined( $ENV{'BDEUPLOADER_SQLDIR'} ) ) {
     $SCRIPTSDIR=$ENV{'BDEUPLOADER_SQLDIR'};
 }
 
-our $DB_NAME=$ARGV[0] || die "Usage: $0 <database>\n";
+our $DB_NAME;
+our $EXTENSION_MODE = 1;
+
+sub help
+{
+    my ($exitcode) = @_;
+    print STDERR "Usage: $0 [--noextension] <database>\n";
+    exit $exitcode;
+}
+
+GetOptions (
+    "extension!" => \$EXTENSION_MODE
+) || help(0);
+
+$DB_NAME=$ARGV[0];
+
+help(1) if ( ! $DB_NAME );
 
 if ( ! -f "${SCRIPTSDIR}/01-bde_control_tables.sql" ) {
     die "Cannot find 01-bde_control_tables.sql in ${SCRIPTSDIR}\n"
@@ -34,9 +51,23 @@ if ( ! -f "${SCRIPTSDIR}/01-bde_control_tables.sql" ) {
 
 $ENV{'PGDATABASE'}=$DB_NAME;
 
-`$PSQL -c 'CREATE EXTENSION IF NOT EXISTS table_version;'` || die;
-`$PSQL -c 'CREATE SCHEMA IF NOT EXISTS _patches;'` || die;
-`$PSQL -c 'CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;'` || die;
+print STDERR "Loading DBE uploader schema in database "
+    . $ENV{'PGDATABASE'} . " (extension mode "
+    . ( ${EXTENSION_MODE} ?  "on" : "off" )
+    . ")\n";
+
+if ( ${EXTENSION_MODE} )
+{
+    `$PSQL -c 'CREATE EXTENSION IF NOT EXISTS table_version;'` || die;
+    `$PSQL -c 'CREATE SCHEMA IF NOT EXISTS _patches;'` || die;
+    `$PSQL -c 'CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;'` || die;
+}
+else
+{
+    my $pgbin = `pg_config --bindir`; chop($pgbin);
+    `${pgbin}/table_version-loader --no-extension "$DB_NAME"` || die;
+    `${pgbin}/dbpatch-loader --no-extension "$DB_NAME" _patches` || die;
+}
 
 my @sqlfiles = <${SCRIPTSDIR}/*>;
 foreach my $f (@sqlfiles) {

@@ -22,10 +22,10 @@ BEGIN
 
 IF NOT EXISTS (
     SELECT *
-    FROM   pg_extension EXT,
+    FROM   pg_class CLS,
            pg_namespace NSP
-    WHERE  EXT.extname = 'dbpatch'
-    AND    NSP.oid = EXT.extnamespace
+    WHERE  CLS.relname = 'applied_patches'
+    AND    NSP.oid = CLS.relnamespace
     AND    NSP.nspname = '_patches'
 ) THEN
     RAISE EXCEPTION 'dbpatch extension is not installed correctly';
