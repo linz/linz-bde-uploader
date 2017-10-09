@@ -31,7 +31,7 @@ my $logfname = ${tmpdir}.'/log';
 my $testdbname = "linz_bde_uploader_test_$$";
 
 my $pgoptions_backup = $ENV{'PGOPTIONS'};
-$ENV{'PGOPTIONS'} .= ' -c log_duration=0';
+$ENV{'PGOPTIONS'} .= ' -c log_duration=0 -c log_statement=none';
 END {
   $ENV{'PGOPTIONS'} = $ENV{'PGOPTIONS'};
 }
