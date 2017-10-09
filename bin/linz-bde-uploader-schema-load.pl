@@ -27,7 +27,7 @@ if ( defined( $ENV{'BDEUPLOADER_SQLDIR'} ) ) {
 }
 
 our $DB_NAME;
-our $EXTENSION_MODE;
+our $EXTENSION_MODE = 1;
 
 sub help
 {
@@ -51,7 +51,7 @@ if ( ! -f "${SCRIPTSDIR}/01-bde_control_tables.sql" ) {
 
 $ENV{'PGDATABASE'}=$DB_NAME;
 
-print "Loading DBE uploader schema in database "
+print STDERR "Loading DBE uploader schema in database "
     . $ENV{'PGDATABASE'} . " (extension mode "
     . ( ${EXTENSION_MODE} ?  "on" : "off" )
     . ")\n";

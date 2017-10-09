@@ -367,7 +367,7 @@ like( $schemaload->stderr, qr/Usage.*database/,
     );
 is( $schemaload->stdout, '',
     'empty stdout on calling schema-load with no arg');
-is( $? >> 8, 255, 'exit status, schema-load with no args' );
+is( $? >> 8, 1, 'exit status, schema-load with no args' );
 $schemaload->run( args => 'unexistent_db' );
 like( $schemaload->stderr, qr/database "unexistent_db" does not exist/,
     'prints error on stderr when passing non-existent db to schema-load'
