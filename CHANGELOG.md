@@ -2,6 +2,24 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.4.0dev] - 2017-MM-DD
+### Changed
+- LOL stopping updates of `crs_map_grid`
+- LOL 3.14 remove meshblock and electoral place tables and unloads
+### Added
+- linz-bde-uploader-schema-load script (#123)
+- Expose git revision in functions description (#111)
+- Add a testsuite
+- Add `pg_error_level` configuration support
+### Enhanced
+- Review IMMUTABLE/STABLE/VOLATILE status of each function
+- Improve documentation (#57, #85, #89, #118)
+- Improve user feedback (#97, #106)
+- Provide defaults for most configuration items (#78, #103)
+### Fixed
+- Ensure install base prefix paths are correctly set
+- Avoid duplicated error messages (#59, #69, #75)
+
 ## [2.3.0] - 2016-12-22
 ### Added
 - Support changes for the Landonline release 3.15
@@ -27,7 +45,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [2.0.3] - 2016-08-15
 ### Added
-- Fixes #34. Renaming of pg_stat_activity procpid to pid (following Postgresql 9.2 change)
+- Fixes #34. Renaming of `pg_stat_activity` procpid to pid (following Postgresql 9.2 change)
 - Fixes #30 - missed regex extended flag
 
 ## [2.0.2] - 2016-06-01
