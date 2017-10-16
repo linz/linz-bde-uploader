@@ -373,6 +373,8 @@ sub uploadDataToTempTable
 {
     my($self,$tablename,$tmpfile,$columns) = @_;
 
+    $self->db->_setDbMessageHandler;
+
     DEBUG('Loading file ' . $tmpfile . ' into table ' . $tablename);
 
     my $uploadId = $self->db->uploadId;
@@ -396,6 +398,7 @@ sub uploadDataToTempTable
         ERROR 'Cannot load file ' . $tmpfile
           . ' into table ' . $tablename
           . ' as working copy of table does not exist';
+        $self->db->_clearDbMessageHandler;
         return 0;
     }
 
@@ -414,6 +417,7 @@ sub uploadDataToTempTable
     }
     $dbh->pg_putcopyend();
 
+    $self->db->_clearDbMessageHandler;
     return 1;
 }
 
