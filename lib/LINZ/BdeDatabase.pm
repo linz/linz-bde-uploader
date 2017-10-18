@@ -522,11 +522,7 @@ sub streamDataToTempTable
     foreach my $col (split(/\|/, $columns)) {
         push(@quotedColumns, $dbh->quote_identifier( $col ));
     }
-
     #DEBUG('quoted columns are ' . join(',',@quotedColumns));
-
-    my $sql = 'SELECT bde_control._bde_RefreshLock(?)';
-    $dbh->do( $sql, {}, $uploadId);
 
     my $tmptable = $self->getWorkingCopyOid($tablename);
 
@@ -537,7 +533,7 @@ sub streamDataToTempTable
         return 0;
     }
 
-    $sql = 'LOCK TABLE ' . $tmptable . ' IN ACCESS EXCLUSIVE MODE';
+    my $sql = 'LOCK TABLE ' . $tmptable . ' IN ACCESS EXCLUSIVE MODE';
     $dbh->do( $sql );
 
     $sql = 'COPY ' . $tmptable . ' (' . join(',', @quotedColumns)

@@ -552,6 +552,9 @@ DECLARE
     v_locked INTEGER;
     v_lockOwner INTEGER;
 BEGIN
+    -- A good time to ensure that the lock doesn't get revoked
+    PERFORM _bde_RefreshLock(p_upload);
+
     v_locked := _bde_LockTable( p_upload, p_bde_table );
     IF v_locked = 0 AND p_force_lock <> 0 THEN
         v_lockOwner = _bde_UnlockTable( p_upload, p_bde_table );
@@ -1420,8 +1423,6 @@ DECLARE
     v_columns text;
     v_sql text;
 BEGIN
-    -- A good time to ensure that the lock doesn't get revoked
-    PERFORM _bde_RefreshLock(p_upload);
 
     RAISE DEBUG 'Loading file % into table %', p_datafile, p_table_name;
 
