@@ -505,6 +505,55 @@ sub rollBackDataset
     return $result;
 }
 
+sub streamDataToTempTable
+{
+    my($self,$tablename,$datafh,$columns) = @_;
+
+    $self->_setDbMessageHandler;
+
+    DEBUG('Streaming data into table ' . $tablename);
+
+    my $uploadId = $self->uploadId;
+    my $dbh = $self->_dbh;
+
+    my @quotedColumns;
+    foreach my $col (split(/\|/, $columns)) {
+        push(@quotedColumns, $dbh->quote_identifier( $col ));
+    }
+
+    #DEBUG('quoted columns are ' . join(',',@quotedColumns));
+
+    my $sql = 'SELECT bde_control._bde_RefreshLock(?)';
+    $dbh->do( $sql, {}, $uploadId);
+
+    $sql = 'SELECT bde_control._bde_WorkingCopyTableOid(?,?)';
+    my ($tmptable) = $dbh->selectrow_array( $sql, {}, $uploadId, $tablename);
+
+    DEBUG('Temp table is ' . $tmptable);
+    if ( ! $tmptable ) {
+        ERROR 'Cannot get working copy of table ' . $tablename;
+        $self->_clearDbMessageHandler;
+        return 0;
+    }
+
+    $sql = 'LOCK TABLE ' . $tmptable . ' IN ACCESS EXCLUSIVE MODE';
+    $dbh->do( $sql );
+
+    $sql = 'COPY ' . $tmptable . ' (' . join(',', @quotedColumns)
+         . ") FROM stdin WITH DELIMITER '|' NULL AS ''";
+    #DEBUG 'SQL: ' . $sql;
+    $dbh->do($sql);
+
+    # See https://metacpan.org/pod/DBD::Pg#COPY-support
+    while(<$datafh>) {
+        $dbh->pg_putcopydata($_);
+    }
+    $dbh->pg_putcopyend();
+
+    $self->_clearDbMessageHandler;
+    return 1;
+}
+
 sub schema { return $_[0]->{schema} }
 
 sub _dbh { return $_[0]->{_dbh} }

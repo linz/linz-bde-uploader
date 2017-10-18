@@ -369,59 +369,6 @@ use fields qw{ cfg db repository tables tmp_base tmp fid current_dataset
 
 our $tmp_prefix='tmp_bde_upload_';
 
-sub uploadDataToTempTable
-{
-    my($self,$tablename,$tmpfile,$columns) = @_;
-
-    $self->db->_setDbMessageHandler;
-
-    DEBUG('Loading file ' . $tmpfile . ' into table ' . $tablename);
-
-    my $uploadId = $self->db->uploadId;
-    my $dbh = $self->db->_dbh;
-
-    my @quotedColumns;
-    foreach my $col (split(/\|/, $columns)) {
-        push(@quotedColumns, $dbh->quote_identifier( $col ));
-    }
-
-    #DEBUG('quoted columns are ' . join(',',@quotedColumns));
-
-    my $sql = 'SELECT bde_control._bde_RefreshLock(?)';
-    $dbh->do( $sql, {}, $uploadId);
-
-    $sql = 'SELECT bde_control._bde_WorkingCopyTableOid(?,?)';
-    my ($tmptable) = $dbh->selectrow_array( $sql, {}, $uploadId, $tablename);
-
-    DEBUG('Temp table is ' . $tmptable);
-    if ( ! $tmptable ) {
-        ERROR 'Cannot load file ' . $tmpfile
-          . ' into table ' . $tablename
-          . ' as working copy of table does not exist';
-        $self->db->_clearDbMessageHandler;
-        return 0;
-    }
-
-    $sql = 'LOCK TABLE ' . $tmptable . ' IN ACCESS EXCLUSIVE MODE';
-    $dbh->do( $sql );
-
-    $sql = 'COPY ' . $tmptable . ' (' . join(',', @quotedColumns)
-         . ") FROM stdin WITH DELIMITER '|' NULL AS ''";
-    #DEBUG 'SQL: ' . $sql;
-    $dbh->do($sql);
-
-    # See https://metacpan.org/pod/DBD::Pg#COPY-support
-    open(my $in, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
-    while(<$in>) {
-        $dbh->pg_putcopydata($_);
-    }
-    close($in);
-    $dbh->pg_putcopyend();
-
-    $self->db->_clearDbMessageHandler;
-    return 1;
-}
-
 sub new
 {
     my($class,$cfg) = @_;
@@ -1070,9 +1017,11 @@ sub LoadFile
         # Create the temporary file
         $tmpfile = $self->BuildTempFile($dataset,$reader);
 
-        # Upload to the database
-        $self->uploadDataToTempTable($tablename,$tmpfile,$columns)
-            || die "Error uploading data from ",$file," in ",$dataset->name," to ",$tablename;
+        # Stream data to the database
+        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+        $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
+            || die "Error streaming data to ",$tablename;
+        close($tabledatafh);
 
         DEBUG("Loaded file $tmpfile into working table $tablename");
     }
