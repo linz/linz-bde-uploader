@@ -1280,9 +1280,7 @@ BEGIN
 
     EXECUTE v_sql;
 
-    GET DIAGNOSTICS v_table_oid = RESULT_OID;
-
-    RETURN v_table_oid;
+    RETURN _bde_WorkingCopyTableOid(p_upload,p_table_name);
 END
 $code$
 LANGUAGE plpgsql VOLATILE;
