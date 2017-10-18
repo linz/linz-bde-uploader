@@ -1240,7 +1240,7 @@ CREATE OR REPLACE FUNCTION bde_CreateWorkingCopy (
    p_temp_table BOOLEAN
    )
 RETURNS
-   INTEGER
+   REGCLASS
 AS
 $code$
 DECLARE
@@ -1248,14 +1248,16 @@ DECLARE
     v_tmp_schema name;
     v_bde_schema name;
     v_sql TEXT;
+    v_table_oid REGCLASS;
 BEGIN
 
     IF NOT bde_BdeTableExists(p_upload,p_table_name) THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
 
-    IF bde_TempTableExists(p_upload,p_table_name) THEN
-        RETURN 1;
+    v_table_oid := _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    IF v_table_oid IS NOT NULL THEN
+        RETURN v_table_oid;
     END IF;
 
     v_dataset := bde_GetOption(p_upload,'_dataset');
@@ -1278,7 +1280,9 @@ BEGIN
 
     EXECUTE v_sql;
 
-    RETURN 1;
+    GET DIAGNOSTICS v_table_oid = RESULT_OID;
+
+    RETURN v_table_oid;
 END
 $code$
 LANGUAGE plpgsql VOLATILE;
