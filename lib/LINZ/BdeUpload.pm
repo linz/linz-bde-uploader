@@ -415,6 +415,7 @@ sub uploadDataToTempTable
     while(<$in>) {
         $dbh->pg_putcopydata($_);
     }
+    close($in);
     $dbh->pg_putcopyend();
 
     $self->db->_clearDbMessageHandler;
