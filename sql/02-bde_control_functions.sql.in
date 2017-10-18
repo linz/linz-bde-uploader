@@ -1287,6 +1287,23 @@ LANGUAGE plpgsql VOLATILE;
 
 ALTER FUNCTION bde_CreateWorkingCopy(INTEGER, NAME, BOOLEAN) OWNER TO bde_dba;
 
+-- Get OID of working copy
+
+CREATE OR REPLACE FUNCTION bde_GetWorkingCopyOid (
+    p_upload INTEGER,
+    p_table_name NAME
+)
+RETURNS
+    REGCLASS
+AS
+$code$
+    SELECT _bde_WorkingCopyTableOid(p_upload,p_table_name);
+$code$
+LANGUAGE sql STABLE;
+
+ALTER FUNCTION bde_GetWorkingCopyOid(INTEGER, NAME) OWNER TO bde_dba;
+
+
 -- Create drops the copy of a bde table in the temporary schema
 
 CREATE OR REPLACE FUNCTION bde_DropWorkingCopy (

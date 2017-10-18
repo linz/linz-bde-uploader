@@ -117,6 +117,7 @@ its id is first required to execute a function.
     createL5ChangeTable
     createUpload
     createWorkingCopy
+    getWorkingCopyOid
     dropWorkingCopy
     endUploadTable
     finishUpload
@@ -232,6 +233,7 @@ our @sqlFuncs = qw{
     createL5ChangeTable
     createUpload
     createWorkingCopy
+    getWorkingCopyOid
     dropWorkingCopy
     endUploadTable
     finishUpload
@@ -526,8 +528,7 @@ sub streamDataToTempTable
     my $sql = 'SELECT bde_control._bde_RefreshLock(?)';
     $dbh->do( $sql, {}, $uploadId);
 
-    $sql = 'SELECT bde_control._bde_WorkingCopyTableOid(?,?)';
-    my ($tmptable) = $dbh->selectrow_array( $sql, {}, $uploadId, $tablename);
+    my $tmptable = $self->getWorkingCopyOid($tablename);
 
     DEBUG('Temp table is ' . $tmptable);
     if ( ! $tmptable ) {
