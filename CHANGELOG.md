@@ -12,6 +12,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Add a testsuite
 - Add `pg_error_level` configuration support
 ### Enhanced
+- Avoid creation of temporary BDE file copy when possible (#135)
 - Review IMMUTABLE/STABLE/VOLATILE status of each function
 - Improve documentation (#57, #85, #89, #118)
 - Improve user feedback (#97, #106)

@@ -542,10 +542,21 @@ sub streamDataToTempTable
     $dbh->do($sql);
 
     # See https://metacpan.org/pod/DBD::Pg#COPY-support
+    my @buf;
     while(<$datafh>) {
+        # We'll keep 16 lines of data to show upon catching
+        # an error
+        shift(@buf) if ( @buf > 16 );
+        push (@buf, $_);
         $dbh->pg_putcopydata($_);
     }
-    $dbh->pg_putcopyend();
+    # NOTE: will throw, on error
+    try {
+        $dbh->pg_putcopyend();
+    }
+    catch {
+        die $_ . "\nLast 16 lines of sent COPY data: @buf";
+    };
 
     $self->_clearDbMessageHandler;
     return 1;
