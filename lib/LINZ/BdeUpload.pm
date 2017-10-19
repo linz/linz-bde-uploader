@@ -998,7 +998,6 @@ sub LoadFile
 
     my $db = $self->db;
 
-    my $tmpfile = '';
     my $result = '';
     my $reader = $dataset->open($file);
 
@@ -1014,16 +1013,15 @@ sub LoadFile
         $columns = $db->selectValidColumns($tablename,$columns);
         $reader->output_fields(split(/\|/,$columns));
 
-        # Create the temporary file
-        $tmpfile = $self->BuildTempFile($dataset,$reader);
+        # Open data file
+        my $tabledatafh = $self->_OpenDataFile($dataset,$reader);
 
         # Stream data to the database
-        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
             || die "Error streaming data to ",$tablename;
         close($tabledatafh);
 
-        DEBUG("Loaded file $tmpfile into working table $tablename");
+        DEBUG("Loaded data file into working table $tablename");
     }
     catch
     {
@@ -1034,7 +1032,6 @@ sub LoadFile
         try
         {
             $reader->close;
-            unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
         };
     };
 
@@ -1153,6 +1150,15 @@ sub BuildTempFile
             " with ",$result->{nerrors}," errors");
 
     return $tmpname;
+}
+
+sub _OpenDataFile
+{
+    my($self,$dataset,$reader) = @_;
+    my $tmpfile = $self->BuildTempFile($dataset,$reader);
+    open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+    unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
+    return $tabledatafh;
 }
 
 1;
