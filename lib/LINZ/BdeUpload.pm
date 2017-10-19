@@ -1017,9 +1017,11 @@ sub LoadFile
         # Create the temporary file
         $tmpfile = $self->BuildTempFile($dataset,$reader);
 
-        # Upload to the database
-        $db->uploadDataToTempTable($tablename,$tmpfile,$columns)
-            || die "Error uploading data from ",$file," in ",$dataset->name," to ",$tablename;
+        # Stream data to the database
+        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+        $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
+            || die "Error streaming data to ",$tablename;
+        close($tabledatafh);
 
         DEBUG("Loaded file $tmpfile into working table $tablename");
     }
