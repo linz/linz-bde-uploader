@@ -1015,7 +1015,7 @@ sub LoadFile
 
         # Open data file
         my $tabledatafh = $self->_OpenDataFile($dataset,$reader)
-            || die "Coud not open data file";
+            || die "Could not open data file";
 
         # Stream data to the database
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
@@ -1179,8 +1179,7 @@ sub _OpenDataFile
     if ( $reader->can('pipe') )
     {
         # pipe method was added in linz-bde-perl 1.1.0
-        my ($fh, $logfile) = $self->_OpenDataPipe($dataset,$reader)
-            || die ("Cannot open dataset pipe");
+        my ($fh, $logfile) = $self->_OpenDataPipe($dataset,$reader);
         # TODO: save logfile somewhere ?
         #       it'll keep being written to while
         #       streaming !
