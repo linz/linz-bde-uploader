@@ -124,8 +124,8 @@ before_install:
   - popd
   # Install LINZ::Bde
   - pushd /tmp
-  - wget https://github.com/linz/linz_bde_perl/archive/1.0.2.tar.gz
-  - tar xzf 1.0.2.tar.gz && cd linz_bde_perl-1.0.2
+  - wget https://github.com/linz/linz-bde-perl/archive/1.0.2.tar.gz
+  - tar xzf 1.0.2.tar.gz && cd linz-bde-perl-1.0.2
   - perl Build.PL
   - sudo env "PATH=$PATH" ./Build install
   - popd
@@ -136,11 +136,11 @@ before_install:
     | tar xzf - && cd linz-bde-schema-1.0.2
   - sudo env "PATH=$PATH" make install
   - popd
-  # Install linz_bde_copy
+  # Install linz-bde-copy
   - pushd /tmp
   - wget -q -O -
-    https://github.com/linz/linz_bde_copy/archive/1.2.1.tar.gz
-    | tar xzf - && cd linz_bde_copy-1.2.1
+    https://github.com/linz/linz-bde-copy/archive/1.2.1.tar.gz
+    | tar xzf - && cd linz-bde-copy-1.2.1
   - cmake .
   - make && sudo env "PATH=$PATH" make install
   - popd
