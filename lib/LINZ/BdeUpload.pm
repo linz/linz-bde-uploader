@@ -1013,9 +1013,8 @@ sub LoadFile
         $columns = $db->selectValidColumns($tablename,$columns);
         $reader->output_fields(split(/\|/,$columns));
 
-        # Open data file
-        my $tabledatafh = $self->_OpenDataFile($dataset,$reader)
-            || die "Could not open data file";
+        # Open data file (throw on failure)
+        my $tabledatafh = $self->_OpenDataFile($dataset,$reader);
 
         # Stream data to the database
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
