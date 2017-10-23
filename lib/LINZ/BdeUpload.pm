@@ -1014,7 +1014,8 @@ sub LoadFile
         $reader->output_fields(split(/\|/,$columns));
 
         # Open data file
-        my $tabledatafh = $self->_OpenDataFile($dataset,$reader);
+        my $tabledatafh = $self->_OpenDataFile($dataset,$reader)
+            || die "Coud not open data file";
 
         # Stream data to the database
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
@@ -1152,13 +1153,46 @@ sub BuildTempFile
     return $tmpname;
 }
 
+sub _OpenDataPipe
+{
+    my($self,$dataset,$reader) = @_;
+    my $cfg = $self->cfg->bde_copy_configuration('');
+    # Ensure file_separator and line_terminator configurations
+    # are those expected by the COPY command as issued by the
+    # bde_UploadDataToTempTable function in sql/02-bde_control_functions.sql
+    # See https://github.com/linz/linz_bde_uploader/issues/90
+    $cfg .= "field_separator |\n";
+    $cfg .= "line_terminator \\x0A\n";
+    my $log = $self->tmp."/".$reader->name."_".$dataset->name."_".$self->fid.".unl.log";
+    my $fh = $reader->pipe
+        (
+        log_file => $log,
+        config => $cfg
+        );
+
+    return ($fh,$log);
+}
+
 sub _OpenDataFile
 {
     my($self,$dataset,$reader) = @_;
-    my $tmpfile = $self->BuildTempFile($dataset,$reader);
-    open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
-    unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
-    return $tabledatafh;
+    if ( $reader->can('pipe') )
+    {
+        # pipe method was added in linz-bde-perl 1.1.0
+        my ($fh, $logfile) = $self->_OpenDataPipe($dataset,$reader)
+            || die ("Cannot open dataset pipe");
+        # TODO: save logfile somewhere ?
+        #       it'll keep being written to while
+        #       streaming !
+        return $fh;
+    }
+    else
+    {
+        my $tmpfile = $self->BuildTempFile($dataset,$reader);
+        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+        unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
+        return $tabledatafh;
+    }
 }
 
 1;
