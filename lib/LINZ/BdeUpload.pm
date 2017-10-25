@@ -1021,6 +1021,13 @@ sub LoadFile
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
             || die "Error streaming data to ",$tablename;
         DEBUG("Loaded data file into working table $tablename");
+        # As $tabledatafh could be a pipe, here
+        # we check return status
+        $? = 0;
+        close($tabledatafh);
+        if ($?) {
+            die "Command used to output datafile failed";
+        }
     }
     catch
     {
@@ -1028,7 +1035,6 @@ sub LoadFile
     }
     finally
     {
-        close($tabledatafh);
         try
         {
             $reader->close;
