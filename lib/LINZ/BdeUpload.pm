@@ -998,9 +998,9 @@ sub LoadFile
 
     my $db = $self->db;
 
-    my $tmpfile = '';
     my $result = '';
     my $reader = $dataset->open($file);
+    my $tabledatafh;
 
     INFO("Loading file ",$file," from dataset ",$dataset->name);
     try
@@ -1014,16 +1014,20 @@ sub LoadFile
         $columns = $db->selectValidColumns($tablename,$columns);
         $reader->output_fields(split(/\|/,$columns));
 
-        # Create the temporary file
-        $tmpfile = $self->BuildTempFile($dataset,$reader);
+        # Open data file (throw on failure)
+        $tabledatafh = $self->_OpenDataFile($dataset,$reader);
 
         # Stream data to the database
-        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
             || die "Error streaming data to ",$tablename;
+        DEBUG("Loaded data file into working table $tablename");
+        # As $tabledatafh could be a pipe, here
+        # we check return status
+        $? = 0;
         close($tabledatafh);
-
-        DEBUG("Loaded file $tmpfile into working table $tablename");
+        if ($?) {
+            die "Command used to output datafile failed";
+        }
     }
     catch
     {
@@ -1034,7 +1038,6 @@ sub LoadFile
         try
         {
             $reader->close;
-            unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
         };
     };
 
@@ -1153,6 +1156,47 @@ sub BuildTempFile
             " with ",$result->{nerrors}," errors");
 
     return $tmpname;
+}
+
+sub _OpenDataPipe
+{
+    my($self,$dataset,$reader) = @_;
+    my $cfg = $self->cfg->bde_copy_configuration('');
+    # Ensure file_separator and line_terminator configurations
+    # are those expected by the COPY command as issued by the
+    # bde_UploadDataToTempTable function in sql/02-bde_control_functions.sql
+    # See https://github.com/linz/linz_bde_uploader/issues/90
+    $cfg .= "field_separator |\n";
+    $cfg .= "line_terminator \\x0A\n";
+    my $log = $self->tmp."/".$reader->name."_".$dataset->name."_".$self->fid.".unl.log";
+    my $fh = $reader->pipe
+        (
+        log_file => $log,
+        config => $cfg
+        );
+
+    return ($fh,$log);
+}
+
+sub _OpenDataFile
+{
+    my($self,$dataset,$reader) = @_;
+    if ( $reader->can('pipe') )
+    {
+        # pipe method was added in linz-bde-perl 1.1.0
+        my ($fh, $logfile) = $self->_OpenDataPipe($dataset,$reader);
+        # TODO: save logfile somewhere ?
+        #       it'll keep being written to while
+        #       streaming !
+        return $fh;
+    }
+    else
+    {
+        my $tmpfile = $self->BuildTempFile($dataset,$reader);
+        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+        unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
+        return $tabledatafh;
+    }
 }
 
 1;
