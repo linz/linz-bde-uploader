@@ -1020,25 +1020,15 @@ sub LoadFile
         # Stream data to the database
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
             || die "Error streaming data to ",$tablename;
-        $? = 0; # $tabledatafh could be a pipe, we check comand status
-        close($tabledatafh);
-        if ($?) {
-            die "Command used to output datafile failed";
-        }
-
         DEBUG("Loaded data file into working table $tablename");
     }
     catch
     {
-        $? = 0; # $tabledatafh could be a pipe, we check comand status
-        close($tabledatafh);
-        if ($?) {
-            die "Command used to output datafile failed";
-        }
         die $_;
     }
     finally
     {
+        close($tabledatafh);
         try
         {
             $reader->close;
