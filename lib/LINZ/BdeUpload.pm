@@ -1000,6 +1000,7 @@ sub LoadFile
 
     my $result = '';
     my $reader = $dataset->open($file);
+    my $tabledatafh;
 
     INFO("Loading file ",$file," from dataset ",$dataset->name);
     try
@@ -1014,17 +1015,26 @@ sub LoadFile
         $reader->output_fields(split(/\|/,$columns));
 
         # Open data file (throw on failure)
-        my $tabledatafh = $self->_OpenDataFile($dataset,$reader);
+        $tabledatafh = $self->_OpenDataFile($dataset,$reader);
 
         # Stream data to the database
         $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
             || die "Error streaming data to ",$tablename;
+        $? = 0; # $tabledatafh could be a pipe, we check comand status
         close($tabledatafh);
+        if ($?) {
+            die "Command used to output datafile failed";
+        }
 
         DEBUG("Loaded data file into working table $tablename");
     }
     catch
     {
+        $? = 0; # $tabledatafh could be a pipe, we check comand status
+        close($tabledatafh);
+        if ($?) {
+            die "Command used to output datafile failed";
+        }
         die $_;
     }
     finally
