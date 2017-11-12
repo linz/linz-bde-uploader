@@ -550,10 +550,20 @@ TABLE crs_parcel_bndry key=audit_id  row_tol=0.20,0.95 files test_file
 EOF
 close($cfg_fh);
 
+# Strip out the WARNING about /dev/stdout being unusable
+sub clean_stderr
+{
+    my ($stderr) = @_;
+    $stderr =~ s/WARNING:.*dev.stdout.*\n//;
+    return $stderr;
+}
+
 # This should supposedly be first successful upload
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, success upload test_file');
+my $stderr = $test->stderr;
+$stderr =~ s/WARNING:.*dev.stdout//;
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_file');
 is( $test->stdout, '', 'stdout, success upload test_file');
 is( $? >> 8, 0, 'exit status, success upload test_file');
 @logged = <$log_fh>;
@@ -619,7 +629,7 @@ rename($level0ds1, $level0ds2)
 # Run full upload again, should find the new dataset now
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, success upload test_file (3)');
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (3)');
 is( $test->stdout, '', 'stdout, success upload test_file (3)');
 is( $? >> 8, 0, 'exit status, success upload test_file (3)');
 @logged = <$log_fh>;
@@ -668,7 +678,7 @@ like( $log,
 # Now run full upload again but -before including available dataset
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170701" );
-is( $test->stderr, '', 'stderr, success upload test_file (4)');
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (4)');
 is( $test->stdout, '', 'stdout, success upload test_file (4)');
 is( $? >> 8, 0, 'exit status, success upload test_file (4)');
 @logged = <$log_fh>;
@@ -704,7 +714,7 @@ like( $log,
 # No new data to upload
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -rebuild" );
-is( $test->stderr, '', 'stderr, success upload test_file (5)');
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (5)');
 is( $test->stdout, '', 'stdout, success upload test_file (5)');
 is( $? >> 8, 0, 'exit status, success upload test_file (5)');
 @logged = <$log_fh>;
@@ -732,7 +742,7 @@ $res = $dbh->do(
 # -rebuild can be also passed as -r
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -r" );
-is( $test->stderr, '', 'stderr, success upload test_file (6)');
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (6)');
 is( $test->stdout, '', 'stdout, success upload test_file (6)');
 is( $? >> 8, 0, 'exit status, success upload test_file (6)');
 @logged = <$log_fh>;
@@ -814,7 +824,7 @@ like( $log,
 # Override lock to run a new job now
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -override-locks" );
-is( $test->stderr, '', 'stderr, override-locks (8)');
+is( clean_stderr($test->stderr), '', 'stderr, override-locks (8)');
 is( $test->stdout, '', 'stdout, override-locks (8)');
 is( $? >> 8, 0, 'exit status, override-locks (8)');
 @logged = <$log_fh>;
@@ -839,7 +849,7 @@ $res = $dbh->do("UPDATE bde_control.upload set status = 'A' where id = 8")
 # override-locks can be passed as -o too
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
-is( $test->stderr, '', 'stderr, override-locks (9)');
+is( clean_stderr($test->stderr), '', 'stderr, override-locks (9)');
 is( $test->stdout, '', 'stdout, override-locks (9)');
 is( $? >> 8, 0, 'exit status, override-locks (9)');
 @logged = <$log_fh>;
@@ -867,7 +877,7 @@ close($cfg_fh);
 
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
 is( $? >> 8, 0, 'exit status, keep_temp_schema (10)');
-is( $test->stderr, '', 'stderr, keep_temp_schema (10)' );
+is( clean_stderr($test->stderr), '', 'stderr, keep_temp_schema (10)' );
 is( $test->stdout, '', 'stdout, keep_temp_schema (10)' );
 @logged = <$log_fh>;
 $log = join '', @logged;
