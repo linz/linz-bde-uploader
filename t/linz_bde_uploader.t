@@ -555,7 +555,11 @@ sub clean_stderr
 {
     my $stderr = shift;
     if ( $stderr ) {
-        $stderr =~ s/WARNING:.*dev.stdout.*\n//;
+        if ( $stderr =~ m/(WARNING:.*dev.stdout.*)\n/ )
+        {
+            print STDERR "$1\n";
+            $stderr =~ s/WARNING:.*dev.stdout.*\n//;
+        }
     } else {
         $stderr = '';
     }
