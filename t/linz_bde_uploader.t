@@ -553,8 +553,12 @@ close($cfg_fh);
 # Strip out the WARNING about /dev/stdout being unusable
 sub clean_stderr
 {
-    my ($stderr) = @_;
-    $stderr =~ s/WARNING:.*dev.stdout.*\n//;
+    my $stderr = shift;
+    if ( $stderr ) {
+        $stderr =~ s/WARNING:.*dev.stdout.*\n//;
+    } else {
+        $stderr = '';
+    }
     return $stderr;
 }
 
