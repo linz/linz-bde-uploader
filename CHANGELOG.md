@@ -11,6 +11,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Expose git revision in functions description (#111)
 - Add a testsuite
 - Add `pg_error_level` configuration support
+- BdeDatabase::streamDataToTempTable (#133)
 ### Enhanced
 - Avoid creation of temporary BDE file copy when possible (#135)
 - Review IMMUTABLE/STABLE/VOLATILE status of each function
@@ -20,6 +21,9 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ### Fixed
 - Ensure install base prefix paths are correctly set
 - Avoid duplicated error messages (#59, #69, #75)
+### Removed
+- BdeDatabase::UploadDataToTempTable function removed,
+  use BdeDatabase::streamDataToTempTable instead
 
 ## [2.3.0] - 2016-12-22
 ### Added
