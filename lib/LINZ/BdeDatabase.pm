@@ -132,7 +132,6 @@ its id is first required to execute a function.
     startDataset
     tempTableExists
     tmpSchema
-    uploadDataToTempTable
 
 
 The functions return either a scalar, or if the function returns a
@@ -249,7 +248,6 @@ our @sqlFuncs = qw{
     tablesAffected
     tempTableExists
     tmpSchema
-    uploadDataToTempTable
     };
 
 our $funcsLoaded = 0;

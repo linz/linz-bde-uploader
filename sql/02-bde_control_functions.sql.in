@@ -1405,56 +1405,6 @@ LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 
 ALTER FUNCTION _bde_QuoteColumnNames(TEXT) OWNER TO bde_dba;
 
--- Upload a data file to a table
--- Returns 1 on success, 0 on failure.  I don't think I can get more information
--- than this from the database regarding when and where it failed :-(
-
-CREATE OR REPLACE FUNCTION bde_UploadDataToTempTable (
-    p_upload INTEGER,
-    p_table_name name,
-    p_datafile text,
-    p_columns text
-)
-RETURNS INTEGER
-AS
-$body$
-DECLARE
-    v_temptable regclass;
-    v_columns text;
-    v_sql text;
-BEGIN
-
-    RAISE DEBUG 'Loading file % into table %', p_datafile, p_table_name;
-
-    v_temptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
-    IF v_temptable IS NULL THEN
-        RAISE EXCEPTION 'Cannot load file % into table % as working copy of table does not exist',
-            p_datafile, p_table_name;
-    END IF;
-
-    v_columns := _bde_QuoteColumnNames(p_columns);
-
-    v_sql := 'LOCK TABLE ' || v_temptable || ' IN ACCESS EXCLUSIVE MODE';
-    EXECUTE v_sql;
-
-    v_sql := 'COPY ' || v_temptable || '(' || v_columns || ') FROM ' ||
-        quote_literal(p_datafile) || ' WITH DELIMITER ''|'' NULL AS ''''';
-    RAISE DEBUG 'SQL: %', v_sql;
-    EXECUTE v_sql;
-
-    RETURN 1;
-EXCEPTION
-    WHEN others THEN
-    RAISE EXCEPTION
-        'Error encountered loading file % into table %. SQL: %. Error: %',
-        p_datafile, p_table_name, v_sql, SQLERRM;
-END
-$body$
-LANGUAGE plpgsql VOLATILE;
-
-ALTER FUNCTION bde_UploadDataToTempTable(INTEGER, NAME, TEXT, TEXT)
-    OWNER TO bde_dba;
-
 -- Define the incremental change table name
 
 CREATE OR REPLACE FUNCTION _bde_ChangeTableName()
