@@ -64,9 +64,14 @@ if ( ${EXTENSION_MODE} )
 }
 else
 {
+    # As of table_version-1.4.0 and dbpatch-1.2.0
+    # the loader binaries are in `pg_config --bindir`
+    # but this may change in the future, so we add
+    # that directory to the PATH and hope for the best
     my $pgbin = `pg_config --bindir`; chop($pgbin);
-    `${pgbin}/table_version-loader --no-extension "$DB_NAME"` || die;
-    `${pgbin}/dbpatch-loader --no-extension "$DB_NAME" _patches` || die;
+    if ( $pgbin ) { $ENV{'PATH'} .= ":$pgbin"; }
+    `table_version-loader --no-extension "$DB_NAME"` || die;
+    `dbpatch-loader --no-extension "$DB_NAME" _patches` || die;
 }
 
 my @sqlfiles = <${SCRIPTSDIR}/*>;
