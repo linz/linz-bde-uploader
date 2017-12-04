@@ -13,6 +13,8 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Add `pg_error_level` configuration support
 - BdeDatabase::streamDataToTempTable (#133)
 ### Enhanced
+- Allow running `bde_ApplyLevel0Update` without having SUPERUSER
+  privileges (ie: do not require access to `pg_authid`)
 - Avoid creation of temporary BDE file copy when possible (#135)
 - Review IMMUTABLE/STABLE/VOLATILE status of each function
 - Improve documentation (#57, #85, #89, #118)
