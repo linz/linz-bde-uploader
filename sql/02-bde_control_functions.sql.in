@@ -2439,7 +2439,7 @@ BEGIN
     FOR v_rolename IN
         SELECT AUTH.rolname
         FROM   pg_shdepend DEP,
-               pg_authid AUTH,
+               pg_roles AUTH,
                pg_database DB
         WHERE  DEP.dbid = DB.oid
         AND    DEP.objid = p_reference
