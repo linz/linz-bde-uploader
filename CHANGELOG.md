@@ -5,6 +5,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [2.4.0dev] - 2017-MM-DD
 ### Changed
 - LOL stopping updates of `crs_map_grid`
+- LOL stopping updates of `crs_statist_area`
 - LOL 3.14 remove meshblock and electoral place tables and unloads
 ### Added
 - linz-bde-uploader-schema-load script (#123)
