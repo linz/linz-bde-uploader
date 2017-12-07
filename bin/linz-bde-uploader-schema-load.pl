@@ -70,6 +70,25 @@ else
     # that directory to the PATH and hope for the best
     my $pgbin = `pg_config --bindir`; chop($pgbin);
     if ( $pgbin ) { $ENV{'PATH'} .= ":$pgbin"; }
+    else
+    {
+        # When `pg_config` is not installed we can try
+        # a wild guess as for where the loaders are
+        # installed.
+        foreach my $dir (`'ls' -d /usr/lib/postgresql/*/bin/`)
+        {
+            chop($dir);
+            $ENV{'PATH'} .= ":$dir";
+        }
+    }
+
+    `which table_version-loader` ||
+        die "Cannot find required table_version-loader.\n"
+          . "Is table_version 1.4.0+ installed ?\n";
+    `which dbpatch-loader` ||
+        die "Cannot find required dbpatch-loader.\n"
+          . "Is dbpatch 1.2.0+ installed ?\n";
+
     `table_version-loader --no-extension "$DB_NAME"` || die;
     `dbpatch-loader --no-extension "$DB_NAME" _patches` || die;
 }
