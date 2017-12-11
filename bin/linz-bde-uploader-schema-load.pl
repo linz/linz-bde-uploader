@@ -28,20 +28,28 @@ if ( defined( $ENV{'BDEUPLOADER_SQLDIR'} ) ) {
 
 our $DB_NAME;
 our $EXTENSION_MODE = 1;
+our $SHOW_VERSION = 0;
 
 sub help
 {
     my ($exitcode) = @_;
     print STDERR "Usage: $0 [--noextension] <database>\n";
+    print STDERR "       $0 --version\n";
     exit $exitcode;
 }
 
 GetOptions (
-    "extension!" => \$EXTENSION_MODE
+    "extension!" => \$EXTENSION_MODE,
+    "version!" => \$SHOW_VERSION
 ) || help(0);
 
 $DB_NAME=$ARGV[0];
 
+if ( $SHOW_VERSION )
+{
+    print "@@VERSION@@ @@REVISION@@";
+    exit 0;
+}
 help(1) if ( ! $DB_NAME );
 
 if ( ! -f "${SCRIPTSDIR}/01-bde_control_tables.sql" ) {
