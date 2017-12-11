@@ -76,7 +76,7 @@ else
     # the loader binaries are in `pg_config --bindir`
     # but this may change in the future, so we add
     # that directory to the PATH and hope for the best
-    my $pgbin = `pg_config --bindir`; chop($pgbin);
+    my $pgbin = `pg_config --bindir 2>/dev/null`; chop($pgbin);
     if ( $pgbin ) { $ENV{'PATH'} .= ":$pgbin"; }
     else
     {
