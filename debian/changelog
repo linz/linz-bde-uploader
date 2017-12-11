@@ -1,3 +1,9 @@
+linz-bde-uploader (2.4.0-1linz~trusty1) trusty; urgency=medium
+
+  * New upstream release
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Tue, 12 Dec 2017 05:25:49 +1300
+
 linz-bde-uploader (2.3.0-1linz~trusty1) trusty; urgency=medium
 
   * New upstream release
