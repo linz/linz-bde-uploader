@@ -2,6 +2,8 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.5.0dev] - YYYY-MM-DD
+
 ## [2.4.0] - 2017-12-11
 ### Changed
 - LOL stopping updates of `crs_map_grid`
