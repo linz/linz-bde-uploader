@@ -1,9 +1,12 @@
 Source: linz-bde-uploader
 Section: misc
 Priority: optional
-Build-Depends: debhelper (>= 7),
- libtest-cmd-perl, libtest-exception-perl
-Build-Depends-Indep: perl (>= 5.8),
+Build-Depends:
+ debhelper (>= 7),
+ libtest-cmd-perl,
+ libtest-exception-perl
+Build-Depends-Indep:
+ perl (>= 5.8),
  libmodule-build-perl
 Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
