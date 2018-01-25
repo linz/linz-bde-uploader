@@ -99,9 +99,9 @@ GetOptions (
     "log-level=s" => \$log_level,
     "version" => \$print_version,
     )
-    || help(0);
+    || help(0, *STDERR, 1);
 
-help(1) if $showhelp;
+help(1, *STDOUT, 0) if $showhelp;
 
 if ($print_version)
 {

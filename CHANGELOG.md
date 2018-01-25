@@ -3,6 +3,8 @@
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [2.5.0dev] - YYYY-MM-DD
+### Fixed
+- Unpredictable exit code (use of uninitialized $exitcode variable)
 
 ## [2.4.0] - 2017-12-11
 ### Changed
