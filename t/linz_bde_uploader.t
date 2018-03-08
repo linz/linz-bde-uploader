@@ -896,4 +896,4 @@ is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
 is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
 
 close($log_fh);
-done_testing(215);
+done_testing(213);
