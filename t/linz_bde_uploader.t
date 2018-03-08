@@ -247,8 +247,6 @@ is( $test->stderr, '', 'stderr, empty db');
 is( $test->stdout, '', 'stdout, empty db');
 is( $? >> 8, 1, 'exit status, empty db');
 @logged = <$log_fh>;
-is( @logged, 6,
-  'logged 6 lines, empty db' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
@@ -298,8 +296,6 @@ is( $test->stderr, '', 'stderr, empty db (terse)');
 is( $test->stdout, '', 'stdout, empty db (terse)');
 is( $? >> 8, 1, 'exit status, empty db (terse)');
 @logged = <$log_fh>;
-is( @logged, 3,
-  'logged 3 lines, empty db (terse)' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
   qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
