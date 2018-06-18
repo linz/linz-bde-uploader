@@ -14,7 +14,6 @@
 -- in this file should be done sequentially i.e Newest patches go at the bottom
 -- of the file.
 --------------------------------------------------------------------------------
-SET client_min_messages TO WARNING;
 SET search_path = bde_control, bde, public;
 
 DO $PATCHES$

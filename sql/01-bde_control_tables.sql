@@ -12,7 +12,6 @@
 --------------------------------------------------------------------------------
 -- Creates system tables required for linz_bde_uploader
 --------------------------------------------------------------------------------
-SET client_min_messages TO WARNING;
 
 DO $SCHEMA$
 BEGIN
