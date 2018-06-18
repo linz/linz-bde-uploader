@@ -11,16 +11,14 @@
 --
 --------------------------------------------------------------------------------
 
-SET SEARCH_PATH TO bde_control;
-
 -- Note: The perl module BdeDatabase uses the parameter names to manage calling
 -- functions
 -- Names beginning bde_ are potentially exposed by the perl module
 -- First parameter name "p_upload" means use the upload id
 -- First parameter name "p_bde_schema" means use the schema name
--- See bde_GetBdeFunctions
+-- See bde_control.bde_GetBdeFunctions
 
--- Drop all existing functions in bde_control
+-- Drop all existing functions in bde_control.bde_control
 
 BEGIN;
 
@@ -41,7 +39,7 @@ $$;
 
 -- Function to retrieve a list of functions that the script can use
 
-CREATE OR REPLACE FUNCTION bde_GetBdeFunctions
+CREATE OR REPLACE FUNCTION bde_control.bde_GetBdeFunctions
 (
     p_control_schema name
 )
@@ -83,9 +81,9 @@ $body$
 $body$
 LANGUAGE sql STABLE;
 
-ALTER FUNCTION bde_GetBdeFunctions(name) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_GetBdeFunctions(name) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_CheckSchemaName
+CREATE OR REPLACE FUNCTION bde_control.bde_CheckSchemaName
 (
     p_bde_schema name
 )
@@ -97,12 +95,12 @@ $body$
 $body$
 LANGUAGE sql STABLE;
 
-ALTER FUNCTION bde_CheckSchemaName(name) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_CheckSchemaName(name) OWNER TO bde_dba;
 
 -- Function to retrieve the last upload information for a table
 
 
-CREATE OR REPLACE FUNCTION bde_LastUploadStats(
+CREATE OR REPLACE FUNCTION bde_control.bde_LastUploadStats(
     p_bde_schema name,
     p_bde_table name,
     OUT last_upload_id integer,
@@ -131,11 +129,11 @@ $body$
 $body$
 LANGUAGE sql STABLE;
 
-ALTER FUNCTION bde_LastUploadStats(name, name) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_LastUploadStats(name, name) OWNER TO bde_dba;
 
 -- Function to determine whether a job is still active
 
-CREATE OR REPLACE FUNCTION bde_uploadIsActive (
+CREATE OR REPLACE FUNCTION bde_control.bde_uploadIsActive (
     p_old_upload_id int
 )
 RETURNS INTEGER
@@ -146,11 +144,11 @@ SELECT COUNT(*)::INTEGER FROM bde_control.upload
 $body$
 language sql STABLE;
 
-ALTER FUNCTION bde_uploadIsActive(int) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_uploadIsActive(int) OWNER TO bde_dba;
 
 -- Function to determine whether any job is still active
 
-CREATE OR REPLACE function bde_anyUploadIsActive (
+CREATE OR REPLACE FUNCTION bde_control.bde_anyUploadIsActive (
 )
 RETURNS INTEGER
 As
@@ -160,11 +158,11 @@ SELECT COUNT(*)::INTEGER FROM bde_control.upload
 $body$
 language sql STABLE;
 
-ALTER FUNCTION bde_anyUploadIsActive() OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_anyUploadIsActive() OWNER TO bde_dba;
 
 -- Function to expire locks that are no longer current
 
-CREATE OR REPLACE FUNCTION bde_ReleaseExpiredLocks(p_expiry_time REAL)
+CREATE OR REPLACE FUNCTION bde_control.bde_ReleaseExpiredLocks(p_expiry_time REAL)
   RETURNS INTEGER
 AS
 $body$
@@ -201,9 +199,9 @@ BEGIN
     FROM
         ul
     WHERE
-        NOT _bde_LockIsCurrent(upl_id,p_expiry_time)
+        NOT bde_control._bde_LockIsCurrent(upl_id,p_expiry_time)
     LOOP
-        PERFORM _bde_ReleaseLocks(v_expired.upl_id);
+        PERFORM bde_control._bde_ReleaseLocks(v_expired.upl_id);
     v_count := v_count+1;
     END LOOP;
 
@@ -212,11 +210,11 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_ReleaseExpiredLocks(REAL) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ReleaseExpiredLocks(REAL) OWNER TO bde_dba;
 
 -- Function to delete information for jobs no longer required needed
 
-CREATE OR REPLACE FUNCTION bde_RemoveOldJobData
+CREATE OR REPLACE FUNCTION bde_control.bde_RemoveOldJobData
 (
     p_expiry_days INTEGER
 )
@@ -240,8 +238,8 @@ BEGIN
     FOR v_schema IN
         SELECT nspname
         FROM pg_namespace
-        WHERE _bde_IsTmpSchema(nspname)
-        AND NOT _bde_IsActiveTmpSchema(nspname)
+        WHERE bde_control._bde_IsTmpSchema(nspname)
+        AND NOT bde_control._bde_IsActiveTmpSchema(nspname)
     LOOP
         BEGIN
             EXECUTE 'DROP SCHEMA ' || v_schema || ' CASCADE';
@@ -255,7 +253,7 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_RemoveOldJobData(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_RemoveOldJobData(INTEGER) OWNER TO bde_dba;
 
 -- ----------------------------------------------------------------
 -- Functions relating to a specific upload job
@@ -269,7 +267,7 @@ ALTER FUNCTION bde_RemoveOldJobData(INTEGER) OWNER TO bde_dba;
 -- The schema is destroyed by the _bde_ReleaseLocks function
 -- Returns the id of the created job
 
-CREATE OR REPLACE FUNCTION bde_CreateUpload(p_bde_schema name)
+CREATE OR REPLACE FUNCTION bde_control.bde_CreateUpload(p_bde_schema name)
    RETURNS integer
 AS
 $body$
@@ -279,7 +277,7 @@ DECLARE
     v_tmp_schema name;
     v_bde_schema name;
 BEGIN
-    v_bde_schema = bde_CheckSchemaName( p_bde_schema );
+    v_bde_schema = bde_control.bde_CheckSchemaName( p_bde_schema );
     IF v_bde_schema IS NULL THEN
          RETURN NULL;
     END IF;
@@ -288,26 +286,26 @@ BEGIN
     VALUES (v_bde_schema, 'A')
     RETURNING id INTO v_upload;
 
-    v_tmp_schema := bde_TmpSchema(v_upload);
+    v_tmp_schema := bde_control.bde_TmpSchema(v_upload);
     EXECUTE 'CREATE SCHEMA ' || v_tmp_schema;
     EXECUTE 'CREATE TABLE ' || v_tmp_schema ||
         '._options ( option name primary key, value text )';
 
-    PERFORM _bde_CreateEventLog(v_upload);
-    PERFORM bde_SetOption(v_upload,'_dataset','(undefined dataset)');
+    PERFORM bde_control._bde_CreateEventLog(v_upload);
+    PERFORM bde_control.bde_SetOption(v_upload,'_dataset','(undefined dataset)');
 
     RETURN v_upload;
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_CreateUpload(NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_CreateUpload(NAME) OWNER TO bde_dba;
 
 -- Function to close the current job
 -- param id is the job to finish
 -- success is non zero for true, zero if there is an error
 
-CREATE OR REPLACE FUNCTION bde_FinishUpload(
+CREATE OR REPLACE FUNCTION bde_control.bde_FinishUpload(
     p_upload INTEGER,
     p_error BOOLEAN
 )
@@ -334,18 +332,18 @@ BEGIN
 
     DROP TABLE IF EXISTS _bde_events;
 
-    PERFORM _bde_ReleaseLocks(p_upload);
+    PERFORM bde_control._bde_ReleaseLocks(p_upload);
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_FinishUpload(INTEGER, BOOLEAN) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_FinishUpload(INTEGER, BOOLEAN) OWNER TO bde_dba;
 
 -- Function to refresh the lock on an upload.  Ideally this will be
 -- called periodically during processing to ensure that it does not
 -- expire.
 
-CREATE OR REPLACE FUNCTION _bde_RefreshLock( p_upload INTEGER )
+CREATE OR REPLACE FUNCTION bde_control._bde_RefreshLock( p_upload INTEGER )
    RETURNS bool
 AS
 $body$
@@ -365,13 +363,13 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_RefreshLock(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_RefreshLock(INTEGER) OWNER TO bde_dba;
 
 -- Function to release the locks relating to an upload.
 -- This removes all entries in the status table, and deletes the
 -- schema used by the job
 
-CREATE OR REPLACE FUNCTION _bde_ReleaseLocks( p_upload INTEGER )
+CREATE OR REPLACE FUNCTION bde_control._bde_ReleaseLocks( p_upload INTEGER )
     RETURNS void
 AS
 $body$
@@ -400,21 +398,21 @@ BEGIN
 
     -- Drop the schema used by the lock, unless asked to keep it
 
-    IF bde_GetOption(p_upload, 'keep_temp_schema')::bool THEN
-        RAISE NOTICE 'Keeping temporary schema % as requested by options', bde_TmpSchema(p_upload);
+    IF bde_control.bde_GetOption(p_upload, 'keep_temp_schema')::bool THEN
+        RAISE NOTICE 'Keeping temporary schema % as requested by options', bde_control.bde_TmpSchema(p_upload);
     ELSE
-        EXECUTE 'DROP SCHEMA IF EXISTS ' || bde_TmpSchema(p_upload) || ' CASCADE';
+        EXECUTE 'DROP SCHEMA IF EXISTS ' || bde_control.bde_TmpSchema(p_upload) || ' CASCADE';
     END IF;
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_ReleaseLocks(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_ReleaseLocks(INTEGER) OWNER TO bde_dba;
 
 -- Function to check whether a lock is current
 -- Returns 1 if the lock is current, 0 otherwise
 
-CREATE OR REPLACE FUNCTION _bde_LockIsCurrent(
+CREATE OR REPLACE FUNCTION bde_control._bde_LockIsCurrent(
     p_upload INTEGER,
     p_expiry_time REAL
 )
@@ -434,7 +432,7 @@ $body$
 $body$
 LANGUAGE sql VOLATILE;
 
-ALTER FUNCTION _bde_LockIsCurrent(INTEGER, REAL) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_LockIsCurrent(INTEGER, REAL) OWNER TO bde_dba;
 
 -- Function to add a new table to the list of tables being maintained by
 -- the BDE updates.
@@ -444,7 +442,7 @@ ALTER FUNCTION _bde_LockIsCurrent(INTEGER, REAL) OWNER TO bde_dba;
 -- only if the current value is null.  The error and warning tolerances will
 -- be updated by this function.
 
-CREATE OR REPLACE FUNCTION bde_AddTable(
+CREATE OR REPLACE FUNCTION bde_control.bde_AddTable(
     p_upload INTEGER,
     p_bde_table NAME,
     p_key_column NAME DEFAULT NULL,
@@ -464,7 +462,7 @@ DECLARE
     v_oid regclass;
 BEGIN
     v_status := FALSE;
-    v_bde_schema := bde_BdeSchema(p_upload);
+    v_bde_schema := bde_control.bde_BdeSchema(p_upload);
 
     IF v_bde_schema IS NULL THEN
         RETURN 0;
@@ -472,7 +470,7 @@ BEGIN
 
     v_bde_table := LOWER(p_bde_table);
     v_key_column := LOWER(p_key_column);
-    v_tbl_id := _bde_UploadTableId(p_upload,v_bde_table);
+    v_tbl_id := bde_control._bde_UploadTableId(p_upload,v_bde_table);
     v_oid := bde_control.bde_TableOid( v_bde_schema, v_bde_table );
     IF v_oid IS NULL THEN
         RAISE EXCEPTION 'Table ''%.%'' does not exist',
@@ -532,13 +530,13 @@ END;
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_AddTable(INTEGER, NAME, NAME, REAL, REAL) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_AddTable(INTEGER, NAME, NAME, REAL, REAL) OWNER TO bde_dba;
 
 -- Functions to begin and end uploading a table.  Simply create a transaction.
 -- This should improve speed as it removes the need for write ahead logging
 -- of tables created within the transaction.
 
-CREATE OR REPLACE FUNCTION bde_BeginUploadTable(
+CREATE OR REPLACE FUNCTION bde_control.bde_BeginUploadTable(
     p_upload INTEGER,
     p_bde_table NAME,
     p_force_lock INT
@@ -552,14 +550,14 @@ DECLARE
     v_lockOwner INTEGER;
 BEGIN
     -- A good time to ensure that the lock doesn't get revoked
-    PERFORM _bde_RefreshLock(p_upload);
+    PERFORM bde_control._bde_RefreshLock(p_upload);
 
-    v_locked := _bde_LockTable( p_upload, p_bde_table );
+    v_locked := bde_control._bde_LockTable( p_upload, p_bde_table );
     IF v_locked = 0 AND p_force_lock <> 0 THEN
-        v_lockOwner = _bde_UnlockTable( p_upload, p_bde_table );
+        v_lockOwner = bde_control._bde_UnlockTable( p_upload, p_bde_table );
         RAISE WARNING 'Overriding lock held by % for table %',
             v_lockOwner, p_bde_table;
-        v_locked := _bde_LockTable( p_upload, p_bde_table );
+        v_locked := bde_control._bde_LockTable( p_upload, p_bde_table );
     END IF;
 
     RETURN v_locked;
@@ -568,9 +566,9 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_BeginUploadTable(INTEGER, NAME, INT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_BeginUploadTable(INTEGER, NAME, INT) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_EndUploadTable(
+CREATE OR REPLACE FUNCTION bde_control.bde_EndUploadTable(
     p_upload INTEGER,
     p_bde_table NAME
 )
@@ -579,19 +577,19 @@ RETURNS
 AS
 $body$
 BEGIN
-    RETURN _bde_UnlockTable( p_upload, p_bde_table );
+    RETURN bde_control._bde_UnlockTable( p_upload, p_bde_table );
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_EndUploadTable(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_EndUploadTable(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Function to lock a table for an upload
 --
 -- Returns 1 if locked successfully, 0 if failed.
 
 
-CREATE OR REPLACE FUNCTION _bde_LockTable( p_upload INTEGER, p_bde_table name )
+CREATE OR REPLACE FUNCTION bde_control._bde_LockTable( p_upload INTEGER, p_bde_table name )
     RETURNS INTEGER
 AS
 $body$
@@ -600,7 +598,7 @@ DECLARE
     v_ok INTEGER;
 BEGIN
 
-    v_tbl_id := _bde_UploadTableId(p_upload,p_bde_table);
+    v_tbl_id := bde_control._bde_UploadTableId(p_upload,p_bde_table);
 
     IF v_tbl_id IS NULL THEN
         RAISE EXCEPTION
@@ -631,11 +629,11 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_LockTable(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_LockTable(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Check whether we have a lock on a table
 
-CREATE OR REPLACE FUNCTION _bde_HaveTableLock(
+CREATE OR REPLACE FUNCTION bde_control._bde_HaveTableLock(
     p_upload INTEGER,
     p_bde_table NAME
 )
@@ -646,7 +644,7 @@ $body$
 DECLARE
     v_tbl_id INTEGER;
 BEGIN
-    v_tbl_id := _bde_UploadTableId(p_upload, p_bde_table);
+    v_tbl_id := bde_control._bde_UploadTableId(p_upload, p_bde_table);
     RETURN EXISTS (
         SELECT * FROM bde_control.upload_table
         WHERE id=v_tbl_id AND upl_id_lock=p_upload
@@ -655,14 +653,14 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_HaveTableLock(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_HaveTableLock(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Function to unlock a table for an upload
 --
 -- Returns the id of the job that owned the lock
 
 
-CREATE OR REPLACE FUNCTION _bde_UnlockTable(
+CREATE OR REPLACE FUNCTION bde_control._bde_UnlockTable(
     p_upload INTEGER,
     p_bde_table name
 )
@@ -674,7 +672,7 @@ DECLARE
     v_tbl_id INTEGER;
     v_result INTEGER;
 BEGIN
-    v_tbl_id := _bde_UploadTableId(p_upload, p_bde_table);
+    v_tbl_id := bde_control._bde_UploadTableId(p_upload, p_bde_table);
 
     v_result := COALESCE(
         (select upl_id_lock FROM bde_control.upload_table WHERE id = v_tbl_id),
@@ -690,12 +688,12 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_UnlockTable(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_UnlockTable(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Function to obtain an exclusive database lock on a table, with a
 -- timeout
 
-CREATE OR REPLACE FUNCTION _bde_GetExclusiveLock(
+CREATE OR REPLACE FUNCTION bde_control._bde_GetExclusiveLock(
     p_upload int,
     p_bde_table regclass
 )
@@ -710,7 +708,7 @@ DECLARE
     v_failed bool;
 
 BEGIN
-    v_sql := bde_GetOption(p_upload,'exclusive_lock_timeout');
+    v_sql := bde_control.bde_GetOption(p_upload,'exclusive_lock_timeout');
     v_remaining := 60;
     IF v_sql is not null AND v_sql <> '' THEN
         v_remaining := v_sql::int;
@@ -731,7 +729,7 @@ BEGIN
                             v_remaining, p_bde_table;
                         v_failed := true;
                     END IF;
-                    PERFORM pg_sleep(1);
+                    PERFORM bde_control.pg_sleep(1);
                     v_remaining := v_remaining-1;
                     CONTINUE;
                 END IF;
@@ -761,12 +759,12 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_GetExclusiveLock(INTEGER, REGCLASS) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_GetExclusiveLock(INTEGER, REGCLASS) OWNER TO bde_dba;
 
 -- Set/reset an option for the upload job
 -- (used to pass information between controlling script and bde SPL functions)
 
-CREATE OR REPLACE FUNCTION bde_SetOption(
+CREATE OR REPLACE FUNCTION bde_control.bde_SetOption(
     p_upload INTEGER,
     p_option VARCHAR(255),
     p_value TEXT
@@ -778,7 +776,7 @@ DECLARE
     v_c INTEGER;
     v_option_table varchar(255);
 BEGIN
-    v_option_table := bde_TmpSchema(p_upload) || '._options';
+    v_option_table := bde_control.bde_TmpSchema(p_upload) || '._options';
     IF p_value IS NULL THEN
         EXECUTE 'DELETE FROM ' || v_option_table || ' WHERE option=$1'
        USING p_option;
@@ -798,11 +796,11 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_SetOption(INTEGER, VARCHAR(255), TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_SetOption(INTEGER, VARCHAR(255), TEXT) OWNER TO bde_dba;
 
 -- Get the value of an option for the upload
 
-CREATE OR REPLACE FUNCTION bde_GetOption(
+CREATE OR REPLACE FUNCTION bde_control.bde_GetOption(
     p_upload INTEGER,
     p_option VARCHAR(255)
     )
@@ -813,7 +811,7 @@ DECLARE
     v_result TEXT;
     v_option_table varchar(255);
 BEGIN
-    v_option_table := bde_TmpSchema(p_upload) || '._options';
+    v_option_table := bde_control.bde_TmpSchema(p_upload) || '._options';
     EXECUTE 'SELECT value FROM ' || v_option_table || ' WHERE option=$1'
         INTO v_result
         USING p_option;
@@ -822,11 +820,11 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_GetOption(INTEGER, VARCHAR(255)) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_GetOption(INTEGER, VARCHAR(255)) OWNER TO bde_dba;
 
 -- Function to return the BDE schema for an upload
 
-CREATE OR REPLACE FUNCTION bde_BdeSchema( p_upload INTEGER )
+CREATE OR REPLACE FUNCTION bde_control.bde_BdeSchema( p_upload INTEGER )
   RETURNS name
 AS
 $body$
@@ -836,11 +834,11 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_BdeSchema(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_BdeSchema(INTEGER) OWNER TO bde_dba;
 
 -- Function to return the scratch schema for an upload
 
-CREATE OR REPLACE FUNCTION bde_TmpSchema( p_upload INTEGER )
+CREATE OR REPLACE FUNCTION bde_control.bde_TmpSchema( p_upload INTEGER )
   RETURNS name
 AS
 $body$
@@ -848,11 +846,11 @@ $body$
 $body$
 LANGUAGE sql IMMUTABLE STRICT;
 
-ALTER FUNCTION bde_TmpSchema(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TmpSchema(INTEGER) OWNER TO bde_dba;
 
 -- Function to determine if a namespace is a temp namespace
 
-CREATE OR REPLACE FUNCTION _bde_IsTmpSchema( p_schema name )
+CREATE OR REPLACE FUNCTION bde_control._bde_IsTmpSchema( p_schema name )
   RETURNS BOOLEAN
 AS
 $body$
@@ -860,25 +858,25 @@ $body$
 $body$
 LANGUAGE sql IMMUTABLE STRICT;
 
-ALTER FUNCTION _bde_IsTmpSchema(NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_IsTmpSchema(NAME) OWNER TO bde_dba;
 
 -- Function to determine if a namespace is an active temp namespace
 
-CREATE OR REPLACE FUNCTION _bde_IsActiveTmpSchema( p_schema name )
+CREATE OR REPLACE FUNCTION bde_control._bde_IsActiveTmpSchema( p_schema name )
   RETURNS BOOLEAN
 AS
 $body$
     SELECT $1 IN (
-        select bde_TmpSchema(id) FROM bde_control.upload WHERE status='A'
+        select bde_control.bde_TmpSchema(id) FROM bde_control.upload WHERE status='A'
     ) as result;
 $body$
 LANGUAGE sql STABLE;
 
-ALTER FUNCTION _bde_IsActiveTmpSchema(NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_IsActiveTmpSchema(NAME) OWNER TO bde_dba;
 
 -- Function to get the bde table id for a table and upload
 
-CREATE OR REPLACE FUNCTION _bde_UploadTableId(
+CREATE OR REPLACE FUNCTION bde_control._bde_UploadTableId(
     p_upload INTEGER,
     p_bde_table name
 )
@@ -902,9 +900,9 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_UploadTableId(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_UploadTableId(INTEGER, NAME) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_TimestampEvent(
+CREATE OR REPLACE FUNCTION bde_control.bde_TimestampEvent(
     p_upload INTEGER,
     p_event TEXT
 )
@@ -922,9 +920,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_TimestampEvent(INTEGER, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TimestampEvent(INTEGER, TEXT) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CreateEventLog(
+CREATE OR REPLACE FUNCTION bde_control._bde_CreateEventLog(
     p_upload INTEGER
 )
 RETURNS BOOLEAN
@@ -932,7 +930,7 @@ AS $$
 DECLARE
     v_table_oid REGCLASS;
 BEGIN
-    v_table_oid := bde_TempTableOid('_bde_events');
+    v_table_oid := bde_control.bde_TempTableOid('_bde_events');
     IF v_table_oid IS NULL THEN
         CREATE TEMP TABLE _bde_events
         (
@@ -946,11 +944,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CreateEventLog(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_CreateEventLog(INTEGER) OWNER TO bde_dba;
 
 -- Function to return the duration of an event
 
-CREATE OR REPLACE FUNCTION bde_EventDuration
+CREATE OR REPLACE FUNCTION bde_control.bde_EventDuration
 (
     p_upload INTEGER,
     p_event TEXT
@@ -970,11 +968,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_EventDuration(INTEGER, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_EventDuration(INTEGER, TEXT) OWNER TO bde_dba;
 
 -- Function to update the details for a table once a dataset is uploaded into it
 
-CREATE OR REPLACE FUNCTION _bde_RecordDatasetLoaded(
+CREATE OR REPLACE FUNCTION bde_control._bde_RecordDatasetLoaded(
     p_upload INTEGER,
     p_bde_table name,
     p_dataset VARCHAR(14),
@@ -995,7 +993,7 @@ DECLARE
     v_tbl_id INTEGER;
     v_upload_time TIMESTAMP;
 BEGIN
-    v_tbl_id := _bde_UploadTableId(p_upload,p_bde_table);
+    v_tbl_id := bde_control._bde_UploadTableId(p_upload,p_bde_table);
     IF v_tbl_id IS NULL THEN
         RETURN 0;
     END IF;
@@ -1003,9 +1001,9 @@ BEGIN
     v_upload_time := clock_timestamp()::timestamp;
 
     -- Record the end of the upload timestamp (matching start event in
-    -- bde_CreateWorkingCopy
+    -- bde_control.bde_CreateWorkingCopy
 
-    PERFORM bde_TimestampEvent(p_upload,p_dataset || ' ' || p_bde_table );
+    PERFORM bde_control.bde_TimestampEvent(p_upload,p_dataset || ' ' || p_bde_table );
 
     UPDATE
         bde_control.upload_table
@@ -1048,7 +1046,7 @@ BEGIN
         p_nupd,
         p_nnullupd,
         p_ndel,
-        bde_EventDuration(p_upload, p_dataset || ' ' || p_bde_table )
+        bde_control.bde_EventDuration(p_upload, p_dataset || ' ' || p_bde_table )
         );
 
     RAISE INFO 'Table % completed: % insertions, % updates, % deletions',
@@ -1058,7 +1056,7 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_RecordDatasetLoaded(
+ALTER FUNCTION bde_control._bde_RecordDatasetLoaded(
     INTEGER,
     NAME,
     VARCHAR(14),
@@ -1075,7 +1073,7 @@ ALTER FUNCTION _bde_RecordDatasetLoaded(
 -- Prepare to upload a dataset
 -- Removes any tables in the schema not used by the dataset
 
-CREATE OR REPLACE FUNCTION bde_StartDataset (
+CREATE OR REPLACE FUNCTION bde_control.bde_StartDataset (
     p_upload INTEGER,
     p_datasetname VARCHAR(14)
 )
@@ -1087,11 +1085,11 @@ DECLARE
     v_tmp_schema name;
     v_tbl RECORD;
 BEGIN
-    PERFORM _bde_RefreshLock(p_upload);
+    PERFORM bde_control._bde_RefreshLock(p_upload);
 
     -- Clear out unwanted tables
 
-    v_tmp_schema := bde_TmpSchema(p_upload);
+    v_tmp_schema := bde_control.bde_TmpSchema(p_upload);
 
     FOR v_tbl IN
         SELECT
@@ -1112,18 +1110,18 @@ BEGIN
 
     -- Save the dataset name in the options table
 
-    PERFORM bde_SetOption(p_upload,'_dataset',p_datasetname);
+    PERFORM bde_control.bde_SetOption(p_upload,'_dataset',p_datasetname);
 
     RETURN 1;
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_StartDataset(INTEGER, VARCHAR(14)) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_StartDataset(INTEGER, VARCHAR(14)) OWNER TO bde_dba;
 
 -- Get the regclass corresponding to a schema and table name
 
-CREATE OR REPLACE FUNCTION bde_TableOid (
+CREATE OR REPLACE FUNCTION bde_control.bde_TableOid (
     p_schema_name name,
     p_table_name name
 )
@@ -1149,11 +1147,11 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_TableOid(NAME, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TableOid(NAME, NAME) OWNER TO bde_dba;
 
 -- Test that a table to be updated actually exists
 
-CREATE OR REPLACE FUNCTION bde_BdeTableExists (
+CREATE OR REPLACE FUNCTION bde_control.bde_BdeTableExists (
     p_upload INTEGER,
     p_tablename name
 )
@@ -1162,16 +1160,16 @@ RETURNS
 AS
 $body$
 BEGIN
-   RETURN bde_TableOid(bde_BdeSchema(p_upload),p_tablename) IS NOT NULL;
+   RETURN bde_control.bde_TableOid(bde_BdeSchema(p_upload),p_tablename) IS NOT NULL;
 END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_BdeTableExists(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_BdeTableExists(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Test whether the table has been created already
 
-CREATE OR REPLACE FUNCTION bde_TempTableExists (
+CREATE OR REPLACE FUNCTION bde_control.bde_TempTableExists (
     p_upload INTEGER,
     p_tablename name
 )
@@ -1180,14 +1178,14 @@ RETURNS
 AS
 $body$
 BEGIN
-    RETURN _bde_WorkingCopyTableOid(p_upload, p_tablename) IS NOT NULL;
+    RETURN bde_control._bde_WorkingCopyTableOid(p_upload, p_tablename) IS NOT NULL;
 END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_TempTableExists(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TempTableExists(INTEGER, NAME) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_WorkingCopyTableOid (
+CREATE OR REPLACE FUNCTION bde_control._bde_WorkingCopyTableOid (
    p_upload INTEGER,
    p_table_name NAME
    )
@@ -1198,11 +1196,11 @@ $body$
 DECLARE
     v_table_oid REGCLASS;
 BEGIN
-    SELECT bde_TempTableOid(p_table_name)
+    SELECT bde_control.bde_TempTableOid(p_table_name)
     INTO   v_table_oid;
 
     IF v_table_oid IS NULL THEN
-        v_table_oid := bde_TableOid(bde_TmpSchema(p_upload),p_table_name);
+        v_table_oid := bde_control.bde_TableOid(bde_control.bde_TmpSchema(p_upload),p_table_name);
     END IF;
 
     RETURN v_table_oid;
@@ -1210,9 +1208,9 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_WorkingCopyTableOid(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_WorkingCopyTableOid(INTEGER, NAME) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_TempTableOid(
+CREATE OR REPLACE FUNCTION bde_control.bde_TempTableOid(
    p_table_name NAME
 )
 RETURNS
@@ -1230,13 +1228,13 @@ AS $$
         c.relname = $1;
 $$ LANGUAGE sql STABLE;
 
-ALTER FUNCTION bde_TempTableOid(NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TempTableOid(NAME) OWNER TO bde_dba;
 
 -- Create a working version of a bde table in the temporary schema
 -- This table is created without any index, etc - just the columns of
 -- the specified type.
 
-CREATE OR REPLACE FUNCTION bde_CreateWorkingCopy (
+CREATE OR REPLACE FUNCTION bde_control.bde_CreateWorkingCopy (
    p_upload INTEGER,
    p_table_name NAME,
    p_temp_table BOOLEAN
@@ -1253,25 +1251,25 @@ DECLARE
     v_table_oid REGCLASS;
 BEGIN
 
-    IF NOT bde_BdeTableExists(p_upload,p_table_name) THEN
+    IF NOT bde_control.bde_BdeTableExists(p_upload,p_table_name) THEN
         RETURN NULL;
     END IF;
 
-    v_table_oid := _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    v_table_oid := bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
     IF v_table_oid IS NOT NULL THEN
         RETURN v_table_oid;
     END IF;
 
-    v_dataset := bde_GetOption(p_upload,'_dataset');
-    PERFORM bde_TimestampEvent(p_upload,v_dataset || ' ' || p_table_name );
+    v_dataset := bde_control.bde_GetOption(p_upload,'_dataset');
+    PERFORM bde_control.bde_TimestampEvent(p_upload,v_dataset || ' ' || p_table_name );
 
-    v_bde_schema = bde_BdeSchema(p_upload);
+    v_bde_schema = bde_control.bde_BdeSchema(p_upload);
 
     v_sql := 'CREATE ';
     IF p_temp_table THEN
         v_sql := v_sql || 'TEMP TABLE ';
     ELSE
-        v_tmp_schema = bde_TmpSchema(p_upload);
+        v_tmp_schema = bde_control.bde_TmpSchema(p_upload);
         v_sql := v_sql || 'TABLE ' || v_tmp_schema || '.';
     END IF;
 
@@ -1282,16 +1280,16 @@ BEGIN
 
     EXECUTE v_sql;
 
-    RETURN _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    RETURN bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
 END
 $code$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_CreateWorkingCopy(INTEGER, NAME, BOOLEAN) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_CreateWorkingCopy(INTEGER, NAME, BOOLEAN) OWNER TO bde_dba;
 
 -- Get OID of working copy
 
-CREATE OR REPLACE FUNCTION bde_GetWorkingCopyOid (
+CREATE OR REPLACE FUNCTION bde_control.bde_GetWorkingCopyOid (
     p_upload INTEGER,
     p_table_name NAME
 )
@@ -1299,16 +1297,16 @@ RETURNS
     REGCLASS
 AS
 $code$
-    SELECT _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    SELECT bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
 $code$
 LANGUAGE sql STABLE;
 
-ALTER FUNCTION bde_GetWorkingCopyOid(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_GetWorkingCopyOid(INTEGER, NAME) OWNER TO bde_dba;
 
 
 -- Create drops the copy of a bde table in the temporary schema
 
-CREATE OR REPLACE FUNCTION bde_DropWorkingCopy (
+CREATE OR REPLACE FUNCTION bde_control.bde_DropWorkingCopy (
     p_upload INTEGER,
     p_table_name NAME
 )
@@ -1319,7 +1317,7 @@ $code$
 DECLARE
     v_tmp_table REGCLASS;
 BEGIN
-    v_tmp_table := _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    v_tmp_table := bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
     IF v_tmp_table IS NOT NULL THEN
         EXECUTE 'DROP TABLE IF EXISTS ' || CAST(v_tmp_table AS TEXT);
     END IF;
@@ -1329,13 +1327,13 @@ END
 $code$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_DropWorkingCopy(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_DropWorkingCopy(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Select the subset of column names from a list of columns that
 -- a table actually has.  The columns names are supplied and returned
 -- as a pipe delimited list.
 
-CREATE OR REPLACE FUNCTION bde_SelectValidColumns (
+CREATE OR REPLACE FUNCTION bde_control.bde_SelectValidColumns (
     p_upload INTEGER,
     p_table_name name,
     p_columns TEXT
@@ -1350,7 +1348,7 @@ DECLARE
    v_usecolumns text;
 BEGIN
 
-    v_temptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    v_temptable := bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
 
     v_usecolumns := '';
 
@@ -1374,11 +1372,11 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_SelectValidColumns(INTEGER, NAME, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_SelectValidColumns(INTEGER, NAME, TEXT) OWNER TO bde_dba;
 
 -- Function to convert pipe separated list of column names to quoted strings
 
-CREATE OR REPLACE FUNCTION _bde_QuoteColumnNames( p_columns text )
+CREATE OR REPLACE FUNCTION bde_control._bde_QuoteColumnNames( p_columns text )
 RETURNS
     TEXT
 AS
@@ -1402,11 +1400,11 @@ END
 $body$
 LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 
-ALTER FUNCTION _bde_QuoteColumnNames(TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_QuoteColumnNames(TEXT) OWNER TO bde_dba;
 
 -- Define the incremental change table name
 
-CREATE OR REPLACE FUNCTION _bde_ChangeTableName()
+CREATE OR REPLACE FUNCTION bde_control._bde_ChangeTableName()
 RETURNS name
 AS
 $$
@@ -1414,12 +1412,12 @@ $$
 $$
 LANGUAGE sql IMMUTABLE;
 
-ALTER FUNCTION _bde_ChangeTableName() OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_ChangeTableName() OWNER TO bde_dba;
 
 -- Create an incremental change table for level 5 uploads to manage deleting
 -- records
 
-CREATE OR REPLACE FUNCTION bde_CreateL5ChangeTable (
+CREATE OR REPLACE FUNCTION bde_control.bde_CreateL5ChangeTable (
     p_upload INTEGER,
     p_temp_table BOOLEAN
 )
@@ -1433,8 +1431,8 @@ DECLARE
     v_sql TEXT;
 BEGIN
 
-    v_incremental_table = _bde_ChangeTableName();
-    IF bde_TempTableExists(p_upload, v_incremental_table) THEN
+    v_incremental_table = bde_control._bde_ChangeTableName();
+    IF bde_control.bde_TempTableExists(p_upload, v_incremental_table) THEN
         RETURN v_incremental_table;
     END IF;
 
@@ -1442,7 +1440,7 @@ BEGIN
     IF p_temp_table THEN
         v_sql := v_sql || 'TEMP TABLE ';
     ELSE
-        v_tmp_schema := bde_TmpSchema(p_upload);
+        v_tmp_schema := bde_control.bde_TmpSchema(p_upload);
         v_sql := v_sql || 'TABLE ' || v_tmp_schema || '.';
     END IF;
 
@@ -1454,18 +1452,18 @@ BEGIN
 
     EXECUTE v_sql;
 
-    PERFORM bde_SetOption(p_upload,'_inc_change_indexed','N');
+    PERFORM bde_control.bde_SetOption(p_upload,'_inc_change_indexed','N');
     RETURN v_incremental_table;
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_CreateL5ChangeTable(INTEGER, BOOLEAN) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_CreateL5ChangeTable(INTEGER, BOOLEAN) OWNER TO bde_dba;
 
 -- Prepare incremental change table for use
 
 
-CREATE OR REPLACE FUNCTION _bde_PrepareChangeTable (
+CREATE OR REPLACE FUNCTION bde_control._bde_PrepareChangeTable (
    p_upload INTEGER,
    p_change_table regclass
    )
@@ -1474,7 +1472,7 @@ RETURNS
 AS
 $body$
 BEGIN
-    IF bde_GetOption(p_upload,'_inc_change_indexed') = 'Y' THEN
+    IF bde_control.bde_GetOption(p_upload,'_inc_change_indexed') = 'Y' THEN
         RETURN 0;
     END IF;
 
@@ -1483,13 +1481,13 @@ BEGIN
     EXECUTE 'CREATE INDEX _inc_tbl_id ON ' || p_change_table ||
         ' (tablename, tablekeyvalue)';
     EXECUTE 'ANALYZE ' || p_change_table;
-    PERFORM bde_SetOption(p_upload,'_inc_change_indexed','Y');
+    PERFORM bde_control.bde_SetOption(p_upload,'_inc_change_indexed','Y');
     RETURN 1;
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_PrepareChangeTable(INTEGER, REGCLASS) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_PrepareChangeTable(INTEGER, REGCLASS) OWNER TO bde_dba;
 
 -- Function to create a primary key join on two version of a table
 -- Assumes a simple (non compound) primary key
@@ -1499,7 +1497,7 @@ ALTER FUNCTION _bde_PrepareChangeTable(INTEGER, REGCLASS) OWNER TO bde_dba;
 -- are not updated by changing the primary key - the only changes to
 -- primary keys are by insertion and deletion.
 
-CREATE OR REPLACE FUNCTION _bde_PrimaryKeyJoin (
+CREATE OR REPLACE FUNCTION bde_control._bde_PrimaryKeyJoin (
     p_bde_table regclass,
     p_prefix1 name,
     p_prefix2 name
@@ -1532,12 +1530,12 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_PrimaryKeyJoin(REGCLASS, NAME, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_PrimaryKeyJoin(REGCLASS, NAME, NAME) OWNER TO bde_dba;
 
 -- Test that we have an valid key for applying incremental updates
 -- Returns the key column name
 
-CREATE OR REPLACE FUNCTION _bde_GetValidIncrementKey (
+CREATE OR REPLACE FUNCTION bde_control._bde_GetValidIncrementKey (
     p_upload INTEGER,
     p_table_name NAME
 )
@@ -1550,8 +1548,8 @@ DECLARE
     v_key_column  NAME;
     v_status      BOOLEAN;
 BEGIN
-    v_schema := bde_BdeSchema(p_upload);
-    v_bde_table := bde_TableOid(v_schema, p_table_name);
+    v_schema := bde_control.bde_BdeSchema(p_upload);
+    v_bde_table := bde_control.bde_TableOid(v_schema, p_table_name);
 
     SELECT TBL.key_column
     INTO   v_key_column
@@ -1570,12 +1568,12 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_GetValidIncrementKey(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_GetValidIncrementKey(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Apply a level 5 update to a table.  Assumes that the incremental change table
 -- and the upload temp table have been populated.
 
-CREATE OR REPLACE FUNCTION bde_ApplyLevel5Update (
+CREATE OR REPLACE FUNCTION bde_control.bde_ApplyLevel5Update (
     p_upload               INTEGER,
     p_table_name           NAME,
     p_bdetime              TIMESTAMP,
@@ -1609,23 +1607,24 @@ BEGIN
 
     -- A good time to ensure that the lock doesn't get revoked
 
-    PERFORM _bde_RefreshLock(p_upload);
+    PERFORM bde_control._bde_RefreshLock(p_upload);
 
     -- If we don't have a key column, then cannot perform a Level 5 update
-    v_key_column := _bde_GetValidIncrementKey( p_upload, p_table_name );
+    v_key_column := bde_control._bde_GetValidIncrementKey( p_upload, p_table_name );
     IF v_key_column IS NULL THEN
         RAISE EXCEPTION
             'Cannot apply level 5 update % into table % as no valid key column is defined',
             v_dataset, p_table_name;
     END IF;
 
-    v_dataset := bde_GetOption(p_upload,'_dataset');
+    v_dataset := bde_control.bde_GetOption(p_upload,'_dataset');
 
     -- Get the tables we need
 
-    v_tmptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
-    v_bdetable := bde_TableOid(bde_BdeSchema(p_upload),p_table_name);
-    v_changetable := _bde_WorkingCopyTableOid(p_upload,_bde_ChangeTableName());
+    v_tmptable := bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
+    v_bdetable := bde_control.bde_TableOid(bde_BdeSchema(p_upload),p_table_name);
+    v_changetable :=
+bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName());
 
     IF v_tmptable IS NULL OR v_bdetable IS NULL OR v_changetable IS NULL THEN
         RAISE EXCEPTION
@@ -1635,7 +1634,7 @@ BEGIN
 
     -- Check that we have a table lock
 
-    IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
+    IF NOT bde_control._bde_HaveTableLock( p_upload, p_table_name ) THEN
         RAISE EXCEPTION
             'Cannot apply level 5 update % into table % as have not acquired a lock for this table',
             v_dataset, p_table_name;
@@ -1676,9 +1675,9 @@ BEGIN
     v_task := 'Preparing incremental change table';
     RAISE INFO '%', v_task;
 
-    PERFORM _bde_PrepareChangeTable(p_upload,v_changetable);
+    PERFORM bde_control._bde_PrepareChangeTable(p_upload,v_changetable);
 
-    EXECUTE 'SET LOCAL search_path TO ' || bde_TmpSchema(p_upload) ||
+    EXECUTE 'SET LOCAL search_path TO ' || bde_control.bde_TmpSchema(p_upload) ||
             ',' || current_setting('search_path');
 
     -- Build a list of incremental updates for this table into _tmp_inc_change
@@ -1693,7 +1692,7 @@ BEGIN
         id INTEGER
     );
 
-    v_rcount := bde_ExecuteTemplate(
+    v_rcount := bde_control.bde_ExecuteTemplate(
         $sql$
             INSERT INTO _tmp_inc_change(
                 id
@@ -1724,7 +1723,7 @@ BEGIN
 
         -- Add index to incremental data table if it is not already defined
 
-        IF NOT bde_TableKeyIsValid(v_tmptable, v_key_column) THEN
+        IF NOT bde_control.bde_TableKeyIsValid(v_tmptable, v_key_column) THEN
             v_sql := 'CREATE UNIQUE INDEX tmp_inc_key ON ' || v_tmptable ||
                 '(' || quote_ident(v_key_column) || ')';
             EXECUTE v_sql;
@@ -1736,7 +1735,7 @@ BEGIN
         v_task := 'Performing consistency checks of incremental data';
         RAISE INFO '%', v_task;
 
-        v_rcount := _bde_FixChangedIncKeyRecords(
+        v_rcount := bde_control._bde_FixChangedIncKeyRecords(
             v_bdetable, v_tmptable, v_key_column
         );
         IF v_rcount > 0 THEN
@@ -1748,9 +1747,9 @@ BEGIN
         v_task := 'Creating incremental row update actions';
         RAISE INFO '%', v_task;
 
-        PERFORM _bde_CreateIncDeletes(v_bdetable, v_tmptable, v_key_column);
-        PERFORM _bde_CreateIncInserts(v_bdetable, v_tmptable, v_key_column);
-        PERFORM _bde_CreateIncUpdates(v_bdetable, v_tmptable, v_key_column);
+        PERFORM bde_control._bde_CreateIncDeletes(v_bdetable, v_tmptable, v_key_column);
+        PERFORM bde_control._bde_CreateIncInserts(v_bdetable, v_tmptable, v_key_column);
+        PERFORM bde_control._bde_CreateIncUpdates(v_bdetable, v_tmptable, v_key_column);
 
         ALTER TABLE _tmp_inc_actions ADD PRIMARY KEY (id);
         ANALYZE _tmp_inc_actions;
@@ -1775,7 +1774,7 @@ BEGIN
     v_task := 'Recording update statistics';
     RAISE INFO '%', v_task;
 
-    PERFORM _bde_RecordDatasetLoaded(
+    PERFORM bde_control._bde_RecordDatasetLoaded(
         p_upload,
         p_table_name,
         v_dataset,
@@ -1812,13 +1811,13 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 SET search_path FROM CURRENT;
 
-ALTER FUNCTION bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
+ALTER FUNCTION bde_control.bde_ApplyLevel5Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
 
 -- Apply a level 0 update to a table.  Adds the indexes from the table, analyses
 -- it, then drops the existing table and renames this one into the bde namespace
 
-CREATE OR REPLACE FUNCTION bde_ApplyLevel0Update (
+CREATE OR REPLACE FUNCTION bde_control.bde_ApplyLevel0Update (
     p_upload      INTEGER,
     p_table_name  NAME,
     p_bdetime     TIMESTAMP,
@@ -1849,17 +1848,17 @@ BEGIN
     RAISE INFO '%', v_task;
 
     -- A good time to ensure that the lock doesn't get revoked
-    PERFORM _bde_RefreshLock(p_upload);
+    PERFORM bde_control._bde_RefreshLock(p_upload);
 
-    v_dataset := bde_GetOption(p_upload,'_dataset');
+    v_dataset := bde_control.bde_GetOption(p_upload,'_dataset');
 
     -- Get the tables we need
 
-    v_bde_schema := bde_BdeSchema(p_upload);
-    v_bdetable := bde_TableOid(v_bde_schema,p_table_name);
+    v_bde_schema := bde_control.bde_BdeSchema(p_upload);
+    v_bdetable := bde_control.bde_TableOid(v_bde_schema,p_table_name);
 
-    v_tmp_schema := bde_TmpSchema(p_upload);
-    v_tmptable := _bde_WorkingCopyTableOid(p_upload,p_table_name);
+    v_tmp_schema := bde_control.bde_TmpSchema(p_upload);
+    v_tmptable := bde_control._bde_WorkingCopyTableOid(p_upload,p_table_name);
 
     IF v_tmptable IS NULL OR v_bdetable IS NULL THEN
         RAISE EXCEPTION
@@ -1869,7 +1868,7 @@ BEGIN
 
     -- Check that we have a lock for this table
 
-    IF NOT _bde_HaveTableLock( p_upload, p_table_name ) THEN
+    IF NOT bde_control._bde_HaveTableLock( p_upload, p_table_name ) THEN
         RAISE EXCEPTION
             'Cannot apply level 0 update % into table % as have not acquired a lock for this table',
             v_dataset, p_table_name;
@@ -1883,7 +1882,7 @@ BEGIN
     RAISE INFO '%', v_task;
 
     IF p_incremental THEN
-        PERFORM _bde_CopyStatisticsInformation(p_upload,v_bdetable,v_tmptable);
+        PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,v_bdetable,v_tmptable);
 
         SELECT
             TBL.key_column
@@ -1899,7 +1898,7 @@ BEGIN
             ' ON ' || v_tmptable  || ' USING btree (' || v_key_column || ')';
         EXECUTE v_sql;
     ELSE
-        PERFORM _bde_CopySchemaInformation(p_upload,v_bdetable,v_tmptable);
+        PERFORM bde_control._bde_CopySchemaInformation(p_upload,v_bdetable,v_tmptable);
     END IF;
 
     -- Analyze the table
@@ -1939,7 +1938,7 @@ BEGIN
                     v_ndel, p_table_name, v_dataset;
             END IF;
             RAISE INFO 'Checking table count';
-            PERFORM bde_CheckTableCount(p_upload, p_table_name);
+            PERFORM bde_control.bde_CheckTableCount(p_upload, p_table_name);
         END IF;
 
         RAISE INFO 'Dropping table %', v_tmptable;
@@ -1950,7 +1949,7 @@ BEGIN
         v_task := 'Retrieving dependent object information';
         RAISE INFO '%', v_task;
 
-        v_depsql := _bde_GetDependentObjectSql(p_upload,v_bdetable);
+        v_depsql := bde_control._bde_GetDependentObjectSql(p_upload,v_bdetable);
 
         -- Is this too expensive on pg?
 
@@ -1966,7 +1965,7 @@ BEGIN
         v_task := 'Dropping current version of the table ' || v_bdetable;
         RAISE INFO '%', v_task;
 
-        PERFORM _bde_GetExclusiveLock(p_upload,v_bdetable);
+        PERFORM bde_control._bde_GetExclusiveLock(p_upload,v_bdetable);
         v_sql := 'DROP TABLE ' || v_bdetable || ' CASCADE';
         RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
@@ -1982,10 +1981,10 @@ BEGIN
         v_task := 'Restoring dependent objects';
         RAISE INFO '%', v_task;
 
-        -- TODO: avoid the call to bde_ExecuteSqlArray,
+        -- TODO: avoid the call to bde_control.bde_ExecuteSqlArray,
         --       not really needed as we are catching
         --       exceptions ourselves
-        PERFORM bde_ExecuteSqlArray(
+        PERFORM bde_control.bde_ExecuteSqlArray(
             p_upload,v_task,v_depsql
         );
     END IF;
@@ -1994,7 +1993,7 @@ BEGIN
 
     v_task := 'Recording the upload';
     RAISE INFO '%', v_task;
-    PERFORM _bde_RecordDatasetLoaded(
+    PERFORM bde_control._bde_RecordDatasetLoaded(
         p_upload,
         p_table_name,
         v_dataset,
@@ -2018,10 +2017,10 @@ EXCEPTION
 END
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
+ALTER FUNCTION bde_control.bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_CheckTableCount(
+CREATE OR REPLACE FUNCTION bde_control.bde_CheckTableCount(
     p_upload INTEGER,
     p_table_name NAME
 )
@@ -2093,12 +2092,12 @@ END;
 $$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_CheckTableCount(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_CheckTableCount(INTEGER, NAME) OWNER TO bde_dba;
 
 -- Function to expand a template, replacing %i% with the i'th element of the
 -- array of parameters.
 
-CREATE OR REPLACE FUNCTION bde_ExpandTemplate (
+CREATE OR REPLACE FUNCTION bde_control.bde_ExpandTemplate (
     p_template TEXT,
     p_params TEXT[]
 )
@@ -2117,12 +2116,12 @@ END
 $body$
 LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 
-ALTER FUNCTION bde_ExpandTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ExpandTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 
 -- Function to execute a template as SQL, returning the number of rows
 -- from GET DIAGNOSTICS ..
 
-CREATE OR REPLACE FUNCTION bde_ExecuteTemplate(
+CREATE OR REPLACE FUNCTION bde_control.bde_ExecuteTemplate(
     p_template TEXT,
     p_params TEXT[]
 )
@@ -2133,7 +2132,7 @@ DECLARE
     v_sql TEXT;
     v_count BIGINT;
 BEGIN
-    v_sql := bde_ExpandTemplate( p_template, p_params );
+    v_sql := bde_control.bde_ExpandTemplate( p_template, p_params );
     BEGIN
         EXECUTE v_sql;
     EXCEPTION
@@ -2147,14 +2146,14 @@ END
 $body$
 LANGUAGE 'plpgsql' VOLATILE;
 
-ALTER FUNCTION bde_ExecuteTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ExecuteTemplate(TEXT, TEXT[]) OWNER TO bde_dba;
 
 -- This is required because not all of the BDE Informix tables have
 -- immutable key columns. There are known cases in the LOL
 -- application where primary values are swapped. Plus we need to account
 -- for data maintenance scripts anyway.
 
-CREATE OR REPLACE FUNCTION _bde_FixChangedIncKeyRecords(
+CREATE OR REPLACE FUNCTION bde_control._bde_FixChangedIncKeyRecords(
     p_bde_table      REGCLASS,
     p_inc_data_table REGCLASS,
     p_key_column     NAME
@@ -2180,7 +2179,7 @@ BEGIN
     CREATE TEMP TABLE missed_updates_keys (id INTEGER);
 
     FOR v_col IN SELECT * FROM unnest(v_table_cols) LOOP
-        v_count := bde_ExecuteTemplate(
+        v_count := bde_control.bde_ExecuteTemplate(
             $sql$
             INSERT INTO missed_updates_keys
             SELECT
@@ -2233,10 +2232,10 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_FixChangedIncKeyRecords(REGCLASS, REGCLASS, NAME)
+ALTER FUNCTION bde_control._bde_FixChangedIncKeyRecords(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CreateIncDeletes(
+CREATE OR REPLACE FUNCTION bde_control._bde_CreateIncDeletes(
     p_bde_table      REGCLASS,
     p_inc_data_table REGCLASS,
     p_key_column     NAME
@@ -2246,7 +2245,7 @@ RETURNS
 AS
 $$
 BEGIN
-    RETURN bde_ExecuteTemplate (
+    RETURN bde_control.bde_ExecuteTemplate (
         $sql$
             INSERT INTO _tmp_inc_actions
             SELECT
@@ -2269,10 +2268,10 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CreateIncDeletes(REGCLASS, REGCLASS, NAME)
+ALTER FUNCTION bde_control._bde_CreateIncDeletes(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CreateIncInserts(
+CREATE OR REPLACE FUNCTION bde_control._bde_CreateIncInserts(
     p_bde_table      REGCLASS,
     p_inc_data_table REGCLASS,
     p_key_column     NAME
@@ -2282,7 +2281,7 @@ RETURNS
 AS
 $$
 BEGIN
-    RETURN bde_ExecuteTemplate (
+    RETURN bde_control.bde_ExecuteTemplate (
         $sql$
             INSERT INTO _tmp_inc_actions
             SELECT
@@ -2305,10 +2304,10 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CreateIncInserts(REGCLASS, REGCLASS, NAME)
+ALTER FUNCTION bde_control._bde_CreateIncInserts(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CreateIncUpdates(
+CREATE OR REPLACE FUNCTION bde_control._bde_CreateIncUpdates(
     p_bde_table      REGCLASS,
     p_inc_data_table REGCLASS,
     p_key_column     NAME
@@ -2349,7 +2348,7 @@ BEGIN
     -- operation. This ensures that the key column uniqueness is not compromised
     -- during the update.
 
-    RETURN bde_ExecuteTemplate (
+    RETURN bde_control.bde_ExecuteTemplate (
         $sql$
             INSERT INTO _tmp_inc_actions
             SELECT
@@ -2380,7 +2379,7 @@ END;
 $$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
+ALTER FUNCTION bde_control._bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
 -- Return an array of SQL statements which can be executed
@@ -2390,7 +2389,7 @@ ALTER FUNCTION _bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
 --       the given table as the type of any argument
 --
 -- {
-CREATE OR REPLACE FUNCTION _bde_GetDependentObjectSql(
+CREATE OR REPLACE FUNCTION bde_control._bde_GetDependentObjectSql(
     p_upload INTEGER,
     p_base regclass
 )
@@ -2418,7 +2417,7 @@ BEGIN
         -- and SEARCH PATH for the function
         defs = array_append( defs, pg_get_functiondef(rec.oid) );
         -- Set ownership (might not be possible)
-        defs = array_append( defs, format('ALTER FUNCTION %s OWNER TO %I',
+        defs = array_append( defs, format('ALTER FUNCTION bde_control.%s OWNER TO %I',
             rec.oid::regprocedure, rec.rolname));
     END LOOP;
 
@@ -2428,7 +2427,7 @@ $body$
 LANGUAGE plpgsql STABLE;
 -- }
 
-ALTER FUNCTION _bde_GetDependentObjectSql(INTEGER, REGCLASS) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_GetDependentObjectSql(INTEGER, REGCLASS) OWNER TO bde_dba;
 
 CREATE OR REPLACE FUNCTION bde_control._bde_GetOwnerAccessSql(
     p_reference regclass,
@@ -2500,13 +2499,13 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION _bde_GetOwnerAccessSql(REGCLASS, REGCLASS) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_GetOwnerAccessSql(REGCLASS, REGCLASS) OWNER TO bde_dba;
 
 -- Execute each of the SQL statements in p_sqlarray,
 -- intercepting any exception by re-throwing it with
 -- custom message (p_task) and full SQL included in
 -- the re-thrown exception message.
-CREATE OR REPLACE FUNCTION bde_ExecuteSqlArray(
+CREATE OR REPLACE FUNCTION bde_control.bde_ExecuteSqlArray(
     p_upload INTEGER,
     p_task text,
     p_sqlarray text[]
@@ -2540,9 +2539,9 @@ LANGUAGE plpgsql VOLATILE;
 -- we cannot know what the passed SQL does, so this
 -- is marked as VOLATILE
 
-ALTER FUNCTION bde_ExecuteSqlArray(INTEGER, TEXT, TEXT[]) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ExecuteSqlArray(INTEGER, TEXT, TEXT[]) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CopySchemaInformation(
+CREATE OR REPLACE FUNCTION bde_control._bde_CopySchemaInformation(
     p_upload INTEGER,
     p_bdetable regclass,
     p_tmptable regclass
@@ -2602,15 +2601,15 @@ BEGIN
     v_task := 'Copying column statistics information';
     RAISE INFO '%', v_task;
 
-    PERFORM _bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
+    PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
 
     -- Copy ownership and access rights
 
     v_task := 'Copying ownership and access information';
     RAISE INFO '%', v_task;
 
-    PERFORM bde_ExecuteSqlArray(p_upload,v_task,
-        _bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
+    PERFORM bde_control.bde_ExecuteSqlArray(p_upload,v_task,
+        bde_control._bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
 
     RETURN 0;
 
@@ -2621,10 +2620,10 @@ END
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CopySchemaInformation(INTEGER, regclass, regclass)
+ALTER FUNCTION bde_control._bde_CopySchemaInformation(INTEGER, regclass, regclass)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_CopyStatisticsInformation(
+CREATE OR REPLACE FUNCTION bde_control._bde_CopyStatisticsInformation(
     p_upload INTEGER,
     p_bdetable regclass,
     p_tmptable regclass
@@ -2655,10 +2654,10 @@ END;
 $body$
 LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION _bde_CopyStatisticsInformation(INTEGER, regclass, regclass)
+ALTER FUNCTION bde_control._bde_CopyStatisticsInformation(INTEGER, regclass, regclass)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION _bde_RunBdeFunctions(
+CREATE OR REPLACE FUNCTION bde_control._bde_RunBdeFunctions(
     p_upload integer,
     p_prefix name,
     p_description text
@@ -2672,7 +2671,7 @@ DECLARE
     v_nproc integer;
     v_intid oid;
 BEGIN
-    v_bdeSchema := bde_BdeSchema(p_upload);
+    v_bdeSchema := bde_control.bde_BdeSchema(p_upload);
     v_nproc := 0;
     v_intid := (select oid from pg_type where typname='int4');
     FOR v_procname IN
@@ -2706,25 +2705,25 @@ LANGUAGE plpgsql VOLATILE;
 -- We cannot know what the called function does, so we
 -- mark this function as VOLATILE
 
-ALTER FUNCTION _bde_RunBdeFunctions(INTEGER, NAME, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_RunBdeFunctions(INTEGER, NAME, TEXT) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_ApplyPostLevel0Functions(
+CREATE OR REPLACE FUNCTION bde_control.bde_ApplyPostLevel0Functions(
     p_upload INTEGER
 )
 RETURNS INTEGER
 AS
 $body$
 BEGIN
-    RETURN _bde_RunBdeFunctions(p_upload,'bde_postlevel0_','Post level 0');
+    RETURN bde_control._bde_RunBdeFunctions(p_upload,'bde_postlevel0_','Post level 0');
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 -- We cannot know what the called function does, so we
 -- mark this function as VOLATILE
 
-ALTER FUNCTION bde_ApplyPostLevel0Functions(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ApplyPostLevel0Functions(INTEGER) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_ApplyPostUploadFunctions
+CREATE OR REPLACE FUNCTION bde_control.bde_ApplyPostUploadFunctions
 (
     p_upload INTEGER
 )
@@ -2732,18 +2731,18 @@ RETURNS INTEGER
 AS
 $body$
 BEGIN
-    RETURN _bde_RunBdeFunctions(p_upload,'bde_postupload_','Post upload');
+    RETURN bde_control._bde_RunBdeFunctions(p_upload,'bde_postupload_','Post upload');
 END
 $body$
 LANGUAGE plpgsql VOLATILE;
 -- We cannot know what the called function does, so we
 -- mark this function as VOLATILE
 
-ALTER FUNCTION bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_dba;
 
--- Function bde_TablesAffected
+-- Function bde_control.bde_TablesAffected
 --
---  BOOLEAN bde_TablesAffected(p_upload,tables,test)
+--  BOOLEAN bde_control.bde_TablesAffected(p_upload,tables,test)
 --
 --  Tests tables that are affected by an upload.
 --
@@ -2783,7 +2782,7 @@ ALTER FUNCTION bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_dba;
 --  Using this function may require multiple calls, for example to see
 --  if all tables are loaded and any are affected
 
-CREATE OR REPLACE FUNCTION bde_TablesAffected
+CREATE OR REPLACE FUNCTION bde_control.bde_TablesAffected
 (
     p_upload INTEGER,
     p_tables name[],
@@ -2877,9 +2876,9 @@ END
 $body$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_TablesAffected(INTEGER, NAME[], TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TablesAffected(INTEGER, NAME[], TEXT) OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_TablesAffected
+CREATE OR REPLACE FUNCTION bde_control.bde_TablesAffected
 (
     p_upload INTEGER,
     p_tables TEXT,
@@ -2890,17 +2889,17 @@ RETURNS
 AS
 $body$
 BEGIN
-    RETURN bde_TablesAffected(p_upload,
+    RETURN bde_control.bde_TablesAffected(p_upload,
         regexp_split_to_array(lower(p_tables),E'\\s+'),
         p_test );
 END
 $body$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION bde_TablesAffected(INTEGER, TEXT, TEXT) OWNER TO bde_dba;
+ALTER FUNCTION bde_control.bde_TablesAffected(INTEGER, TEXT, TEXT) OWNER TO bde_dba;
 
 
-CREATE OR REPLACE FUNCTION bde_TableKeyIsValid(
+CREATE OR REPLACE FUNCTION bde_control.bde_TableKeyIsValid(
     p_table      REGCLASS,
     p_key_column NAME
 )
@@ -2938,10 +2937,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_TableKeyIsValid(REGCLASS, NAME) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION bde_TableKeyIsValid(REGCLASS, NAME) FROM PUBLIC;
+ALTER FUNCTION bde_control.bde_TableKeyIsValid(REGCLASS, NAME) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION bde_control.bde_TableKeyIsValid(REGCLASS, NAME) FROM PUBLIC;
 
-CREATE OR REPLACE FUNCTION bde_CreateDatasetRevision(
+CREATE OR REPLACE FUNCTION bde_control.bde_CreateDatasetRevision(
     p_upload INTEGER
 )
 RETURNS INTEGER AS
@@ -2951,7 +2950,7 @@ DECLARE
     v_dataset    TEXT;
     v_dataset_ts TIMESTAMP;
 BEGIN
-    v_dataset := bde_GetOption(p_upload, '_dataset');
+    v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
     END IF;
@@ -2979,16 +2978,16 @@ BEGIN
     )
     INTO  v_revision;
 
-    PERFORM bde_SetOption(p_upload, '_revision', CAST(v_revision AS TEXT));
+    PERFORM bde_control.bde_SetOption(p_upload, '_revision', CAST(v_revision AS TEXT));
 
     RETURN v_revision;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_CreateDatasetRevision(INTEGER) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION bde_CreateDatasetRevision(INTEGER)  FROM PUBLIC;
+ALTER FUNCTION bde_control.bde_CreateDatasetRevision(INTEGER) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION bde_control.bde_CreateDatasetRevision(INTEGER)  FROM PUBLIC;
 
-CREATE OR REPLACE FUNCTION bde_CompleteDatasetRevision(
+CREATE OR REPLACE FUNCTION bde_control.bde_CompleteDatasetRevision(
     p_upload INTEGER
 )
 RETURNS BOOLEAN AS
@@ -3000,7 +2999,7 @@ DECLARE
     v_tables_updated BIGINT;
 BEGIN
 
-    v_dataset := bde_GetOption(p_upload, '_dataset');
+    v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
 
     RAISE INFO 'Completing dataset revision for dataset %', v_dataset;
 
@@ -3039,7 +3038,7 @@ BEGIN
         END IF;
     END IF;
 
-    PERFORM bde_SetOption(p_upload,'_revision', NULL);
+    PERFORM bde_control.bde_SetOption(p_upload,'_revision', NULL);
 
     RAISE INFO 'Finished completing dataset revision for dataset %', v_dataset;
 
@@ -3047,8 +3046,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER FUNCTION bde_CompleteDatasetRevision(INTEGER) OWNER TO bde_dba;
-REVOKE ALL ON FUNCTION bde_CompleteDatasetRevision(INTEGER)  FROM PUBLIC;
+ALTER FUNCTION bde_control.bde_CompleteDatasetRevision(INTEGER) OWNER TO bde_dba;
+REVOKE ALL ON FUNCTION bde_control.bde_CompleteDatasetRevision(INTEGER)  FROM PUBLIC;
 
 DO $$
 DECLARE

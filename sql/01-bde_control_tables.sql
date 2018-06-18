@@ -25,12 +25,10 @@ CREATE SCHEMA bde_control AUTHORIZATION bde_dba;
 GRANT USAGE ON SCHEMA bde_control TO bde_admin;
 GRANT USAGE ON SCHEMA bde_control TO bde_user;
 
-SET SEARCH_PATH TO bde_control, public;
-
 -- bde_control.upload
 --
 
-CREATE TABLE upload
+CREATE TABLE bde_control.upload
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -39,13 +37,13 @@ CREATE TABLE upload
     status CHAR(1) NOT NULL DEFAULT 'U'
 );
 
-ALTER TABLE upload OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload TO bde_admin;
-GRANT SELECT ON TABLE upload TO bde_user;
+ALTER TABLE bde_control.upload OWNER TO bde_dba;
+REVOKE ALL ON TABLE bde_control.upload FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload TO bde_admin;
+GRANT SELECT ON TABLE bde_control.upload TO bde_user;
 
 
-COMMENT ON TABLE upload IS
+COMMENT ON TABLE bde_control.upload IS
 $comment$
 Defines an upload job.  Each upload job may upload multipled BDE datasets
 to multiple tables.  The tables will all be in a single BDE schema, defined
@@ -68,7 +66,7 @@ $comment$;
 
 -- bde_control.tables
 
-CREATE TABLE upload_table
+CREATE TABLE bde_control.upload_table
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -88,15 +86,15 @@ CREATE TABLE upload_table
     UNIQUE (schema_name,table_name)
 );
 
-ALTER TABLE upload_table OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload_table FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_table TO bde_admin;
-GRANT SELECT ON TABLE upload_table TO bde_user;
+ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
+REVOKE ALL ON TABLE bde_control.upload_table FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload_table TO bde_admin;
+GRANT SELECT ON TABLE bde_control.upload_table TO bde_user;
 
-COMMENT ON TABLE upload_table IS
+COMMENT ON TABLE bde_control.upload_table IS
 'Tracks the status of uploads for each table.';
 
-COMMENT ON COLUMN upload_table.key_column IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.key_column IS $comment$
 the name of a unique non-composite, not null
 integer or bigint column used for identifying the table row for
 incremental updates. This identifier must be the same as defined in
@@ -104,62 +102,62 @@ the cbe_tables.tablekeycolumn field of the Landonline INFORMIX
 database.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_id IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_id IS $comment$
 the id of the last upload job affecting this table,
 referencing the id field of the upload table.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_dataset IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_dataset IS $comment$
 the dataset id of the last level 5 or 0 uploaded
 (since the level 0 upload will override any level 5 uploads that have
 been applied).
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_type IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_type IS $comment$
 either 0 or 5.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_incremental IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_incremental IS $comment$
 true if the table data was updated, and
 false if the table data was completely refreshed from a level 0.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_details IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_details IS $comment$
 a text string with details of the last upload (currently will contain
 constituent files and end times, for checking L5 uploads against).
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_time IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_time IS $comment$
 records when the table upload was started.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_upload_bdetime IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_upload_bdetime IS $comment$
 timestamp found in the last BDE file uploaded.
 $comment$;
 
-COMMENT ON COLUMN upload_table.last_level0_dataset IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.last_level0_dataset IS $comment$
 the dataset id of the last level 0 uploaded.
 $comment$;
 
-COMMENT ON COLUMN upload_table.upl_id_lock IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.upl_id_lock IS $comment$
 the id of an upload currently locking the table (this is
 in the sense of a process lock, not a database lock).
 $comment$;
 
-COMMENT ON COLUMN upload_table.row_tol_warning IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.row_tol_warning IS $comment$
 the maximum tolerated change in row count during a -full-incremental
 update  before a warning is raised, expressed as the ratio of new to
 old rows count.
 $comment$;
 
-COMMENT ON COLUMN upload_table.row_tol_error IS $comment$
+COMMENT ON COLUMN bde_control.upload_table.row_tol_error IS $comment$
 the maximum tolerated change in row count during a -full-incremental
 update  before an exception is thrown, expressed as
 the ratio of new to old rows count.
 $comment$;
 
 -- upload_stats
-CREATE TABLE upload_stats
+CREATE TABLE bde_control.upload_stats
 (
     id SERIAL NOT NULL PRIMARY KEY,
     upl_id INT NOT NULL,
@@ -175,15 +173,15 @@ CREATE TABLE upload_stats
     ndelete BIGINT NOT NULL DEFAULT 0
 );
 
-CREATE INDEX idx_sts_tbl ON upload_stats ( tbl_id );
-CREATE INDEX idx_sts_upl ON upload_stats ( upl_id );
+CREATE INDEX idx_sts_tbl ON bde_control.upload_stats ( tbl_id );
+CREATE INDEX idx_sts_upl ON bde_control.upload_stats ( upl_id );
 
-ALTER TABLE upload_stats OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload_stats FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_stats TO bde_admin;
-GRANT SELECT ON TABLE upload_stats TO bde_user;
+ALTER TABLE bde_control.upload_stats OWNER TO bde_dba;
+REVOKE ALL ON TABLE bde_control.upload_stats FROM PUBLIC;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload_stats TO bde_admin;
+GRANT SELECT ON TABLE bde_control.upload_stats TO bde_user;
 
-COMMENT ON TABLE upload_stats IS
+COMMENT ON TABLE bde_control.upload_stats IS
 $comment$
 Statistics from uploads.
 tbl_id is used to identify the table being uploaded.

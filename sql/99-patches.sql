@@ -14,7 +14,6 @@
 -- in this file should be done sequentially i.e Newest patches go at the bottom
 -- of the file.
 --------------------------------------------------------------------------------
-SET search_path = bde_control, bde, public;
 
 DO $PATCHES$
 BEGIN
