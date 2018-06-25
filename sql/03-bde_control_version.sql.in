@@ -14,3 +14,19 @@ CREATE OR REPLACE FUNCTION bde_control.bde_version()
 RETURNS text AS $$
   SELECT '@@VERSION@@'::text;
 $$ language 'sql' IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION bde_control.bde_full_version()
+RETURNS text AS $$
+  SELECT format(
+        'bde_control="%1" lds="%s" bde="%s" '
+        'table_version="%s" dbpatch="%s" '
+        'pgis="%s" geos="%s"',
+        bde_control.bde_version(),
+        lds.lds_version(),
+        bde.bde_version(),
+        table_version.ver_version(),
+        _patches.dbpatch_version(),
+        postgis_lib_version(),
+        postgis_geos_version()
+    );
+$$ language 'sql' IMMUTABLE STRICT;
