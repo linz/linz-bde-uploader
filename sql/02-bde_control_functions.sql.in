@@ -2417,7 +2417,7 @@ BEGIN
         -- and SEARCH PATH for the function
         defs = array_append( defs, pg_get_functiondef(rec.oid) );
         -- Set ownership (might not be possible)
-        defs = array_append( defs, format('ALTER FUNCTION bde_control.%s OWNER TO %I',
+        defs = array_append( defs, format('ALTER FUNCTION %s OWNER TO %I',
             rec.oid::regprocedure, rec.rolname));
     END LOOP;
 
