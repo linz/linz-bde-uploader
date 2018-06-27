@@ -66,9 +66,12 @@ print STDERR "Loading DBE uploader schema in database "
 
 if ( ${EXTENSION_MODE} )
 {
-    `$PSQL -c 'CREATE EXTENSION IF NOT EXISTS table_version;'` || die;
-    `$PSQL -c 'CREATE SCHEMA IF NOT EXISTS _patches;'` || die;
-    `$PSQL -c 'CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;'` || die;
+    system("$PSQL -c 'CREATE EXTENSION IF NOT EXISTS table_version'") == 0
+        or die;
+    system("$PSQL -c 'CREATE SCHEMA IF NOT EXISTS _patches'") == 0
+        or die;
+    system("$PSQL -c 'CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches'") == 0
+        or die;
 }
 else
 {
@@ -90,19 +93,21 @@ else
         }
     }
 
-    `which table_version-loader` ||
+    system("which table_version-loader") == 0 or
         die "Cannot find required table_version-loader.\n"
           . "Is table_version 1.4.0+ installed ?\n";
-    `which dbpatch-loader` ||
+    system("which dbpatch-loader") == 0 or
         die "Cannot find required dbpatch-loader.\n"
           . "Is dbpatch 1.2.0+ installed ?\n";
 
-    `table_version-loader --no-extension "$DB_NAME"` || die;
-    `dbpatch-loader --no-extension "$DB_NAME" _patches` || die;
+    system("table_version-loader --no-extension '$DB_NAME'") == 0
+        or die;
+    system("dbpatch-loader --no-extension '$DB_NAME' _patches") == 0
+        or die;
 }
 
 my @sqlfiles = <${SCRIPTSDIR}/*>;
 foreach my $f (@sqlfiles) {
     print "Loading $f\n";
-    `$PSQL -f $f` || die;
+    system("$PSQL -f $f") == 0 or die;
 }
