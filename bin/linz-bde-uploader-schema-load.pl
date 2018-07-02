@@ -20,7 +20,7 @@ use Getopt::Long;
 
 our $PREFIX = '@@PREFIX@@';
 our $SCRIPTSDIR="${PREFIX}/share/linz-bde-uploader/sql/";
-our $PSQL="psql -tA --set ON_ERROR_STOP";
+our $PSQL="psql -o /dev/null -XtA --set ON_ERROR_STOP";
 
 if ( defined( $ENV{'BDEUPLOADER_SQLDIR'} ) ) {
     $SCRIPTSDIR=$ENV{'BDEUPLOADER_SQLDIR'};
@@ -93,10 +93,10 @@ else
         }
     }
 
-    system("which table_version-loader") == 0 or
+    system("which table_version-loader > /dev/null") == 0 or
         die "Cannot find required table_version-loader.\n"
           . "Is table_version 1.4.0+ installed ?\n";
-    system("which dbpatch-loader") == 0 or
+    system("which dbpatch-loader > /dev/null") == 0 or
         die "Cannot find required dbpatch-loader.\n"
           . "Is dbpatch 1.2.0+ installed ?\n";
 
