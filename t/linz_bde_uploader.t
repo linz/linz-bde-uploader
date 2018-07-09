@@ -446,13 +446,13 @@ mkdir $level0dir or die "Cannot create $level0dir";
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, no uploads available');
 is( $test->stdout, '', 'stdout, no uploads available');
-is( $? >> 8, 1, 'exit status, no uploads available');
+is( $? >> 8, 0, 'exit status, no uploads available');
 @logged = <$log_fh>;
 is( @logged, 3,
   'logged 3 lines, no uploads available' ); # WARNING: might depend on verbosity
 $log = join '', @logged;
 like( $log,
-  qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
+  qr/INFO - No level 0 uploads available/ms,
   'logfile - no uploads available');
 
 # Check that appname can be set in configuration
@@ -465,7 +465,7 @@ close($cfg_fh);
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, no uploads available, application_name');
 is( $test->stdout, '', 'stdout, no uploads available, application_name');
-is( $? >> 8, 1, 'exit status, no uploads available, application_name');
+is( $? >> 8, 0, 'exit status, no uploads available, application_name');
 @logged = <$log_fh>;
 is( @logged, 4,
   'logged 4 lines, no uploads available, application_name' ); # WARNING: might depend on verbosity
@@ -672,11 +672,11 @@ rename($level0ds2, $level0ds3)
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170625" );
 is( $test->stderr, '', 'stderr, no uploads available (4)');
 is( $test->stdout, '', 'stdout, no uploads available (4)');
-is( $? >> 8, 1, 'exit status, no uploads available (4)');
+is( $? >> 8, 0, 'exit status, no uploads available (4)');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/ERROR - Apply Updates Failed: No level 0 uploads available/ms,
+  qr/INFO - No level 0 uploads available/ms,
   'logfile - success upload test_file (3)');
 
 # Now run full upload again but -before including available dataset

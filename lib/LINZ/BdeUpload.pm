@@ -622,7 +622,8 @@ sub GetLevel0Updates
 
     if (! @datasets)
     {
-        die ("No level 0 uploads available");
+        INFO ("No level 0 uploads available");
+        return;
     }
 
     my $dataset = $datasets[-1];
