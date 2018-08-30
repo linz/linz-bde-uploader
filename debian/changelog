@@ -1,3 +1,9 @@
+linz-bde-uploader (2.4.0-2linz~trusty1) trusty; urgency=medium
+
+  * Removed hardcoded dependency on PostgreSQL 9.3
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Thu, 30 Aug 2018 09:34:44 +0200
+
 linz-bde-uploader (2.4.0-1linz~trusty1) trusty; urgency=medium
 
   * New upstream release
