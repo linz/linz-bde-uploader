@@ -15,3 +15,9 @@ test $? = 0 || exit 1
 
 ${PERL} Makefile.PL
 test $? = 0 || exit 1
+
+# Append custom rules
+cat <<EOF >> Makefile
+deb:
+	dpkg-buildpackage -b -us -uc
+EOF
