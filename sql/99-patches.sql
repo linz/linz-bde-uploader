@@ -31,6 +31,23 @@ END IF;
 
 -- Patches start from here
 
+-------------------------------------------------------------------------------
+-- 2.5.0 Fix swapped ninsert/ndelete in bde_control.upload_stat
+-------------------------------------------------------------------------------
+PERFORM _patches.apply_patch(
+    'linz-bde-uploader 2.5.0: '
+    'Fix swapped ninsert/ndelete in bde_control.upload_stat',
+    $P$
+        UPDATE bde_control.upload_stats
+        SET ninsert = ndelete, ndelete = ninsert
+        WHERE incremental IS TRUE;
+    $P$
+);
+
+
+-- Fix swapped ninsert/ndelete in bde_control.upload_stat
+-- if coming from version < 2.5.0
+
 
 END;
 $PATCHES$
