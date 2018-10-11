@@ -612,6 +612,27 @@ is( $res->[0]{'id'}, '2', 'upload[2].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[2].schema-name' );
 is( $res->[0]{'status'}, 'C', 'upload[2].status' );
 
+# Check bde_control.upload_stats
+
+$res = $dbh->selectall_arrayref(
+  'SELECT s.upl_id, t.schema_name, t.table_name, s.ninsert, ' .
+  '       s.nupdate, s.ndelete, s.nnullupdate ' .
+  'FROM bde_control.upload_stats s, bde_control.upload_table t ' .
+  'WHERE s.tbl_id = t.id AND s.upl_id = (' .
+  '  SELECT max(upl_id) ' .
+  '  FROM bde_control.upload_stats ' .
+  ') ORDER BY tbl_id',
+  { Slice => {} }
+);
+is( @{$res}, 1, 'bde_control.upload_stats for upload 2 has 1 entry' );
+is( $res->[0]{'upl_id'}, '2', 'upload_stats[2].upl_id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload_stats[2].schema_name' );
+is( $res->[0]{'table_name'}, 'crs_parcel_bndry', 'upload_stats[2].table_name' );
+is( $res->[0]{'ninsert'}, '3', 'upload_stats[2].ninsert' );
+is( $res->[0]{'ndelete'}, '0', 'upload_stats[2].ndelete' );
+is( $res->[0]{'nupdate'}, '0', 'upload_stats[2].nupdate' );
+is( $res->[0]{'nnullupdate'}, '0', 'upload_stats[2].nnullupdate' );
+
 # Run full upload again - no updates to apply this time (by date)
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
@@ -896,4 +917,4 @@ is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
 is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
 
 close($log_fh);
-done_testing(213);
+done_testing(222);
