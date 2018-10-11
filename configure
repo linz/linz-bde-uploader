@@ -20,4 +20,6 @@ test $? = 0 || exit 1
 cat <<EOF >> Makefile
 deb:
 	dpkg-buildpackage -b -us -uc
+
+check: test
 EOF
