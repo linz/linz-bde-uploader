@@ -664,7 +664,7 @@ sub GetLevel5Updates
 
     my %complete_datasets;
     my $l5_tableset = $self->tables->level5_subset;
-    my $require_all = $self->cfg->require_all_dataset_files;
+    my $require_all = $self->cfg->require_all_dataset_files(1);
     foreach my $t ($l5_tableset->tables )
     {
         my $lastl5;
