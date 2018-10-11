@@ -1762,7 +1762,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         SELECT * FROM table_version._ver_apply_changes(
             v_bdetable, v_tmptable, '_tmp_inc_actions', v_key_column
         )
-        INTO v_ndel, v_nins, v_nupd;
+        INTO v_nins, v_ndel, v_nupd;
 
         DROP TABLE IF EXISTS _tmp_inc_actions;
     ELSE
