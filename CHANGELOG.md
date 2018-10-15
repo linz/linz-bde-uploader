@@ -75,6 +75,8 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - No changes
 
 ## 2.0.0 - 2016-05-16
+### Added
+- New `bde_control.bde_version()` function
 ### Changed
 - Packaging changes to account for dependency changes
 - Move dbpatch and table version source code from project to external projects
