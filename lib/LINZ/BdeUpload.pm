@@ -770,8 +770,19 @@ sub ApplyDatasetUpdates
             $tablestate->{$tablename} .= "|".$dataset->name;
         }
 
-        $change_table_name = $self->CreateLevel5ChangeTable($dataset,$changetable)
-            if $need_change_table;
+        if ( $need_change_table )
+        {
+            if ( $changetable )
+            {
+                $change_table_name =
+                    $self->CreateLevel5ChangeTable($dataset,$changetable);
+            }
+            else
+            {
+                die("Configuration error: missing required changetable " .
+                     "for incremental update");
+            }
+        }
 
         foreach my $table ( @loadtables )
         {
