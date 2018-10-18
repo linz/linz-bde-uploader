@@ -562,10 +562,6 @@ sub clean_stderr
     return $stderr;
 }
 
-# Enable versioning of target table
-#$dbh->do("SELECT table_version.ver_enable_versioning('bde','crs_parcel_bndry')")
-    #or die "Could not enable versioning on table bde.crs_parcel_bndry";
-
 # This should supposedly be first successful upload
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
@@ -956,15 +952,17 @@ rename($level0ds3, $level5ds1)
   or die "Cannot rename $level0ds3 to $level5ds1: $!";
 
 # Add two records
+# NOTE: these need to be listed in t/data/xaud.crs
 open(my $testfileh, ">>", "$level5ds1/test_file.crs")
     or die "Cannot open $level0ds1/test_file.crs for append";
-print $testfileh "4457326|4|11960041|Y|001|\n";
-print $testfileh "4457326|5|11960041|Y|002|\n";
+print $testfileh "4457329|4|10000000|Y|300|\n";
+print $testfileh "4457330|5|20000000|Y|400|\n";
 close($testfileh);
 # Update two records, delete one and insert another
 # also update header 559
+# NOTE: these need to be listed in t/data/xaud.crs
 system('sed', '-i',
-    's/|80401150|/|000|/;s/|1|/|10|/;s/|2|/|20|/;s/^SIZE .*/SIZE 602/',
+    's/|80401150|/|100|/;s/|1|/|10|/;s/|2|/|20|/;s/^SIZE .*/SIZE 602/',
     "$level5ds1/test_file.crs") == 0
   or die "Can't in-place edit $level5ds1/test_file.crs: $!";
 
@@ -995,7 +993,7 @@ is( $res->[0]{'status'}, 'E', 'upload[11].status' );
 open($cfg_fh, ">>", "${tmpdir}/tables.conf")
   or die "Can't append to ${tmpdir}/tables.conf: $!";
 print $cfg_fh <<"EOF";
-TABLE l5_change_table files xaud
+TABLE l5_change_table files test_changeset
 EOF
 close($cfg_fh);
 
@@ -1008,7 +1006,7 @@ is( $? >> 8, 1, 'exit status, -incremental (no changetable file)');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/Invalid Bde file xaud requested from dataset/,
+  qr/Invalid Bde file test_changeset requested from dataset/,
   'logfile - -incremental (no changetable file)');
 
 # Check bde_control.upload
@@ -1017,10 +1015,94 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '12', 'upload[11].id' );
+is( $res->[0]{'id'}, '12', 'upload[12].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[12].schema-name' );
 is( $res->[0]{'status'}, 'E', 'upload[12].status' );
 
+# Make test_changeset.crs available
+
+copy($datadir.'/xaud.crs', $level5ds1.'/test_changeset.crs') or die "Copy failed: $!";
+
+# Run incremental upload
+
+$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (13)');
+is( $test->stdout, '', 'stdout, -incremental (13)');
+is( $? >> 8, 0, 'exit status, -incremental (13)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job 13 finished successfully/,
+  'logfile - -incremental (13)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '13', 'upload[13].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[13].schema-name' );
+is( $res->[0]{'status'}, 'C', 'upload[13].status' );
+
+# Check bde_control.upload_stats
+
+$res = $dbh->selectall_arrayref(
+  'SELECT s.upl_id, t.schema_name, t.table_name, s.ninsert, ' .
+  '       s.nupdate, s.ndelete, s.nnullupdate ' .
+  'FROM bde_control.upload_stats s, bde_control.upload_table t ' .
+  'WHERE s.tbl_id = t.id AND s.upl_id = (' .
+  '  SELECT max(upl_id) ' .
+  '  FROM bde_control.upload_stats ' .
+  ') ORDER BY tbl_id',
+  { Slice => {} }
+);
+is( @{$res}, 1, 'bde_control.upload_stats for upload 13 has 1 entry' );
+is( $res->[0]{'upl_id'}, '13', 'upload_stats[13].upl_id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload_stats[13].schema_name' );
+is( $res->[0]{'table_name'}, 'crs_parcel_bndry', 'upload_stats[13].table_name' );
+is( $res->[0]{'ninsert'}, '3', 'upload_stats[13].ninsert' );
+is( $res->[0]{'ndelete'}, '1', 'upload_stats[13].ndelete' );
+is( $res->[0]{'nupdate'}, '2', 'upload_stats[13].nupdate' );
+is( $res->[0]{'nnullupdate'}, '0', 'upload_stats[13].nnullupdate' );
+
+# check contents of the crs_parcel_bndry table
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.crs_parcel_bndry ORDER BY pri_id',
+  { Slice => {} }
+);
+is( @{$res}, 5, 'crs_parcel_bndry has 5 entries' );
+
+is( $res->[0]{'pri_id'}, '4457326', 'crs_parcel_bndry[0].pri_id' );
+is( $res->[0]{'sequence'}, '3', 'crs_parcel_bndry[0].sequence' );
+is( $res->[0]{'lin_id'}, '11960041', 'crs_parcel_bndry[0].lin_id' );
+is( $res->[0]{'reversed'}, 'Y', 'crs_parcel_bndry[0].reversed' );
+is( $res->[0]{'audit_id'}, '100', 'crs_parcel_bndry[0].audit_id' );
+
+is( $res->[1]{'pri_id'}, '4457327', 'crs_parcel_bndry[1].pri_id' );
+is( $res->[1]{'sequence'}, '20', 'crs_parcel_bndry[1].sequence' );
+is( $res->[1]{'lin_id'}, '29694578', 'crs_parcel_bndry[1].lin_id' );
+is( $res->[1]{'reversed'}, 'N', 'crs_parcel_bndry[1].reversed' );
+is( $res->[1]{'audit_id'}, '80401149', 'crs_parcel_bndry[1].audit_id' );
+
+is( $res->[2]{'pri_id'}, '4457328', 'crs_parcel_bndry[2].pri_id' );
+is( $res->[2]{'sequence'}, '10', 'crs_parcel_bndry[2].sequence' );
+is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id' );
+is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed' );
+is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id' );
+
+is( $res->[3]{'pri_id'}, '4457329', 'crs_parcel_bndry[3].pri_id' );
+is( $res->[3]{'sequence'}, '4', 'crs_parcel_bndry[3].sequence' );
+is( $res->[3]{'lin_id'}, '10000000', 'crs_parcel_bndry[3].lin_id' );
+is( $res->[3]{'reversed'}, 'Y', 'crs_parcel_bndry[3].reversed' );
+is( $res->[3]{'audit_id'}, '300', 'crs_parcel_bndry[3].audit_id' );
+
+is( $res->[4]{'pri_id'}, '4457330', 'crs_parcel_bndry[4].pri_id' );
+is( $res->[4]{'sequence'}, '5', 'crs_parcel_bndry[4].sequence' );
+is( $res->[4]{'lin_id'}, '20000000', 'crs_parcel_bndry[4].lin_id' );
+is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
+is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 
 close($log_fh);
-done_testing(242);
+done_testing(283);
