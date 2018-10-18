@@ -562,6 +562,10 @@ sub clean_stderr
     return $stderr;
 }
 
+# Enable versioning of target table
+#$dbh->do("SELECT table_version.ver_enable_versioning('bde','crs_parcel_bndry')")
+    #or die "Could not enable versioning on table bde.crs_parcel_bndry";
+
 # This should supposedly be first successful upload
 
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
@@ -888,7 +892,7 @@ like( $log,
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} });
-is( $res->[0]{'id'}, '9', 'upload[8].id' );
+is( $res->[0]{'id'}, '9', 'upload[9].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
 # Test keeping temporary schema
@@ -916,5 +920,75 @@ $res = $dbh->selectall_arrayref(
 is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
 is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
 
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} });
+is( $res->[0]{'id'}, '10', 'upload[10].id' );
+is( $res->[0]{'status'}, 'C', 'upload[10].status' );
+
+#######################################
+#
+# Test incremental uploads
+#
+#######################################
+
+# Craft a level_5 directory
+
+my $level5dir = $repodir . '/level_5';
+mkdir $level5dir or die "Cannot create $level5dir";
+
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (no dataset)');
+is( $test->stdout, '', 'stdout, -incremental (no dataset)');
+is( $? >> 8, 0, 'exit status, -incremental (no dataset)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - No dataset updates to apply/,
+  'logfile - -incremental (no dataset)');
+
+# Rename dataset dir
+
+my $level5ds1 = $level5dir . '/20170629000000';
+rename($level0ds3, $level5ds1)
+  or die "Cannot rename $level0ds3 to $level5ds1: $!";
+
+# Add two records
+open(my $testfileh, ">>", "$level5ds1/test_file.crs")
+    or die "Cannot open $level0ds1/test_file.crs for append";
+print $testfileh "4457326|4|11960041|Y|001|\n";
+print $testfileh "4457326|5|11960041|Y|002|\n";
+close($testfileh);
+# Update two records, delete one and insert another
+# also update header 559
+system('sed', '-i',
+    's/|80401150|/|000|/;s/|1|/|10|/;s/|2|/|20|/;s/^SIZE .*/SIZE 602/',
+    "$level5ds1/test_file.crs") == 0
+  or die "Can't in-place edit $level5ds1/test_file.crs: $!";
+
+# Run incremental upload
+
+$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (missing changetable)');
+is( $test->stdout, '', 'stdout, -incremental (missing changetable)');
+is( $? >> 8, 1, 'exit status, -incremental (missing changetable)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/Configuration error: missing required changetable/,
+  'logfile - -incremental (missing changetable)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '11', 'upload[11].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[11].schema-name' );
+is( $res->[0]{'status'}, 'E', 'upload[11].status' );
+
 close($log_fh);
-done_testing(222);
+done_testing(235);
