@@ -968,7 +968,7 @@ system('sed', '-i',
     "$level5ds1/test_file.crs") == 0
   or die "Can't in-place edit $level5ds1/test_file.crs: $!";
 
-# Run incremental upload
+# Run incremental upload w/out known changetable in config
 
 $test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (missing changetable)');
@@ -990,5 +990,37 @@ is( $res->[0]{'id'}, '11', 'upload[11].id' );
 is( $res->[0]{'schema_name'}, 'bde', 'upload[11].schema-name' );
 is( $res->[0]{'status'}, 'E', 'upload[11].status' );
 
+# Add l5_change_table in tables.conf
+
+open($cfg_fh, ">>", "${tmpdir}/tables.conf")
+  or die "Can't append to ${tmpdir}/tables.conf: $!";
+print $cfg_fh <<"EOF";
+TABLE l5_change_table files xaud
+EOF
+close($cfg_fh);
+
+# Run incremental upload w/out changetable file
+
+$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (no changetable file)');
+is( $test->stdout, '', 'stdout, -incremental (no changetable file)');
+is( $? >> 8, 1, 'exit status, -incremental (no changetable file)');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/Invalid Bde file xaud requested from dataset/,
+  'logfile - -incremental (no changetable file)');
+
+# Check bde_control.upload
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
+  { Slice => {} }
+);
+is( $res->[0]{'id'}, '12', 'upload[11].id' );
+is( $res->[0]{'schema_name'}, 'bde', 'upload[12].schema-name' );
+is( $res->[0]{'status'}, 'E', 'upload[12].status' );
+
+
 close($log_fh);
-done_testing(235);
+done_testing(242);
