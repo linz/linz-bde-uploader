@@ -21,5 +21,6 @@ cat <<EOF >> Makefile
 deb:
 	dpkg-buildpackage -b -us -uc
 
-check: test
+check:
+	$(MAKE) test TEST_VERBOSE=1
 EOF
