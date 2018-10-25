@@ -147,7 +147,7 @@ before_install:
 
 script:
   - ./configure
-  - make test
+  - make check
   - make dist
   - make distcheck
   # Test building deb package
