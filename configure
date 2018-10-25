@@ -22,5 +22,5 @@ deb:
 	dpkg-buildpackage -b -us -uc
 
 check:
-	$(MAKE) test TEST_VERBOSE=1
+	\$(MAKE) test TEST_VERBOSE=1
 EOF
