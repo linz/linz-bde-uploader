@@ -8,6 +8,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
   are available for upload (#153)
 ### Fixed
 - Unpredictable exit code (use of uninitialized $exitcode variable)
+- Swapped insert/delete counts in upload stats (#165)
 ### Enhanced
 - Improve documentation of `bde_TablesAffected` (#173)
 
