@@ -11,8 +11,8 @@ Build-Depends-Indep:
 Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
 Homepage: http://www.linz.govt.nz
-Vcs-Git: git://github.com/linz/linz_bde_uploader.git
-Vcs-Browser: https://github.com/linz/linz_bde_uploader
+Vcs-Git: git://github.com/linz/linz-bde-uploader.git
+Vcs-Browser: https://github.com/linz/linz-bde-uploader
 
 Package: linz-bde-uploader
 Architecture: all
