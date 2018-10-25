@@ -132,8 +132,8 @@ before_install:
   # Install linz-bde-schema
   - pushd /tmp
   - wget -q -O -
-    https://github.com/linz/linz-bde-schema/archive/1.0.2.tar.gz
-    | tar xzf - && cd linz-bde-schema-1.0.2
+    https://github.com/linz/linz-bde-schema/archive/1.2.1.tar.gz
+    | tar xzf - && cd linz-bde-schema-1.2.1
   - sudo env "PATH=$PATH" make install
   - popd
   # Install linz-bde-copy
