@@ -1307,7 +1307,10 @@ Two useful functions that these may use are:
 
 =item INT bde_control.bde_TablesAffected( upload_id INT, tables name[], test TEXT )
 
-Tests tables that are affected by an upload. I<tables> is a list of tables to check.
+Tests tables that are affected by an upload. I<tables> is a list of
+table names to check. Names must NOT be qualified with schema name as
+the schema name is taken from the target schema of the given upload.
+
 <test> is a string specifying the test to apply and can include the following
 space separated items:
 
