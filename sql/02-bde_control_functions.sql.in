@@ -2748,7 +2748,9 @@ ALTER FUNCTION bde_control.bde_ApplyPostUploadFunctions(INTEGER) OWNER TO bde_db
 --
 --  p_upload is the upload id of interest
 --
---  tables is an array or space separated string of tables to check.
+--  tables is an array of table names to check. Names must NOT be
+--  qualified with schema name as the schema name is taken from the
+--  target schema of the given upload (via p_upload).
 --
 --  test is a space separated string specifying the test to apply and
 --  can include the following items:
