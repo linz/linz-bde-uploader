@@ -33,7 +33,7 @@ our $SHOW_VERSION = 0;
 sub help
 {
     my ($exitcode) = @_;
-    print STDERR "Usage: $0 [--noextension] <database>\n";
+    print STDERR "Usage: $0 [--noextension] { <database> | - }\n";
     print STDERR "       $0 --version\n";
     exit $exitcode;
 }
@@ -64,14 +64,15 @@ print STDERR "Loading DBE uploader schema in database "
     . ( ${EXTENSION_MODE} ?  "on" : "off" )
     . ")\n";
 
+open(SQL, "| $PSQL") or die "Cannot start psql\n";
+
 if ( ${EXTENSION_MODE} )
 {
-    system("$PSQL -c 'CREATE EXTENSION IF NOT EXISTS table_version'") == 0
-        or die "Could not create table_version extension in ${DB_NAME} database\n";
-    system("$PSQL -c 'CREATE SCHEMA IF NOT EXISTS _patches'") == 0
-        or die "Could not create _patches schema in ${DB_NAME} database\n";
-    system("$PSQL -c 'CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches'") == 0
-        or die "Could not create dbpatch extension in ${DB_NAME} database\n";
+    print SQL <<EOF;
+CREATE EXTENSION IF NOT EXISTS table_version;
+CREATE SCHEMA IF NOT EXISTS _patches;
+CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;
+EOF
 }
 else
 {
@@ -109,6 +110,11 @@ else
 my @sqlfiles = <${SCRIPTSDIR}/*>;
 foreach my $f (@sqlfiles) {
     print "Loading $f\n";
-    system("$PSQL -f $f") == 0
-        or die "Failed to load $f in ${DB_NAME} database\n";
+    open(F, "<$f") or die "Could not open $f for reading\n";
+    while (<F>) {
+        print SQL;
+    }
+    close(F);
 }
+
+close(SQL);
