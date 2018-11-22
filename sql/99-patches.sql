@@ -50,4 +50,4 @@ PERFORM _patches.apply_patch(
 
 
 END;
-$PATCHES$
+$PATCHES$;
