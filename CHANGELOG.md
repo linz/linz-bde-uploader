@@ -11,6 +11,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Swapped insert/delete counts in upload stats (#165)
 ### Enhanced
 - Improve documentation of `bde_TablesAffected` (#173)
+- Add stdout support in `linz-bde-schema-load` (#175)
 
 ## [2.4.0] - 2017-12-11
 ### Changed

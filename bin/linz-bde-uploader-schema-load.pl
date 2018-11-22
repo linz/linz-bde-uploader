@@ -59,62 +59,115 @@ if ( ! -f "${SCRIPTSDIR}/01-bde_control_tables.sql" ) {
 
 $ENV{'PGDATABASE'}=$DB_NAME;
 
+# As of table_version-1.4.0 and dbpatch-1.2.0
+# the loader binaries are in `pg_config --bindir`
+# but this may change in the future, so we add
+# that directory to the PATH and hope for the best
+my $pgbin = `pg_config --bindir 2>/dev/null`; chop($pgbin);
+if ( $pgbin ) { $ENV{'PATH'} .= ":$pgbin"; }
+else
+{
+    # When `pg_config` is not installed we can try
+    # a wild guess as for where the loaders are
+    # installed.
+    foreach my $dir (`'ls' -d /usr/lib/postgresql/*/bin/`)
+    {
+        chop($dir);
+        $ENV{'PATH'} .= ":$dir";
+    }
+}
+
+system("which table_version-loader > /dev/null") == 0 or
+    die "Cannot find required table_version-loader.\n"
+      . "Is table_version 1.4.0+ installed ?\n";
+system("which dbpatch-loader > /dev/null") == 0 or
+    die "Cannot find required dbpatch-loader.\n"
+      . "Is dbpatch 1.2.0+ installed ?\n";
+
+# Check if table_version-loader supports stdout
+my $TABLEVERSION_SUPPORTS_STDOUT = (
+     system("table_version-loader -  > /dev/null 2>&1") == 0
+);
+
+# Check if dbpatch-loader supports stdout
+my $DBPATCH_SUPPORTS_STDOUT = (
+     system("dbpatch-loader -  > /dev/null 2>&1") == 0
+);
+
+my $sql;
+if ( $DB_NAME ne '-' ) {
+    system("$PSQL -c 'select version()'") == 0
+        or die "Could not connect to database ${DB_NAME}\n";
+    open($sql, '|-', "$PSQL") or die "Cannot start psql\n";
+} else {
+    die "ERROR: table_version-loader does not support stdout mode, cannot proceed.\n"
+        . "HINT: install table_version 1.6.0 or higher to fix this\n"
+        unless $TABLEVERSION_SUPPORTS_STDOUT;
+    die "ERROR: dbpatch-loader does not support stdout mode, cannot proceed\n"
+        . "HINT: install dbpatch 1.4.0 or higher to fix this\n"
+        unless $DBPATCH_SUPPORTS_STDOUT;
+    $sql = \*STDOUT;
+}
+
 print STDERR "Loading DBE uploader schema in database "
     . $ENV{'PGDATABASE'} . " (extension mode "
     . ( ${EXTENSION_MODE} ?  "on" : "off" )
     . ")\n";
 
-open(SQL, "| $PSQL") or die "Cannot start psql\n";
+$SIG{'PIPE'} = sub {
+    die "Got sigpipe \n";
+};
 
-if ( ${EXTENSION_MODE} )
-{
-    print SQL <<EOF;
-CREATE EXTENSION IF NOT EXISTS table_version;
-CREATE SCHEMA IF NOT EXISTS _patches;
-CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;
-EOF
+my $EXTOPT = ${EXTENSION_MODE} ? '' : '--no-extension';
+
+if ( ! $TABLEVERSION_SUPPORTS_STDOUT ) {
+    print STDERR "WARNING: table_version-loader does not support stdout mode, working in non-transactional mode\n";
+    print STDERR "HINT: install table_version 1.6.0 or higher to fix this\n";
+    system("table_version-loader ${EXTOPT} '$DB_NAME'") == 0
+        or die "Could not load table_version in ${DB_NAME} database\n";
 }
-else
-{
-    # As of table_version-1.4.0 and dbpatch-1.2.0
-    # the loader binaries are in `pg_config --bindir`
-    # but this may change in the future, so we add
-    # that directory to the PATH and hope for the best
-    my $pgbin = `pg_config --bindir 2>/dev/null`; chop($pgbin);
-    if ( $pgbin ) { $ENV{'PATH'} .= ":$pgbin"; }
-    else
-    {
-        # When `pg_config` is not installed we can try
-        # a wild guess as for where the loaders are
-        # installed.
-        foreach my $dir (`'ls' -d /usr/lib/postgresql/*/bin/`)
-        {
-            chop($dir);
-            $ENV{'PATH'} .= ":$dir";
-        }
+
+if ( ! $DBPATCH_SUPPORTS_STDOUT ) {
+    print STDERR "WARNING: dbpatch-loader does not support stdout mode, working in non-transactional mode\n";
+    print STDERR "HINT: install dbpatch 1.4.0 or higher to fix this\n";
+    system("dbpatch-loader ${EXTOPT} '$DB_NAME' _patches") == 0
+        or die "Could not load dbpatch in ${DB_NAME} database\n";
+}
+
+print $sql "BEGIN;\n";
+
+if ( $TABLEVERSION_SUPPORTS_STDOUT ) {
+    open(my $loader, "table_version-loader ${EXTOPT} - |")
+        or die "Could not run table_version -\n";
+    while (<$loader>) {
+        # NOTE: begin/commit will be filtered later
+        print $sql $_;
     }
+    close($loader);
+}
 
-    system("which table_version-loader > /dev/null") == 0 or
-        die "Cannot find required table_version-loader.\n"
-          . "Is table_version 1.4.0+ installed ?\n";
-    system("which dbpatch-loader > /dev/null") == 0 or
-        die "Cannot find required dbpatch-loader.\n"
-          . "Is dbpatch 1.2.0+ installed ?\n";
-
-    system("table_version-loader --no-extension '$DB_NAME'") == 0
-        or die "Could not load extension-less table_version in ${DB_NAME} database\n";
-    system("dbpatch-loader --no-extension '$DB_NAME' _patches") == 0
-        or die "Could not load extension-less dbpatch in ${DB_NAME} database\n";
+if ( $DBPATCH_SUPPORTS_STDOUT ) {
+    # TODO: open pipe from loader, print to stdout
+    open(my $loader, "dbpatch-loader ${EXTOPT} - _patches |")
+        or die "Could not run dbpatch_loader -\n";
+    while (<$loader>) {
+        # NOTE: begin/commit will be filtered later
+        print $sql $_;
+    }
+    close($loader);
 }
 
 my @sqlfiles = <${SCRIPTSDIR}/*>;
 foreach my $f (@sqlfiles) {
-    print "Loading $f\n";
+    print STDERR "Loading $f\n";
     open(F, "<$f") or die "Could not open $f for reading\n";
     while (<F>) {
-        print SQL;
+        next if /^BEGIN;/;
+        next if /^COMMIT;/;
+        print $sql $_;
     }
     close(F);
 }
 
-close(SQL);
+print $sql "COMMIT;\n";
+close($sql);
