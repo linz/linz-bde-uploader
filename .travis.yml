@@ -8,7 +8,7 @@ matrix:
   include:
 
   # Oldest supported versions
-  - env: PGSQL=9.3 PGIS=2.2
+  - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.12
     addons:
       postgresql: 9.3
@@ -24,7 +24,7 @@ matrix:
         - fakeroot
 
   # Found in bde-processor-deployment
-  - env: PGSQL=9.3 PGIS=2.2
+  - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.18
     addons:
       postgresql: 9.3
@@ -40,7 +40,7 @@ matrix:
         - fakeroot
 
   # Found on Debian GNU/Linux 8.8 (jessie)
-  - env: PGSQL=9.4 PGIS=2.3
+  - env: PGSQL=9.4 PGIS=2.3 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.20
     addons:
       postgresql: 9.4
@@ -56,7 +56,7 @@ matrix:
         - fakeroot
 
   # Found on Ubuntu 16.04.3 LTS
-  - env: PGSQL=9.5 PGIS=2.2
+  - env: PGSQL=9.5 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.22
     addons:
       postgresql: 9.5
@@ -72,7 +72,7 @@ matrix:
         - fakeroot
 
   # Found on Debian GNU/Linux 8.5 (jessie-backports)
-  - env: PGSQL=9.6 PGIS=2.3
+  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.20
     addons:
       postgresql: 9.6
@@ -88,7 +88,7 @@ matrix:
         - fakeroot
 
   # Found on Ubuntu 17.04
-  - env: PGSQL=9.6 PGIS=2.3
+  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=master DBPATCH_BRANCH=master STDOUT_SCHEMA_LOADING_SUPPORTED=1
     perl: 5.24
     addons:
       postgresql: 9.6
@@ -108,9 +108,22 @@ before_install:
   # Install packages needed for testing
   - cpanm Test::Cmd Test::Exception
   # Install dbpatch PostgreSQL extension
-  - sudo env "PATH=$PATH" pgxn install dbpatch || true # workaround for https://github.com/linz/postgresql-dbpatch/issues/4
+  - sudo env "PATH=$PATH" pgxn install dbpatch
+  - pushd /tmp
+  - wget
+    https://github.com/linz/postgresql-dbpatch/archive/${DBPATCH_BRANCH}.tar.gz
+  - tar xzf ${DBPATCH_BRANCH}.tar.gz
+  - cd postgresql-dbpatch-${DBPATCH_BRANCH}
+  - sudo env "PATH=$PATH" make install
+  - popd
   # Install table_version PostgreSQL extension
-  - sudo env "PATH=$PATH" pgxn install table_version || true # workaround table_version bug in version 1.1.1, see https://github.com/linz/postgresql-tableversion/pull/31
+  - pushd /tmp
+  - wget
+    https://github.com/linz/postgresql-tableversion/archive/${TABLEVERSION_BRANCH}.tar.gz
+  - tar xzf ${TABLEVERSION_BRANCH}.tar.gz
+  - cd postgresql-tableversion-${TABLEVERSION_BRANCH}
+  - sudo env "PATH=$PATH" make install
+  - popd
   # Install pgtap PostgreSQL extension
   - sudo env "PATH=$PATH" pgxn install pgtap
   # Install LINZ::Config

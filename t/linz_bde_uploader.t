@@ -21,6 +21,8 @@ use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
 
+my $planned_tests = 283;
+
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
 my $sqldir = "sql";
@@ -49,7 +51,7 @@ $dbh = DBI->connect("dbi:Pg:dbname=${testdbname}", "") or
     die "Cannot connect to ${testdbname}";
 
 END {
-  my $dbh = DBI->connect("dbi:Pg:dbname=template1", "");
+  $dbh = DBI->connect("dbi:Pg:dbname=template1", "");
   $dbh->do("drop database if exists ${testdbname}") if $dbh;
 }
 
@@ -385,32 +387,37 @@ unlike( $schemaload->stdout, qr/ERROR/,
     'no ERROR in stdout on calling schema-load with correct arg' );
 is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
 
-$schemaload->run( args => '-' );
-unlike( $schemaload->stderr, qr/ERROR/,
-    'stderr in stdout call has no ERROR printed'
-    );
-unlike( $schemaload->stderr, qr/Loading/,
-    'stderr in stdout call has Loading printed'
-    );
-unlike( $schemaload->stderr, qr/Loading/,
-    'stdout in stdout call has no Loading printed' );
-like( $schemaload->stdout, qr/BEGIN;/,
-    'stdout in stdout call has BEGIN; printed' );
-is( $? >> 8, 0, 'exit status, schema-load with stdout arg' );
+if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
+{
+    $schemaload->run( args => '-' );
+    unlike( $schemaload->stderr, qr/ERROR/,
+        'stderr in stdout call has no ERROR printed'
+        );
+    unlike( $schemaload->stderr, qr/Loading/,
+        'stderr in stdout call has Loading printed'
+        );
+    unlike( $schemaload->stderr, qr/Loading/,
+        'stdout in stdout call has no Loading printed' );
+    like( $schemaload->stdout, qr/BEGIN;/,
+        'stdout in stdout call has BEGIN; printed' );
+    is( $? >> 8, 0, 'exit status, schema-load with stdout arg' );
 
-# Create new database with stdout loader and check it is equal
-# to the one created by database loader
-system("pg_dump ${testdbname} > $tmpdir/schemaload1.dump");
+    # Create new database with stdout loader and check it is equal
+    # to the one created by database loader
+    system("pg_dump ${testdbname} > $tmpdir/schemaload1.dump");
 
-$dbh->do("drop database ${testdbname}") or
-    die "Cannot drop test database ${testdbname}";
-$dbh->do("create database ${testdbname}") or
-    die "Cannot create test database ${testdbname}";
-$dbh->do($schemaload->stdout) or
-    die "Errors sending schema-loader stdout to test database ${testdbname}";
-system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
-my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
-is($diff, '', 'schema-load via stdout and db are the same');
+    $dbh->do("drop database ${testdbname}") or
+        die "Cannot drop test database ${testdbname}";
+    $dbh->do("create database ${testdbname}") or
+        die "Cannot create test database ${testdbname}";
+    $dbh->do($schemaload->stdout) or
+        die "Errors sending schema-loader stdout to test database ${testdbname}";
+    system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
+    my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
+    is($diff, '', 'schema-load via stdout and db are the same');
+
+    $planned_tests += 6;
+}
 
 
 # Check bde_control.upload
@@ -1134,4 +1141,4 @@ is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
 is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 
 close($log_fh);
-done_testing(289);
+done_testing($planned_tests);
