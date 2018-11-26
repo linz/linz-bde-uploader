@@ -110,18 +110,16 @@ before_install:
   # Install dbpatch PostgreSQL extension
   - sudo env "PATH=$PATH" pgxn install dbpatch
   - pushd /tmp
-  - wget
+  - wget -q -O -
     https://github.com/linz/postgresql-dbpatch/archive/${DBPATCH_BRANCH}.tar.gz
-  - tar xzf ${DBPATCH_BRANCH}.tar.gz
-  - cd postgresql-dbpatch-${DBPATCH_BRANCH}
+    | tar xzf - && cd postgresql-dbpatch-${DBPATCH_BRANCH}
   - sudo env "PATH=$PATH" make install
   - popd
   # Install table_version PostgreSQL extension
   - pushd /tmp
-  - wget
+  - wget -q -O -
     https://github.com/linz/postgresql-tableversion/archive/${TABLEVERSION_BRANCH}.tar.gz
-  - tar xzf ${TABLEVERSION_BRANCH}.tar.gz
-  - cd postgresql-tableversion-${TABLEVERSION_BRANCH}
+    | tar vxzf - && cd postgresql-tableversion-${TABLEVERSION_BRANCH}
   - sudo env "PATH=$PATH" make install
   - popd
   # Install pgtap PostgreSQL extension
