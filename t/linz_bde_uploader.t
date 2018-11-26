@@ -16,6 +16,7 @@ use warnings;
 use Test::More;
 use Test::Exception;
 use Test::Cmd;
+use Text::Diff;
 use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
@@ -383,6 +384,34 @@ like( $schemaload->stdout, qr/Loading/,
 unlike( $schemaload->stdout, qr/ERROR/,
     'no ERROR in stdout on calling schema-load with correct arg' );
 is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
+
+$schemaload->run( args => '-' );
+unlike( $schemaload->stderr, qr/ERROR/,
+    'stderr in stdout call has no ERROR printed'
+    );
+unlike( $schemaload->stderr, qr/Loading/,
+    'stderr in stdout call has Loading printed'
+    );
+unlike( $schemaload->stderr, qr/Loading/,
+    'stdout in stdout call has no Loading printed' );
+like( $schemaload->stdout, qr/BEGIN;/,
+    'stdout in stdout call has BEGIN; printed' );
+is( $? >> 8, 0, 'exit status, schema-load with stdout arg' );
+
+# Create new database with stdout loader and check it is equal
+# to the one created by database loader
+system("pg_dump ${testdbname} > $tmpdir/schemaload1.dump");
+
+$dbh->do("drop database ${testdbname}") or
+    die "Cannot drop test database ${testdbname}";
+$dbh->do("create database ${testdbname}") or
+    die "Cannot create test database ${testdbname}";
+$dbh->do($schemaload->stdout) or
+    die "Errors sending schema-loader stdout to test database ${testdbname}";
+system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
+my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
+is($diff, '', 'schema-load via stdout and db are the same');
+
 
 # Check bde_control.upload
 
@@ -1105,4 +1134,4 @@ is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
 is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 
 close($log_fh);
-done_testing(283);
+done_testing(289);
