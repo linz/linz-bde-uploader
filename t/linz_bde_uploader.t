@@ -21,7 +21,7 @@ use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
 
-my $planned_tests = 283;
+my $planned_tests = 275;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -54,6 +54,28 @@ END {
   $dbh = DBI->connect("dbi:Pg:dbname=template1", "");
   $dbh->do("drop database if exists ${testdbname}") if $dbh;
 }
+
+# Install linz-dbe-schema
+sub install_bde_schema
+{
+
+    my ($dbh) = @_;
+
+    # Install dbpatch extension
+    $dbh->do("CREATE SCHEMA IF NOT EXISTS _patches")
+        or die "Could not create schema _patches";
+    $dbh->do("CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches")
+        or die "Could not create extension dbpatch";
+
+
+    # Install PostGIS
+    $dbh->do("CREATE EXTENSION IF NOT EXISTS postgis") or die
+      "Could not create extension postgis";
+
+    system("linz-bde-schema-load '${testdbname}'") == 0
+        or die ("Could not load bde schema in '${testdbname}'");
+}
+
 
 my $test = Test::Cmd->new( prog => $script, workdir => '' );
 $test->run();
@@ -310,49 +332,8 @@ like( $log,
 
 my $PSQLOPTS = "--set ON_ERROR_STOP=1";
 
-# Install table_version extension
-$dbh->do("CREATE EXTENSION IF NOT EXISTS table_version") or die
-  "Could not create extension table_version";
-
-# Install dbpatch extension
-$dbh->do("CREATE SCHEMA IF NOT EXISTS _patches") or die
-  "Could not create schema _patches";
-$dbh->do("CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches") or die
-  "Could not create extension dbpatch";
-
-# Install postgis extension
-$dbh->do("CREATE EXTENSION IF NOT EXISTS postgis") or die
-  "Could not create extension postgis";
-
-# Install linz-dbe-schema
-
-my $bdeschema_sqldir;
-if ( $ENV{'BDESCHEMA_SQLDIR'} )
-{
-  $bdeschema_sqldir = $ENV{'BDESCHEMA_SQLDIR'};
-  die "Cannot ivalid BDESCHEMA_SQLDIR $bdeschema_sqldir: not such directory"
-    unless -d $bdeschema_sqldir;
-}
-else
-{
-  my @trydirs = ( '/usr/share/linz-bde-schema/sql',
-                  '/usr/local/share/linz-bde-schema/sql' );
-  foreach my $d (@trydirs) {
-    if ( -d $d ) {
-      $bdeschema_sqldir = $d;
-      last
-    }
-  }
-  die "Cannot find linz-bde-schema sql dir, try setting BDESCHEMA_SQLDIR\n"
-      . '(tried: ' .  join(', ', @trydirs) . ')'
-      unless $bdeschema_sqldir;
-}
-my @sqlfiles = <$bdeschema_sqldir/*>;
-foreach my $f (@sqlfiles) {
-  my $out = `psql --set ON_ERROR_STOP=1 "${testdbname}" -f $f 2>&1`;
-  unlike( $out, qr/ERROR/, "sourcing $f gives no error" );
-  #print "XXX $f - $out\n";
-}
+# Install linz-dbe-schema, needed for `bde_dba` role
+install_bde_schema $dbh;
 
 # Install local support functions
 
@@ -376,21 +357,11 @@ is( $schemaload->stdout, '',
 is( $? >> 8, 2, 'exit status, schema-load with non-existent db' );
 
 $schemaload->run( args => ${testdbname} );
-# NOTE: table_version already exists only if we load it in previous
-#       steps
 unlike( $schemaload->stderr, qr/ERROR/,
     'stderr correct call has no ERROR printed'
     );
-if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
-{
-    like( $schemaload->stderr, qr/Loading/,
-        'stderr on calling schema-load with correct arg has Loading progress printed' );
-}
-else
-{
-    like( $schemaload->stdout, qr/Loading/,
-        'stdout on calling schema-load with correct arg has Loading progress' );
-}
+like( $schemaload->stderr, qr/Loading/,
+    'stderr on calling schema-load with correct arg has Loading progress printed' );
 unlike( $schemaload->stdout, qr/ERROR/,
     'no ERROR in stdout on calling schema-load with correct arg' );
 is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
@@ -422,6 +393,8 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
         die "Cannot create test database ${testdbname}";
     $dbh = DBI->connect("dbi:Pg:dbname=${testdbname}", "") or
         die "Cannot connect to ${testdbname}";
+    # Install linz-dbe-schema, needed for `bde_dba` role
+    install_bde_schema $dbh;
     $dbh->do(scalar($schemaload->stdout)) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
     system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload2.dump");
