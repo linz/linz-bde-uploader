@@ -425,7 +425,11 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
     $dbh->do(scalar($schemaload->stdout)) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
     system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload2.dump");
-    my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
+    my $diff = diff
+        "$tmpdir/schemaload1.dump",
+        "$tmpdir/schemaload2.dump",
+        { STYLE => "Context" };
+
     is($diff, '', 'schema-load via stdout and db are the same');
 
     $planned_tests += 6;
