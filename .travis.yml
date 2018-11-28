@@ -108,7 +108,6 @@ before_install:
   # Install packages needed for testing
   - cpanm Test::Cmd Test::Exception
   # Install dbpatch PostgreSQL extension
-  - sudo env "PATH=$PATH" pgxn install dbpatch
   - pushd /tmp
   - wget -q -O -
     https://github.com/linz/postgresql-dbpatch/archive/${DBPATCH_BRANCH}.tar.gz
