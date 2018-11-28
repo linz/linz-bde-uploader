@@ -422,7 +422,7 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
         die "Cannot create test database ${testdbname}";
     $dbh = DBI->connect("dbi:Pg:dbname=${testdbname}", "") or
         die "Cannot connect to ${testdbname}";
-    $dbh->do($schemaload->stdout()) or
+    $dbh->do(scalar($schemaload->stdout)) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
     system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
     my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
