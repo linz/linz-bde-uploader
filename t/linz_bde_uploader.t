@@ -401,10 +401,11 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
     unlike( $schemaload->stderr, qr/ERROR/,
         'stderr in stdout call has no ERROR printed'
         );
-    unlike( $schemaload->stderr, qr/Loading/,
-        'stderr in stdout call has Loading printed'
+    like( $schemaload->stderr, qr/Loading/,
+        'stderr in stdout call has Loading printed: '
+        .  $schemaload->stderr
         );
-    unlike( $schemaload->stderr, qr/Loading/,
+    unlike( $schemaload->stdout, qr/Loading/,
         'stdout in stdout call has no Loading printed' );
     like( $schemaload->stdout, qr/BEGIN;/,
         'stdout in stdout call has BEGIN; printed' );
@@ -414,10 +415,14 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
     # to the one created by database loader
     system("pg_dump ${testdbname} > $tmpdir/schemaload1.dump");
 
+    $dbh = DBI->connect("dbi:Pg:dbname=template1", "") or
+        die "Cannot connect to template1 again";
     $dbh->do("drop database ${testdbname}") or
         die "Cannot drop test database ${testdbname}";
     $dbh->do("create database ${testdbname}") or
         die "Cannot create test database ${testdbname}";
+    $dbh = DBI->connect("dbi:Pg:dbname=${testdbname}", "") or
+        die "Cannot connect to ${testdbname}";
     $dbh->do($schemaload->stdout) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
     system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
