@@ -412,7 +412,7 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
 
     # Create new database with stdout loader and check it is equal
     # to the one created by database loader
-    system("pg_dump ${testdbname} > $tmpdir/schemaload1.dump");
+    system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload1.dump");
 
     $dbh = DBI->connect("dbi:Pg:dbname=template1", "") or
         die "Cannot connect to template1 again";
@@ -424,7 +424,7 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
         die "Cannot connect to ${testdbname}";
     $dbh->do(scalar($schemaload->stdout)) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
-    system("pg_dump ${testdbname} > $tmpdir/schemaload2.dump");
+    system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload2.dump");
     my $diff = diff "$tmpdir/schemaload1.dump", "$tmpdir/schemaload2.dump";
     is($diff, '', 'schema-load via stdout and db are the same');
 
