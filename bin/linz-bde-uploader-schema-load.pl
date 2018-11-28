@@ -91,7 +91,7 @@ my $TABLEVERSION_SUPPORTS_STDOUT = (
 
 # Check if dbpatch-loader supports stdout
 my $DBPATCH_SUPPORTS_STDOUT = (
-     system("dbpatch-loader -  > /dev/null 2>&1") == 0
+     system("dbpatch-loader - _patches > /dev/null 2>&1") == 0
 );
 
 my $sql;
