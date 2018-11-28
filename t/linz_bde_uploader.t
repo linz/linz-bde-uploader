@@ -381,8 +381,16 @@ $schemaload->run( args => ${testdbname} );
 unlike( $schemaload->stderr, qr/ERROR/,
     'stderr correct call has no ERROR printed'
     );
-like( $schemaload->stdout, qr/Loading/,
-    'stdout on calling schema-load with correct arg' );
+if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
+{
+    like( $schemaload->stderr, qr/Loading/,
+        'stderr on calling schema-load with correct arg has Loading progress printed' );
+}
+else
+{
+    like( $schemaload->stdout, qr/Loading/,
+        'stdout on calling schema-load with correct arg has Loading progress' );
+}
 unlike( $schemaload->stdout, qr/ERROR/,
     'no ERROR in stdout on calling schema-load with correct arg' );
 is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
