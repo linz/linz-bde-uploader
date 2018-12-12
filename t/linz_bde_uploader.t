@@ -72,7 +72,7 @@ sub install_bde_schema
     $dbh->do("CREATE EXTENSION IF NOT EXISTS postgis") or die
       "Could not create extension postgis";
 
-    system("linz-bde-schema-load '${testdbname}'") == 0
+    system("linz-bde-schema-load --revision '${testdbname}'") == 0
         or die ("Could not load bde schema in '${testdbname}'");
 }
 
