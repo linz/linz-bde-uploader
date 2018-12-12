@@ -12,6 +12,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ### Enhanced
 - Improve documentation of `bde_TablesAffected` (#173)
 - Add stdout support in `linz-bde-schema-load` (#175)
+- Add support for `table_version` 1.6.0 (#180)
 
 ## [2.4.0] - 2017-12-11
 ### Changed
