@@ -4,7 +4,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [2.5.1dev] - 2019-MM-DD
 ### Fixed
-- Race condition in automated test
+...
 
 ## [2.5.0] - 2019-01-10
 ### Changed
