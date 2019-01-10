@@ -366,6 +366,12 @@ unlike( $schemaload->stdout, qr/ERROR/,
     'no ERROR in stdout on calling schema-load with correct arg' );
 is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
 
+sub dumpdb
+{
+    my ($dbname,$out) = @_;
+    system("pg_dump --schema-only ${dbname} | sed 's/^Installed: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}/Installed: YYYY-MM-DD HH:MM/' > ${out}");
+}
+
 if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
 {
     $schemaload->run( args => '-' );
@@ -383,7 +389,7 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
 
     # Create new database with stdout loader and check it is equal
     # to the one created by database loader
-    system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload1.dump");
+    dumpdb("${testdbname}", "${tmpdir}/schemaload1.dump");
 
     $dbh = DBI->connect("dbi:Pg:dbname=template1", "") or
         die "Cannot connect to template1 again";
@@ -397,7 +403,7 @@ if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
     install_bde_schema $dbh;
     $dbh->do(scalar($schemaload->stdout)) or
         die "Errors sending schema-loader stdout to test database ${testdbname}";
-    system("pg_dump --schema-only ${testdbname} > $tmpdir/schemaload2.dump");
+    dumpdb("${testdbname}", "${tmpdir}/schemaload2.dump");
     my $diff = diff
         "$tmpdir/schemaload1.dump",
         "$tmpdir/schemaload2.dump",
