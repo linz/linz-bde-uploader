@@ -1,3 +1,9 @@
+linz-bde-uploader (2.5.0-1linz~trusty1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Thu, 10 Jan 2019 14:01:40 +0100
+
 linz-bde-uploader (2.4.0-3linz~trusty1) trusty; urgency=medium
 
   * Reordering of PostgreSQL dependencies alternatives
