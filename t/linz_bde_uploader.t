@@ -369,7 +369,7 @@ is( $? >> 8, 0, 'exit status, schema-load with correct arg' );
 sub dumpdb
 {
     my ($dbname,$out) = @_;
-    system("pg_dump --schema-only ${dbname} | sed 's/^Installed: [0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\} [0-9]\\{2\\}:[0-9]\\{2\\}/Installed: YYYY-MM-DD HH:MM/' > ${out}");
+    system("pg_dump --schema-only ${dbname} | sed 's/^Installed: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}/Installed: YYYY-MM-DD HH:MM/' > ${out}");
 }
 
 if ( $ENV{'STDOUT_SCHEMA_LOADING_SUPPORTED'} )
