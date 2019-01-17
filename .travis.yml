@@ -10,34 +10,10 @@ matrix:
   # Oldest supported versions
   - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.12
-    addons:
-      postgresql: 9.3
-      apt:
-        packages:
-        - postgresql-9.3
-        - postgresql-9.3-pgtap
-        - postgresql-server-dev-9.3
-        - postgresql-9.3-postgis-2.2
-        - postgresql-9.3-postgis-2.2-scripts
-        - pgxnclient
-        - debhelper
-        - fakeroot
 
   # Found in bde-processor-deployment
   - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
     perl: 5.18
-    addons:
-      postgresql: 9.3
-      apt:
-        packages:
-        - postgresql-9.3
-        - postgresql-9.3-pgtap
-        - postgresql-server-dev-9.3
-        - postgresql-9.3-postgis-2.2
-        - postgresql-9.3-postgis-2.2-scripts
-        - pgxnclient
-        - debhelper
-        - fakeroot
 
   # Found on Debian GNU/Linux 8.8 (jessie)
   - env: PGSQL=9.4 PGIS=2.3 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
@@ -75,6 +51,9 @@ before_install:
     debhelper
     fakeroot
   - pg_config --version
+  - export PATH=/usr/lib/postgresql-${PGSQL}/bin:$PATH
+  - sudo -u postgres env "PATH=$PATH" createuser -s "$USER"
+  - sudo -u postgres env "PATH=$PATH" createuser -s root
   # Install packages needed for testing
   - cpanm Test::Cmd Test::Exception
   # Install dbpatch PostgreSQL extension
