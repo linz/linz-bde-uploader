@@ -103,6 +103,22 @@ matrix:
         - debhelper
         - fakeroot
 
+  # Found on Ubuntu 18.04
+  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=master DBPATCH_BRANCH=master STDOUT_SCHEMA_LOADING_SUPPORTED=1
+    perl: 5.26
+    addons:
+      postgresql: 10
+      apt:
+        packages:
+        - postgresql-10
+        - postgresql-10-pgtap
+        - postgresql-server-dev-10
+        - postgresql-10-postgis-2.4
+        - postgresql-10-postgis-2.4-scripts
+        - pgxnclient
+        - debhelper
+        - fakeroot
+
 before_install:
   - pg_config --version
   # Install packages needed for testing
