@@ -1,3 +1,9 @@
+linz-bde-uploader (2.5.0-1linz~trusty2) trusty; urgency=medium
+
+  * Adding dependency on PostgreSQL 10 and 11 packages
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Mon, 28 Jan 2019 17:08:46 +0100
+
 linz-bde-uploader (2.5.0-1linz~trusty1) trusty; urgency=medium
 
   * New upstream version
