@@ -2,10 +2,6 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.5.1dev] - 2019-MM-DD
-### Fixed
-...
-
 ## [2.5.0] - 2019-01-10
 ### Changed
 - `linz_bd_uploader` now exits with a success code when no datasets
