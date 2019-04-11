@@ -119,6 +119,7 @@ before_install:
   - wget -q -O -
     https://github.com/linz/postgresql-tableversion/archive/${TABLEVERSION_BRANCH}.tar.gz
     | tar vxzf - && cd postgresql-tableversion-${TABLEVERSION_BRANCH}
+  - make
   - sudo env "PATH=$PATH" make install
   - popd
   # Install pgtap PostgreSQL extension
