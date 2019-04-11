@@ -729,7 +729,7 @@ BEGIN
                             v_remaining, p_bde_table;
                         v_failed := true;
                     END IF;
-                    PERFORM bde_control.pg_sleep(1);
+                    PERFORM pg_catalog.pg_sleep(1);
                     v_remaining := v_remaining-1;
                     CONTINUE;
                 END IF;
