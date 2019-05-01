@@ -120,6 +120,13 @@ if($apply_level0_inc && !$apply_level0)
     $apply_level0 = 1;
 }
 
+if($apply_level0_inc && $rebuild)
+{
+    # See https://github.com/linz/linz-bde-uploader/issues/116
+    print STDERR "-full-incremental and -rebuild are contraddictory, use one or the other\n";
+    help(0, *STDERR, 1);
+}
+
 if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
 {
     # NOTE: $apply_level0_inc implies $apply_level0
