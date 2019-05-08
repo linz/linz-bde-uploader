@@ -2,7 +2,7 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.5.1dev] - 2019-MM-DD
+## [2.5.1] - 2019-05-08
 ### Fixed
 - Race condition in automated test
 - Full upload error runnin `pg_sleep` (#194)
