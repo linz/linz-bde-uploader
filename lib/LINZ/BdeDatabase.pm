@@ -652,7 +652,7 @@ sub _setupFunctions
         next if ! $name;
         $name =~ s/^bde_//i;
 
-        my $sqlf = $func.'('.join(",",("?")x$nparam).')';
+        my $sqlf = $dbschema.'.'.$func.'('.join(",",("?")x$nparam).')';
         $sqlf = '* FROM '.$sqlf if ($returntype eq 'RECORD' || $returntype eq 'TABLE');
         $sqlf = 'SELECT '.$sqlf;
 
