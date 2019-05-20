@@ -638,7 +638,7 @@ sub _setupFunctions
     return if $funcsLoaded;
 
     my $dbschema = $self->{_dbschema};
-    my $sql = "SELECT * FROM bde_GetBdeFunctions(?)";
+    my $sql = 'SELECT * FROM '.$dbschema.'.bde_GetBdeFunctions(?)';
     my $sth = $self->_dbh->prepare($sql) || die $self->_dbh->errstr;
     $sth->execute($dbschema);
 
