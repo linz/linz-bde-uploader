@@ -5,6 +5,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [2.6.0dev] - YYYY-MM-DD
 - `linz_bde_uploader` will fail if both -rebuild and -full-incremental
   are given (#116)
+- Qualify calls to `bde_control` database functions for improved security
 
 ## [2.5.0] - 2019-01-10
 ### Changed
