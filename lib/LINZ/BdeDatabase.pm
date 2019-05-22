@@ -638,7 +638,7 @@ sub _setupFunctions
     return if $funcsLoaded;
 
     my $dbschema = $self->{_dbschema};
-    my $sql = "SELECT * FROM bde_GetBdeFunctions(?)";
+    my $sql = 'SELECT * FROM '.$dbschema.'.bde_GetBdeFunctions(?)';
     my $sth = $self->_dbh->prepare($sql) || die $self->_dbh->errstr;
     $sth->execute($dbschema);
 
@@ -652,7 +652,7 @@ sub _setupFunctions
         next if ! $name;
         $name =~ s/^bde_//i;
 
-        my $sqlf = $func.'('.join(",",("?")x$nparam).')';
+        my $sqlf = $dbschema.'.'.$func.'('.join(",",("?")x$nparam).')';
         $sqlf = '* FROM '.$sqlf if ($returntype eq 'RECORD' || $returntype eq 'TABLE');
         $sqlf = 'SELECT '.$sqlf;
 
