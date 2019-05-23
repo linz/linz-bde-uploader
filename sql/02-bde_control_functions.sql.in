@@ -384,7 +384,7 @@ BEGIN
         SET status = 'E'
         WHERE id = p_upload;
 
-        RAISE INFO 'Expired lock deleted automatically';
+        RAISE NOTICE 'Expired lock deleted automatically';
     END IF;
 
     -- Release the lock ids on any tables locked by this upload
@@ -1049,7 +1049,7 @@ BEGIN
         bde_control.bde_EventDuration(p_upload, p_dataset || ' ' || p_bde_table )
         );
 
-    RAISE INFO 'Table % completed: % insertions, % updates, % deletions',
+    RAISE NOTICE 'Table % completed: % insertions, % updates, % deletions',
         p_bde_table, p_nins, p_nupd, p_ndel;
     RETURN 1;
 END
@@ -1603,7 +1603,7 @@ BEGIN
     -- what stage the update has got to.
 
     v_task := 'Setting up L5 update';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     -- A good time to ensure that the lock doesn't get revoked
 
@@ -1644,7 +1644,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
     -- If this works then don't need to use distinct with insert.
 
     v_task := 'Indexing working table';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     v_distinct := 'DISTINCT';
     BEGIN
@@ -1673,7 +1673,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
     v_nins     := 0;
 
     v_task := 'Preparing incremental change table';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     PERFORM bde_control._bde_PrepareChangeTable(p_upload,v_changetable);
 
@@ -1684,7 +1684,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
     -- This should make subsequent processing faster.
 
     v_task := 'Selecting incremental records';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     DROP TABLE IF EXISTS _tmp_inc_change;
 
@@ -1733,7 +1733,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         END IF;
 
         v_task := 'Performing consistency checks of incremental data';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         v_rcount := bde_control._bde_FixChangedIncKeyRecords(
             v_bdetable, v_tmptable, v_key_column
@@ -1745,7 +1745,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         END IF;
 
         v_task := 'Creating incremental row update actions';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         PERFORM bde_control._bde_CreateIncDeletes(v_bdetable, v_tmptable, v_key_column);
         PERFORM bde_control._bde_CreateIncInserts(v_bdetable, v_tmptable, v_key_column);
@@ -1757,7 +1757,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         SELECT count(*) INTO v_nnullupd FROM _tmp_inc_actions WHERE action = '0';
 
         v_task := 'Applying incremental row updates';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         SELECT * FROM table_version._ver_apply_changes(
             v_bdetable, v_tmptable, '_tmp_inc_actions', v_key_column
@@ -1766,13 +1766,13 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
 
         DROP TABLE IF EXISTS _tmp_inc_actions;
     ELSE
-        RAISE INFO 'There are no changes to apply for %', p_table_name;
+        RAISE NOTICE 'There are no changes to apply for %', p_table_name;
     END IF;
 
     -- Record the update that has been applied
 
     v_task := 'Recording update statistics';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     PERFORM bde_control._bde_RecordDatasetLoaded(
         p_upload,
@@ -1791,7 +1791,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
     -- Remove the scratch table
 
     v_task := 'Dropping temp tables';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     EXECUTE 'DROP TABLE ' || v_tmptable;
     DROP TABLE _tmp_inc_change;
@@ -1845,7 +1845,7 @@ BEGIN
       p_upload, p_table_name, p_bdetime, p_details, p_incremental;
 
     v_task := 'Setting up L0 update';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     -- A good time to ensure that the lock doesn't get revoked
     PERFORM bde_control._bde_RefreshLock(p_upload);
@@ -1879,7 +1879,7 @@ BEGIN
     -- etc) from the bde table to the temp table
 
     v_task := 'Copying schema information to temp table';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     IF p_incremental THEN
         PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,v_bdetable,v_tmptable);
@@ -1905,12 +1905,12 @@ BEGIN
 
     v_task := 'Analyzing temp table ' || v_tmptable;
 
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
     EXECUTE 'ANALYZE ' || v_tmptable;
 
     IF p_incremental THEN
         v_task := 'Applying table differences';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
         SELECT
             number_inserts,
             number_updates,
@@ -1937,24 +1937,24 @@ BEGIN
                 RAISE WARNING 'level 0 incremental applied % deletes for % in %',
                     v_ndel, p_table_name, v_dataset;
             END IF;
-            RAISE INFO 'Checking table count';
+            RAISE NOTICE 'Checking table count';
             PERFORM bde_control.bde_CheckTableCount(p_upload, p_table_name);
         END IF;
 
-        RAISE INFO 'Dropping table %', v_tmptable;
+        RAISE NOTICE 'Dropping table %', v_tmptable;
         EXECUTE 'DROP TABLE ' || v_tmptable;
     ELSE
         -- Get dependent object SQL
 
         v_task := 'Retrieving dependent object information';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         v_depsql := bde_control._bde_GetDependentObjectSql(p_upload,v_bdetable);
 
         -- Is this too expensive on pg?
 
         v_task := 'Counting current and new version of table';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
         EXECUTE 'SELECT COUNT(*) FROM ' || v_tmptable INTO v_nins;
@@ -1963,7 +1963,7 @@ BEGIN
         -- Replace the BDE table with the new version
 
         v_task := 'Dropping current version of the table ' || v_bdetable;
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         PERFORM bde_control._bde_GetExclusiveLock(p_upload,v_bdetable);
 
@@ -1978,7 +1978,7 @@ BEGIN
         EXECUTE v_sql;
 
         v_task := 'Renaming the new version to replace the current version';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
         v_sql := 'ALTER TABLE ' || v_tmptable || ' SET SCHEMA ' || v_bde_schema;
         RAISE DEBUG 'Moving % into % schema: %', v_tmptable, v_bde_schema, v_sql;
         EXECUTE v_sql;
@@ -1986,7 +1986,7 @@ BEGIN
         -- Restore the dependent objects
 
         v_task := 'Restoring dependent objects';
-        RAISE INFO '%', v_task;
+        RAISE NOTICE '%', v_task;
 
         -- TODO: avoid the call to bde_control.bde_ExecuteSqlArray,
         --       not really needed as we are catching
@@ -1999,7 +1999,7 @@ BEGIN
     -- Record the update that has been applied
 
     v_task := 'Recording the upload';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
     PERFORM bde_control._bde_RecordDatasetLoaded(
         p_upload,
         p_table_name,
@@ -2530,7 +2530,7 @@ BEGIN
     FOR v_sql IN select * from unnest(p_sqlarray)
     LOOP
         BEGIN
-            RAISE INFO 'In task %, executing SQL: %', p_task, v_sql;
+            RAISE NOTICE 'In task %, executing SQL: %', p_task, v_sql;
             EXECUTE v_sql;
         EXCEPTION
             WHEN others THEN
@@ -2565,7 +2565,7 @@ BEGIN
     -- Apply each of the constraints
 
     v_task := 'Applying constraints to temp table';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
     v_sql := '';
 
     FOR v_sql IN
@@ -2573,7 +2573,7 @@ BEGIN
         FROM   pg_constraint
         WHERE  conrelid = p_bdetable
     LOOP
-        RAISE INFO 'Adding constraint %', v_sql;
+        RAISE NOTICE 'Adding constraint %', v_sql;
         v_sql := 'ALTER TABLE ' || p_tmptable || ' ADD CONSTRAINT ' || v_sql;
         EXECUTE v_sql;
         v_sql := '';
@@ -2582,7 +2582,7 @@ BEGIN
     -- And each index
 
     v_task := 'Generating indexes for temp table';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     FOR v_sql IN
         SELECT pg_get_indexdef(indexrelid)
@@ -2598,7 +2598,7 @@ BEGIN
             v_sql,E'(^.*\\sON\\s).*?(\\sUSING\\s.*$)',E'\\1' ||
             p_tmptable::text || E'\\2'
         );
-        RAISE INFO 'Creating index %', v_sql;
+        RAISE NOTICE 'Creating index %', v_sql;
         EXECUTE v_sql;
         v_sql := '';
     END LOOP;
@@ -2606,14 +2606,14 @@ BEGIN
     -- Copy columns statistics information
 
     v_task := 'Copying column statistics information';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
 
     -- Copy ownership and access rights
 
     v_task := 'Copying ownership and access information';
-    RAISE INFO '%', v_task;
+    RAISE NOTICE '%', v_task;
 
     PERFORM bde_control.bde_ExecuteSqlArray(p_upload,v_task,
         bde_control._bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
@@ -3010,7 +3010,7 @@ BEGIN
 
     v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
 
-    RAISE INFO 'Completing dataset revision for dataset %', v_dataset;
+    RAISE NOTICE 'Completing dataset revision for dataset %', v_dataset;
 
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
@@ -3049,7 +3049,7 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload,'_revision', NULL);
 
-    RAISE INFO 'Finished completing dataset revision for dataset %', v_dataset;
+    RAISE NOTICE 'Finished completing dataset revision for dataset %', v_dataset;
 
     RETURN v_status;
 END;
