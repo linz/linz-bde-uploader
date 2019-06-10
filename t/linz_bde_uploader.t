@@ -21,7 +21,7 @@ use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
 
-my $planned_tests = 275;
+my $planned_tests = 280;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -1166,5 +1166,29 @@ is( $res->[4]{'lin_id'}, '20000000', 'crs_parcel_bndry[4].lin_id' );
 is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
 is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 
-close($log_fh);
+# Test runs with -verbose
+
+# Add empty log_settings configuration
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh <<"EOF";
+log_settings <<END_OF_LOG_SETTINGS
+END_OF_LOG_SETTINGS
+EOF
+close($cfg_fh);
+
+truncate $log_fh, 0;
+$test->run( args => "-full -verbose -c ${tmpdir}/cfg1" );
+is( $? >> 8, 0, 'exit status, -verbose');
+@logged = <$log_fh>;
+$log = join '', @logged;
+is( $log, '', 'Log file unexpectedly used: ' . $log );
+is( clean_stderr($test->stderr), '', 'stderr, -verbose');
+like( $test->stdout, qr/No dataset updates to apply/, 'stdout, -verbose');
+my @lines;
+@lines = grep(/No dataset updates to apply/, split('\n', $test->stdout));
+is( scalar(@lines), 1,
+    'Log lines matching /No dataset updates to apply/ in stdout on -verbose');
+
+
 done_testing($planned_tests);
