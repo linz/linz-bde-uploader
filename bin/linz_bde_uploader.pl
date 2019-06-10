@@ -171,13 +171,16 @@ try
     };
 
     my $cfg = new LINZ::Config($options);
+    my $log_config;
 
     # turn off config logging if doing a dry run.
-    my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
+    my $log_layout_string = "%d %p> %F{1}:%L - %m%n";
+    my $layout = Log::Log4perl::Layout::PatternLayout->new($log_layout_string);
     if ($dry_run)
     {
         Log::Log4perl->easy_init( { level    => $INFO,
-                                    file     => "STDOUT" } );
+                                    file     => "STDOUT",
+                                    layout   => $log_layout_string} );
         $logger = get_logger("");
     }
     else
@@ -196,7 +199,8 @@ try
         else
         {
             Log::Log4perl->easy_init( { level    => $INFO,
-                                        file     => "STDOUT" } );
+                                        file     => "STDOUT",
+                                        layout   => $log_layout_string} );
             $logger = get_logger("");
         }
 
@@ -215,7 +219,7 @@ try
         }
     }
 
-    if($verbose)
+    if($verbose and $log_config and not $dry_run)
     {
         my $stdout_appender = Log::Log4perl::Appender->new(
             "Log::Log4perl::Appender::Screen",
