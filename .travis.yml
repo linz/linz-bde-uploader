@@ -1,6 +1,6 @@
 # See https://docs.travis-ci.com/
 
-#os: trusty
+dist: bionic
 language: perl
 
 matrix:
