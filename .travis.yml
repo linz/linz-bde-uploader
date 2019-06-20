@@ -3,40 +3,20 @@
 dist: bionic
 language: perl
 
+global:
+
+    - STDOUT_SCHEMA_LOADING_SUPPORTED: 1
+
 matrix:
 
   include:
 
-  # Oldest supported versions
-  - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
-    perl: 5.12
-
-  # Found in bde-processor-deployment
-  - env: PGSQL=9.3 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
-    perl: 5.18
-
-  # Found on Debian GNU/Linux 8.8 (jessie)
-  - env: PGSQL=9.4 PGIS=2.3 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
-    perl: 5.20
-
-  # Found on Ubuntu 16.04.3 LTS (xenial)
-  - env: PGSQL=9.5 PGIS=2.2 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
-    perl: 5.22
-
-  # Found on Debian GNU/Linux 8.5 (jessie-backports)
-  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=release-1.5 DBPATCH_BRANCH=release-1.3
-    perl: 5.20
-
-  # Found on Ubuntu 17.04
-  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=master DBPATCH_BRANCH=master STDOUT_SCHEMA_LOADING_SUPPORTED=1
-    perl: 5.24
-
   # Found on Ubuntu 18.04 (bionic)
-  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=release-1.6 DBPATCH_BRANCH=release-1.4 STDOUT_SCHEMA_LOADING_SUPPORTED=1
+  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=release-1.6 DBPATCH_BRANCH=release-1.4
     perl: 5.26
 
   # Found on Ubuntu 18.04 (bionic)
-  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=master DBPATCH_BRANCH=master STDOUT_SCHEMA_LOADING_SUPPORTED=1
+  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=master DBPATCH_BRANCH=master
     perl: 5.26
 
 before_install:
