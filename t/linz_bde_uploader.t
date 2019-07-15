@@ -21,13 +21,13 @@ use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
 
-my $planned_tests = 280;
+my $planned_tests = 293;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
 my $sqldir = "sql";
 
-my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 1);
+my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 0);
 my $logfname = ${tmpdir}.'/log';
 #print "XXX ${tmpdir}\n";
 
@@ -1013,7 +1013,7 @@ rename($level0ds3, $level5ds1)
 # Add two records
 # NOTE: these need to be listed in t/data/xaud.crs
 open(my $testfileh, ">>", "$level5ds1/test_file.crs")
-    or die "Cannot open $level0ds1/test_file.crs for append";
+    or die "Cannot open $level5ds1/test_file.crs for append";
 print $testfileh "4457329|4|10000000|Y|300|\n";
 print $testfileh "4457330|5|20000000|Y|400|\n";
 close($testfileh);
@@ -1165,6 +1165,58 @@ is( $res->[4]{'sequence'}, '5', 'crs_parcel_bndry[4].sequence' );
 is( $res->[4]{'lin_id'}, '20000000', 'crs_parcel_bndry[4].lin_id' );
 is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
 is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
+
+# Test upload of a file containing utf8 chars
+
+open($cfg_fh, ">>", "${tmpdir}/tables.conf")
+  or die "Can't append to ${tmpdir}/tables.conf: $!";
+print $cfg_fh <<"EOF";
+TABLE utf8 key=id row_tol=0.20,0.95 files test_utf8_file
+EOF
+close($cfg_fh);
+
+rename($level5ds1, $level0ds3)
+  or die "Cannot rename $level5ds1 to $level0ds3: $!";
+
+copy($datadir.'/utf8.crs', $level0ds3.'/test_utf8_file.crs')
+    or die "Copy failed $datadir/ to $level0ds3/ : $!";
+
+$dbh->do("CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar)") or die
+      "Could not create bde.utf8 table";
+
+truncate $log_fh, 0;
+$test->run( args => "-full -config-path ${tmpdir}/cfg1 -o" );
+$stderr = $test->stderr;
+$stderr =~ s/WARNING:.*dev.stdout//;
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_utf8_file');
+is( $test->stdout, '', 'stdout, success upload test_utf8_file');
+is( $? >> 8, 0, 'exit status, success upload test_utf8_file');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_utf8_file');
+
+# check actual table content
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 4, 'utf8 has 4 entries' );
+
+is( $res->[0]{'id'}, '1', 'utf8[0].id' );
+is( $res->[0]{'des'}, '♯', 'utf8[0].des' );
+
+is( $res->[1]{'id'}, '2', 'utf8[1].id' );
+is( $res->[1]{'des'}, '♭', 'utf8[1].des' );
+
+is( $res->[2]{'id'}, '3', 'utf8[2].id' );
+is( $res->[2]{'des'}, '♮', 'utf8[2].des' );
+
+is( $res->[3]{'id'}, '4', 'utf8[3].id' );
+is( $res->[3]{'des'}, '–', 'utf8[3].des' );
+
 
 # Test runs with -verbose
 
