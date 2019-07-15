@@ -1,0 +1,17 @@
+HEDR	 2.0.0
+SOFTWARE cbe_b30 V1.0.1
+SCHEMA	 3.19.14
+USER	 crs_bde
+START	 2019-06-01 20:51:45
+END	 2019-07-06 20:57:38
+SQL	 SELECT * FROM utf8
+TABLE	 utf8
+COLUMN	 id                           int NULL
+COLUMN	 des                          varchar NULL
+DESC
+SIZE          312
+{CRS-DATA}
+1|♯|
+2|♭|
+3|♮|
+4|–|
