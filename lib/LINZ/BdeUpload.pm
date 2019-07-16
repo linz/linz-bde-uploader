@@ -1193,6 +1193,7 @@ sub _OpenDataPipe
 sub _OpenDataFile
 {
     my($self,$dataset,$reader) = @_;
+    my $ret;
     if ( $reader->can('pipe') )
     {
         # pipe method was added in linz-bde-perl 1.1.0
@@ -1200,15 +1201,17 @@ sub _OpenDataFile
         # TODO: save logfile somewhere ?
         #       it'll keep being written to while
         #       streaming !
-        return $fh;
+        $ret = $fh;
     }
     else
     {
         my $tmpfile = $self->BuildTempFile($dataset,$reader);
         open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
         unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
-        return $tabledatafh;
+        $ret = $tabledatafh;
     }
+    $ret->binmode(":encoding(UTF-8)");
+    return $ret;
 }
 
 1;
