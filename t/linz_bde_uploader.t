@@ -20,6 +20,7 @@ use Text::Diff;
 use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
+use utf8;
 
 my $planned_tests = 293;
 
@@ -27,7 +28,7 @@ my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
 my $sqldir = "sql";
 
-my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 0);
+my $tmpdir = tempdir( '/tmp/linz_bde_uploader.t-data-XXXX', CLEANUP => 1);
 my $logfname = ${tmpdir}.'/log';
 #print "XXX ${tmpdir}\n";
 
