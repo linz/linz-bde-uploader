@@ -2,7 +2,7 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.5.2-dev] - 2019-07-DD
+## [2.5.2] - 2019-07-17
 ### Fixed
 - UTF8 characters encoding (#210)
 
