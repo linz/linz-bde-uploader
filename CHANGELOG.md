@@ -10,6 +10,15 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Avoid duplicated stdout messages on -v and empty `log_settings` in
   config file (#204)
 
+## [2.5.2] - 2019-07-17
+### Fixed
+- UTF8 characters encoding (#210)
+
+## [2.5.1] - 2019-05-08
+### Fixed
+- Race condition in automated test
+- Full upload error runnin `pg_sleep` (#194)
+
 ## [2.5.0] - 2019-01-10
 ### Changed
 - `linz_bd_uploader` now exits with a success code when no datasets
