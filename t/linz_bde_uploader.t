@@ -20,8 +20,9 @@ use Text::Diff;
 use File::Temp qw/ tempdir /;
 use File::Copy qw/ copy /;
 use DBI;
+use utf8;
 
-my $planned_tests = 275;
+my $planned_tests = 288;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -166,6 +167,7 @@ close($cfg_fh);
 
 # db_connection is now required now..
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, no db_connection' );
 is( $test->stdout, '', 'stdout, no db_connection' );
@@ -187,6 +189,7 @@ close($cfg_fh);
 
 # Attempts to connect to non-existing database
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, nonexistent db');
 is( $test->stdout, '', 'stdout, nonexistent db');
@@ -201,6 +204,7 @@ like( $log,
 
 # Dry run logs to stdout instead of logfile
 
+truncate $log_fh, 0;
 $test->run( args => "-full -dry-run -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, nonexistent db, dry-run');
 like( $test->stdout,
@@ -213,6 +217,7 @@ is( @logged, 0,
 
 # Dry run can also be specified with -d
 
+truncate $log_fh, 0;
 $test->run( args => "-full -d -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, nonexistent db, dry-run (-d)');
 like( $test->stdout,
@@ -233,6 +238,7 @@ close($cfg_fh);
 
 # -config-extension (or -x) adds an override configuration
 
+truncate $log_fh, 0;
 $test->run( args => "-full -d -config-path ${tmpdir}/cfg1 -config-extension ext" );
 is( $test->stderr, '', 'stderr, nonexist_override db, dry-run');
 like( $test->stdout,
@@ -245,6 +251,7 @@ is( @logged, 0,
 
 # -config-extension can also be passed as -x
 
+truncate $log_fh, 0;
 $test->run( args => "-full -d -config-path ${tmpdir}/cfg1 -x ext" );
 is( $test->stderr, '', 'stderr, nonexist_override db, dry-run (-x)');
 like( $test->stdout,
@@ -267,6 +274,7 @@ close($cfg_fh);
 
 # Run with ability to connect to database
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, empty db');
 is( $test->stdout, '', 'stdout, empty db');
@@ -298,6 +306,7 @@ END_OF_LOG_SETTINGS
 EOF
 close($cfg_fh);
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1 -x ext" );
 like( $test->stderr,
     qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
@@ -316,6 +325,7 @@ close($cfg_fh);
 
 # Run again, should have less lines logged now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, empty db (terse)');
 is( $test->stdout, '', 'stdout, empty db (terse)');
@@ -425,6 +435,7 @@ is( @{$res}, 0, 'bde_control.upload is empty' );
 
 # Run with prepared database, it's missing bde_repository now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing bde_repository');
 is( $test->stdout, '', 'stdout, missing bde_repository');
@@ -447,6 +458,7 @@ close($cfg_fh);
 
 # Run with prepared database, it's missing level0 dir now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing level0 dir');
 is( $test->stdout, '', 'stdout, missing level0 dir');
@@ -474,6 +486,7 @@ mkdir $level0dir or die "Cannot create $level0dir";
 
 # Run with prepared database, it's missing available uploads now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, no uploads available');
 is( $test->stdout, '', 'stdout, no uploads available');
@@ -493,6 +506,7 @@ open($cfg_fh, ">>", "${tmpdir}/cfg1")
 print $cfg_fh "application_name TEST_APP_NAME\n";
 close($cfg_fh);
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, no uploads available, application_name');
 is( $test->stdout, '', 'stdout, no uploads available, application_name');
@@ -521,6 +535,7 @@ my $datadir = "t/data";
 
 # Missing table.conf requested test_file now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing test_file');
 is( $test->stdout, '', 'stdout, missing test_file');
@@ -546,6 +561,7 @@ copy($datadir.'/pab1.crs', $level0ds1.'/test_file.crs') or die "Copy failed: $!"
 
 # Missing test_table table in database
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing test_table');
 is( $test->stdout, '', 'stdout, missing test_table');
@@ -595,6 +611,7 @@ sub clean_stderr
 
 # This should supposedly be first successful upload
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 my $stderr = $test->stderr;
 $stderr =~ s/WARNING:.*dev.stdout//;
@@ -666,6 +683,7 @@ is( $res->[0]{'nnullupdate'}, '0', 'upload_stats[2].nnullupdate' );
 
 # Run full upload again - no updates to apply this time (by date)
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, success upload test_file (2)');
 is( $test->stdout, '', 'stdout, success upload test_file (2)');
@@ -684,6 +702,7 @@ rename($level0ds1, $level0ds2)
 
 # Run full upload again, should find the new dataset now
 
+truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (3)');
 is( $test->stdout, '', 'stdout, success upload test_file (3)');
@@ -721,6 +740,7 @@ rename($level0ds2, $level0ds3)
 # Run full upload again but only up to -before any dataset is
 # available
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170625" );
 is( $test->stderr, '', 'stderr, no uploads available (4)');
 is( $test->stdout, '', 'stdout, no uploads available (4)');
@@ -733,6 +753,7 @@ like( $log,
 
 # Now run full upload again but -before including available dataset
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170701" );
 is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (4)');
 is( $test->stdout, '', 'stdout, success upload test_file (4)');
@@ -756,6 +777,7 @@ is( $res->[0]{'status'}, 'C', 'upload[4].status' );
 # Run full upload again, using -b for -before
 # No new data to upload
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701" );
 is( $test->stderr, '', 'stderr, no dataset updates to apply(5)');
 is( $test->stdout, '', 'stdout, no dataset updates to apply (5)');
@@ -769,6 +791,7 @@ like( $log,
 # Run again but with -rebuild
 # No new data to upload
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -rebuild" );
 is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (5)');
 is( $test->stdout, '', 'stdout, success upload test_file (5)');
@@ -797,6 +820,7 @@ $res = $dbh->do(
 
 # -rebuild can be also passed as -r
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -r" );
 is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (6)');
 is( $test->stdout, '', 'stdout, success upload test_file (6)');
@@ -867,6 +891,7 @@ is( $res->[0]{'status'}, 'A', 'upload[7].status' );
 
 # Attempt to run a new job now
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r" );
 is( $test->stderr, '', 'stderr, another job is already active (8)');
 is( $test->stdout, '', 'stdout, another job is already active (8)');
@@ -879,6 +904,7 @@ like( $log,
 
 # Override lock to run a new job now
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -override-locks" );
 is( clean_stderr($test->stderr), '', 'stderr, override-locks (8)');
 is( $test->stdout, '', 'stdout, override-locks (8)');
@@ -904,6 +930,7 @@ $res = $dbh->do("UPDATE bde_control.upload set status = 'A' where id = 8")
 
 # override-locks can be passed as -o too
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
 is( clean_stderr($test->stderr), '', 'stderr, override-locks (9)');
 is( $test->stdout, '', 'stdout, override-locks (9)');
@@ -931,6 +958,7 @@ print $cfg_fh "SELECT bde_control.bde_SetOption({{id}},'keep_temp_schema','yes')
 print $cfg_fh "EOT\n";
 close($cfg_fh);
 
+truncate $log_fh, 0;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
 is( $? >> 8, 0, 'exit status, keep_temp_schema (10)');
 is( clean_stderr($test->stderr), '', 'stderr, keep_temp_schema (10)' );
@@ -966,6 +994,7 @@ is( $res->[0]{'status'}, 'C', 'upload[10].status' );
 my $level5dir = $repodir . '/level_5';
 mkdir $level5dir or die "Cannot create $level5dir";
 
+truncate $log_fh, 0;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (no dataset)');
 is( $test->stdout, '', 'stdout, -incremental (no dataset)');
@@ -985,7 +1014,7 @@ rename($level0ds3, $level5ds1)
 # Add two records
 # NOTE: these need to be listed in t/data/xaud.crs
 open(my $testfileh, ">>", "$level5ds1/test_file.crs")
-    or die "Cannot open $level0ds1/test_file.crs for append";
+    or die "Cannot open $level5ds1/test_file.crs for append";
 print $testfileh "4457329|4|10000000|Y|300|\n";
 print $testfileh "4457330|5|20000000|Y|400|\n";
 close($testfileh);
@@ -999,6 +1028,7 @@ system('sed', '-i',
 
 # Run incremental upload w/out known changetable in config
 
+truncate $log_fh, 0;
 $test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (missing changetable)');
 is( $test->stdout, '', 'stdout, -incremental (missing changetable)');
@@ -1030,6 +1060,7 @@ close($cfg_fh);
 
 # Run incremental upload w/out changetable file
 
+truncate $log_fh, 0;
 $test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (no changetable file)');
 is( $test->stdout, '', 'stdout, -incremental (no changetable file)');
@@ -1056,6 +1087,7 @@ copy($datadir.'/xaud.crs', $level5ds1.'/test_changeset.crs') or die "Copy failed
 
 # Run incremental upload
 
+truncate $log_fh, 0;
 $test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (13)');
 is( $test->stdout, '', 'stdout, -incremental (13)');
@@ -1135,5 +1167,55 @@ is( $res->[4]{'lin_id'}, '20000000', 'crs_parcel_bndry[4].lin_id' );
 is( $res->[4]{'reversed'}, 'Y', 'crs_parcel_bndry[4].reversed' );
 is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 
-close($log_fh);
+# Test upload of a file containing utf8 chars
+
+open($cfg_fh, ">>", "${tmpdir}/tables.conf")
+  or die "Can't append to ${tmpdir}/tables.conf: $!";
+print $cfg_fh <<"EOF";
+TABLE utf8 key=id row_tol=0.20,0.95 files test_utf8_file
+EOF
+close($cfg_fh);
+
+rename($level5ds1, $level0ds3)
+  or die "Cannot rename $level5ds1 to $level0ds3: $!";
+
+copy($datadir.'/utf8.crs', $level0ds3.'/test_utf8_file.crs')
+    or die "Copy failed $datadir/ to $level0ds3/ : $!";
+
+$dbh->do("CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar)") or die
+      "Could not create bde.utf8 table";
+
+truncate $log_fh, 0;
+$test->run( args => "-full -config-path ${tmpdir}/cfg1 -o" );
+$stderr = $test->stderr;
+$stderr =~ s/WARNING:.*dev.stdout//;
+is( clean_stderr($test->stderr), '', 'stderr, success upload test_utf8_file');
+is( $test->stdout, '', 'stdout, success upload test_utf8_file');
+is( $? >> 8, 0, 'exit status, success upload test_utf8_file');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/INFO - Job.*finished successfully/,
+  'logfile - success upload test_utf8_file');
+
+# check actual table content
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 4, 'utf8 has 4 entries' );
+
+is( $res->[0]{'id'}, '1', 'utf8[0].id' );
+is( $res->[0]{'des'}, '♯', 'utf8[0].des' );
+
+is( $res->[1]{'id'}, '2', 'utf8[1].id' );
+is( $res->[1]{'des'}, '♭', 'utf8[1].des' );
+
+is( $res->[2]{'id'}, '3', 'utf8[2].id' );
+is( $res->[2]{'des'}, '♮', 'utf8[2].des' );
+
+is( $res->[3]{'id'}, '4', 'utf8[3].id' );
+is( $res->[3]{'des'}, '–', 'utf8[3].des' );
+
 done_testing($planned_tests);
