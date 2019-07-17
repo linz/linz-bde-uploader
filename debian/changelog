@@ -1,3 +1,9 @@
+linz-bde-uploader (2.5.2-1linz~trusty1) trusty; urgency=medium
+
+  * New upstream version
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Wed, 17 Jul 2019 12:30:25 +0200
+
 linz-bde-uploader (2.5.1-1linz~trusty1) trusty; urgency=medium
 
   * New upstream version
