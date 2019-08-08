@@ -1,3 +1,9 @@
+linz-bde-uploader (2.5.2-1linz~bionic1) bionic; urgency=medium
+
+  * New distribution
+
+ -- Sandro Santilli <strk@kbt.io>  Wed, 07 Aug 2019 14:55:33 +0000
+
 linz-bde-uploader (2.5.2-1linz~trusty1) trusty; urgency=medium
 
   * New upstream version
