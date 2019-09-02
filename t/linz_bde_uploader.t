@@ -22,7 +22,7 @@ use File::Copy qw/ copy /;
 use DBI;
 use utf8;
 
-my $planned_tests = 294;
+my $planned_tests = 304;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -1179,7 +1179,7 @@ is( $res->[4]{'audit_id'}, '400', 'crs_parcel_bndry[4].audit_id' );
 open($cfg_fh, ">>", "${tmpdir}/tables.conf")
   or die "Can't append to ${tmpdir}/tables.conf: $!";
 print $cfg_fh <<"EOF";
-TABLE utf8 key=id row_tol=0.20,0.95 files test_utf8_file
+TABLE utf8 key=id row_tol=0.40,0.95 files test_utf8_file
 EOF
 close($cfg_fh);
 
@@ -1249,6 +1249,57 @@ my @lines;
 @lines = grep(/No dataset updates to apply/, split('\n', $test->stdout));
 is( scalar(@lines), 1,
     'Log lines matching /No dataset updates to apply/ in stdout on -verbose');
+
+# Test -full-incremental runs
+
+## Dropping 1/4 of data from utf8 file
+
+system("sed '/^3|/q' ${datadir}/utf8.crs > ${level0ds3}/test_utf8_file.crs")
+    == 0 or die "Could not create 1/4 reduced utf8 file";
+
+$res = $dbh->do("TRUNCATE bde_control.upload_table")
+  or die "Could not TRUNCATE bde_control.upload_table";
+
+truncate $log_fh, 0;
+$test->run( args => "-full-incremental -verbose -c ${tmpdir}/cfg1" );
+is( $? >> 8, 0, 'exit status, -full-incremental warned 1/4 reduction');
+@logged = <$log_fh>;
+$log = join '', @logged;
+is( $log, '', 'Log file unexpectedly used: ' . $log );
+is( clean_stderr($test->stderr), '', 'stderr, -verbose');
+like( $test->stdout, qr/WARN.*has 3 rows, when at least 4 are expected/,
+    '-full-incremental warned 1/4 reduction');
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'utf8 has 3 rows after 1/4 reduction' );
+
+## Dropping 2/3 of data from utf8 file
+
+system("sed '/^1|/q' ${datadir}/utf8.crs > ${level0ds3}/test_utf8_file.crs")
+    == 0 or die "Could not create 2/3 reduced utf8 file";
+
+$res = $dbh->do("TRUNCATE bde_control.upload_table")
+  or die "Could not TRUNCATE bde_control.upload_table";
+
+truncate $log_fh, 0;
+$test->run( args => "-full-incremental -verbose -c ${tmpdir}/cfg1" );
+is( $? >> 8, 1, 'exit status, -full-incremental errored 2/3 reduction');
+@logged = <$log_fh>;
+$log = join '', @logged;
+is( $log, '', 'Log file unexpectedly used: ' . $log );
+is( clean_stderr($test->stderr), '', 'stderr, -verbose');
+like( $test->stdout, qr/Error: bde.utf8 has 1 rows, when at least 2 are expected/,
+    '-full-incremental errored 2/3 reduction');
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'utf8 has 3 rows after failed 2/3 reduction upload' );
+
 
 
 done_testing($planned_tests);
