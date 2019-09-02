@@ -10,6 +10,8 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Map database NOTICE messages to log INFO instead of DEBUG (#218)
 - Avoid duplicated stdout messages on -v and empty `log_settings` in
   config file (#204)
+- Stop attempting to disable synchronous commit in default config
+  (#222)
 
 ## [2.5.2] - 2019-07-17
 ### Fixed
