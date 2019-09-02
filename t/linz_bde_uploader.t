@@ -952,6 +952,10 @@ $res = $dbh->selectall_arrayref(
 is( $res->[0]{'id'}, '9', 'upload[9].id' );
 is( $res->[0]{'status'}, 'C', 'upload[9].status' );
 
+# Remove any active job record
+$res = $dbh->do("UPDATE bde_control.upload set status = 'C' where status = 'A'")
+  or die "Could not UPDATE bde_control.upload";
+
 # Test keeping temporary schema
 
 open($cfg_fh, ">>", "${tmpdir}/cfg1")
@@ -962,7 +966,7 @@ print $cfg_fh "EOT\n";
 close($cfg_fh);
 
 truncate $log_fh, 0;
-$test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
+$test->run( args => "-f -c ${tmpdir}/cfg1 -r" );
 is( $? >> 8, 0, 'exit status, keep_temp_schema (10)');
 is( clean_stderr($test->stderr), '', 'stderr, keep_temp_schema (10)' );
 is( $test->stdout, '', 'stdout, keep_temp_schema (10)' );
@@ -1032,7 +1036,7 @@ system('sed', '-i',
 # Run incremental upload w/out known changetable in config
 
 truncate $log_fh, 0;
-$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (missing changetable)');
 is( $test->stdout, '', 'stdout, -incremental (missing changetable)');
 is( $? >> 8, 1, 'exit status, -incremental (missing changetable)');
@@ -1064,7 +1068,7 @@ close($cfg_fh);
 # Run incremental upload w/out changetable file
 
 truncate $log_fh, 0;
-$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (no changetable file)');
 is( $test->stdout, '', 'stdout, -incremental (no changetable file)');
 is( $? >> 8, 1, 'exit status, -incremental (no changetable file)');
@@ -1091,7 +1095,7 @@ copy($datadir.'/xaud.crs', $level5ds1.'/test_changeset.crs') or die "Copy failed
 # Run incremental upload
 
 truncate $log_fh, 0;
-$test->run( args => "-incremental -o -c ${tmpdir}/cfg1" );
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (13)');
 is( $test->stdout, '', 'stdout, -incremental (13)');
 is( $? >> 8, 0, 'exit status, -incremental (13)');
@@ -1189,7 +1193,7 @@ $dbh->do("CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar)")
       "Could not create bde.utf8 table";
 
 truncate $log_fh, 0;
-$test->run( args => "-full -config-path ${tmpdir}/cfg1 -o" );
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 $stderr = $test->stderr;
 $stderr =~ s/WARNING:.*dev.stdout//;
 is( clean_stderr($test->stderr), '', 'stderr, success upload test_utf8_file');
