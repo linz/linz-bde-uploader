@@ -260,7 +260,7 @@ my %pg_log_message_map = (
     DEBUG4  => 'debug',
     DEBUG5  => 'debug',
     LOG     => 'debug',
-    NOTICE  => 'debug',
+    NOTICE  => 'info',
     INFO    => 'info',
     WARNING => 'warn'
 );
