@@ -22,7 +22,7 @@ use File::Copy qw/ copy /;
 use DBI;
 use utf8;
 
-my $planned_tests = 293;
+my $planned_tests = 294;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -623,6 +623,9 @@ $log = join '', @logged;
 like( $log,
   qr/INFO - Job.*finished successfully/,
   'logfile - success upload test_file');
+like( $log,
+  qr/INFO - Copying ownership and access information/,
+  'logfile - success upload test_file contains NOTICE lines');
 
 # check actual table content
 
