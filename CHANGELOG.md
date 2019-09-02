@@ -7,6 +7,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
   are given (#116)
 - Qualify calls to `bde_control` database functions for improved security
 - Downgrade INFO messages to NOTICE messages (#202)
+- Map database NOTICE messages to log INFO instead of DEBUG (#218)
 - Avoid duplicated stdout messages on -v and empty `log_settings` in
   config file (#204)
 
