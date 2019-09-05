@@ -937,9 +937,9 @@ sub UploadTable
         $db->beginTable($tablename) ||
             die ("Cannot acquire upload lock for $tablename");
 
-        # If this is a level 0 update, then need the last update details
-        # in order to check that the start time of the current update
-        # matches the end time.
+        # If this is a level 5 update, we need the last update details
+        # in order to check that the start time of the current update is not
+        # too late when compared against the end time of the previous upload.
 
         my %lastdetails = ();
         if( ! $is_level0 )
