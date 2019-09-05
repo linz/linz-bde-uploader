@@ -3,11 +3,17 @@
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [2.6.0dev] - YYYY-MM-DD
+### Added
+- Level5 updates will now also be checked for change tolerance (#221)
+### Enhanced
 - `linz_bde_uploader` will fail if both -rebuild and -full-incremental
   are given (#116)
 - Qualify calls to `bde_control` database functions for improved security
 - Downgrade INFO messages to NOTICE messages (#202)
 - Map database NOTICE messages to log INFO instead of DEBUG (#218)
+- Provide default values for `level5_starttime_{warn,fail}_tolerance`
+  (#225)
+### Fixed
 - Avoid duplicated stdout messages on -v and empty `log_settings` in
   config file (#204)
 - Stop attempting to disable synchronous commit in default config
