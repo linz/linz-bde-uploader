@@ -22,7 +22,7 @@ use File::Copy qw/ copy /;
 use DBI;
 use utf8;
 
-my $planned_tests = 304;
+my $planned_tests = 317;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -1189,6 +1189,11 @@ rename($level5ds1, $level0ds3)
 copy($datadir.'/utf8.crs', $level0ds3.'/test_utf8_file.crs')
     or die "Copy failed $datadir/ to $level0ds3/ : $!";
 
+# Unlink parcel input file, not needed anymore
+unlink("${level0ds3}/test_file.crs");
+system("sed -i '/crs_parcel/d' ${tmpdir}/tables.conf")
+    == 0 or die "Could not remove crs_parcel entry from tables.conf";
+
 $dbh->do("CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar)") or die
       "Could not create bde.utf8 table";
 
@@ -1299,6 +1304,100 @@ $res = $dbh->selectall_arrayref(
   { Slice => {} }
 );
 is( @{$res}, 3, 'utf8 has 3 rows after failed 2/3 reduction upload' );
+
+## Repopulate utf8 file
+
+system("cat ${datadir}/utf8.crs > ${level0ds3}/test_utf8_file.crs")
+    == 0 or die "Could not create full utf8 file";
+
+$res = $dbh->do("TRUNCATE bde_control.upload_table")
+  or die "Could not TRUNCATE bde_control.upload_table";
+
+truncate $log_fh, 0;
+$test->run( args => "-full -verbose -c ${tmpdir}/cfg1" );
+is( $? >> 8, 0, 'exit status, -full not-warned full-file');
+@logged = <$log_fh>;
+$log = join '', @logged;
+is( $log, '', 'Log file unexpectedly used: ' . $log );
+is( clean_stderr($test->stderr), '', 'stderr, -verbose');
+unlike( $test->stdout, qr/WARN.*are expected/,
+    '-full not-warned full-file');
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 4, 'utf8 has 4 rows after full update' );
+
+## Create new level5 update to drop a single record
+
+my $level5ds2 = $level5dir . '/20170630020000';
+rename($level0ds3, $level5ds2)
+  or die "Cannot rename $level0ds3 to $level5ds2: $!";
+
+### Create changeset file in level5ds2
+
+system("sed '/^{CRS-DATA}/q' ${datadir}/xaud.crs > ${level5ds2}/test_changeset.crs")
+    == 0 or die "Could not create changeset file in ${level5ds2}: $!";
+
+open(my $changeset, ">>", "${level5ds2}/test_changeset.crs")
+  or die "Can't append to ${level5ds2}/test_changeset.crs: $!";
+print $changeset "1|utf8|4|D|2019-09-04 10:10:00|\n";
+close($changeset);
+
+system("sed '/^3|/q' ${datadir}/utf8.crs > ${level5ds2}/test_utf8_file.crs")
+    == 0 or die "Could not create 1/4 reduced utf8 file";
+
+
+### Run incremental upload
+
+truncate $log_fh, 0;
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (18)');
+is( $? >> 8, 0, 'exit status, -incremental (18)');
+like( $test->stdout, qr/WARN.*has 3 rows, when at least 4 are expected/,
+    '-incremental warned 1/4 reduction (18)');
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'utf8 has 3 rows after full update' );
+
+## Create new level5 update to drop two more records
+
+my $level5ds3 = $level5dir . '/20170631020000';
+rename($level5ds2, $level5ds3)
+  or die "Cannot rename $level5ds2 to $level5ds3: $!";
+
+### Create changeset file  in level5ds3
+
+system("sed '/^{CRS-DATA}/q' ${datadir}/xaud.crs > ${level5ds3}/test_changeset.crs")
+    == 0 or die "Could not create changeset file in ${level5ds3}: $!";
+
+open($changeset, ">>", "${level5ds3}/test_changeset.crs")
+  or die "Can't append to ${level5ds3}/test_changeset.crs: $!";
+print $changeset "1|utf8|3|D|2018-09-04 10:10:00|\n";
+print $changeset "2|utf8|2|D|2018-09-04 10:10:00|\n";
+close($changeset);
+
+system("sed '/^1|/q' ${datadir}/utf8.crs > ${level5ds3}/test_utf8_file.crs")
+    == 0 or die "Could not create 2/3 reduced utf8 file";
+
+### Run incremental upload
+
+truncate $log_fh, 0;
+$test->run( args => "-incremental -c ${tmpdir}/cfg1" );
+is( clean_stderr($test->stderr), '', 'stderr, -incremental (19)');
+is( $? >> 8, 1, 'exit status, -incremental (19)');
+like( $test->stdout, qr/Error: bde.utf8 has 1 rows, when at least 2 are expected/,
+     '-incremental errored 2/3 reduction (19)');
+
+$res = $dbh->selectall_arrayref(
+  'SELECT * FROM bde.utf8 ORDER BY id',
+  { Slice => {} }
+);
+is( @{$res}, 3, 'utf8 has 3 rows after full update' );
 
 
 
