@@ -1062,8 +1062,8 @@ sub CheckStartDate
     my ($self,$dataset,$file,$starttime,$checktime) = @_;
     return if $starttime eq $checktime;
 
-    my $warntol = $self->cfg->level5_starttime_warn_tolerance;
-    my $failtol = $self->cfg->level5_starttime_fail_tolerance;
+    my $warntol = $self->cfg->level5_starttime_warn_tolerance(0);
+    my $failtol = $self->cfg->level5_starttime_fail_tolerance(0);
     my $re = qw/^\d{4}\-\d\d\-\d\d\s+\d\d\:\d\d\:\d\d$/;
 
     if( $starttime !~ $re || $checktime !~ $re )
