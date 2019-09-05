@@ -1767,7 +1767,7 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         DROP TABLE IF EXISTS _tmp_inc_actions;
 
         RAISE NOTICE 'Checking table count';
-        PERFORM bde_control.bde_CheckTableCount(p_upload, p_table_name);
+        PERFORM bde_control._bde_CheckTableCount(v_bdetable, v_ndel-v_nins);
     ELSE
         RAISE NOTICE 'There are no changes to apply for %', p_table_name;
     END IF;
@@ -1941,7 +1941,7 @@ BEGIN
                     v_ndel, p_table_name, v_dataset;
             END IF;
             RAISE NOTICE 'Checking table count';
-            PERFORM bde_control.bde_CheckTableCount(p_upload, p_table_name);
+            PERFORM bde_control._bde_CheckTableCount(v_bdetable, v_ndel-v_nins);
         END IF;
 
         RAISE NOTICE 'Dropping table %', v_tmptable;
@@ -2030,9 +2030,9 @@ $$ LANGUAGE plpgsql VOLATILE;
 ALTER FUNCTION bde_control.bde_ApplyLevel0Update(INTEGER, NAME, TIMESTAMP, TEXT, BOOLEAN)
     OWNER TO bde_dba;
 
-CREATE OR REPLACE FUNCTION bde_control.bde_CheckTableCount(
-    p_upload INTEGER,
-    p_table_name NAME
+CREATE OR REPLACE FUNCTION bde_control._bde_CheckTableCount(
+    p_bde_table REGCLASS,
+    p_removed BIGINT
 )
 RETURNS
     BOOLEAN
@@ -2040,7 +2040,7 @@ AS
 $$
 DECLARE
     v_schema_name   NAME;
-    v_table         REGCLASS;
+    v_table_name   NAME;
     v_current_count BIGINT;
     v_new_count     BIGINT;
     v_expected      BIGINT;
@@ -2049,11 +2049,20 @@ DECLARE
     v_status        BOOLEAN;
 BEGIN
     v_status := TRUE;
-    v_schema_name := bde_control.bde_BdeSchema(p_upload);
-    v_table := bde_control.bde_TableOid(v_schema_name, p_table_name);
 
-    IF v_table IS NULL THEN
-        RAISE EXCEPTION 'Table ''%'' does not exist', p_table_name;
+    -- If nothing was removed, we have nothing to check
+    IF p_removed <= 0 THEN
+        RETURN v_status;
+    END IF;
+
+    SELECT n.nspname, c.relname
+        FROM pg_namespace n, pg_class c
+        WHERE n.oid = c.relnamespace
+        AND c.oid = p_bde_table
+        INTO v_schema_name, v_table_name;
+
+    IF v_schema_name IS NULL THEN
+        RAISE EXCEPTION 'Table ''%'' does not exist', p_bde_table;
     END IF;
 
     SELECT
@@ -2065,35 +2074,33 @@ BEGIN
     FROM
         bde_control.upload_table
     WHERE
-        table_name  = p_table_name AND
+        table_name  = v_table_name AND
         schema_name = v_schema_name;
 
-    SELECT
-        CAST(reltuples AS BIGINT)
-    INTO
-        v_current_count
-    FROM
-        pg_class
-    WHERE
-        oid = CAST(v_table AS OID);
+    -- If no tolerance was requested, we have nothing to check
+    IF v_tol_error IS NOT NULL AND v_tol_warn IS NULL THEN
+        RETURN v_status;
+    END IF;
 
-    EXECUTE 'SELECT COUNT(*) FROM ' || v_table
+    EXECUTE 'SELECT COUNT(*) FROM ' || p_bde_table
     INTO v_new_count;
 
+    v_current_count := v_new_count + p_removed;
+
     IF v_tol_error IS NOT NULL THEN
-        v_expected := CAST((v_current_count * v_tol_error) AS BIGINT);
+        v_expected := CAST(ceil(v_current_count * v_tol_error) AS BIGINT);
         IF v_new_count < v_expected THEN
             RAISE EXCEPTION
                 '% has % rows, when at least % are expected',
-                v_table, v_new_count, v_expected;
+                p_bde_table, v_new_count, v_expected;
         END IF;
     END IF;
 
     IF v_status AND v_tol_warn IS NOT NULL THEN
-        v_expected := CAST((v_current_count * v_tol_warn) AS BIGINT);
+        v_expected := ceil(v_current_count * v_tol_warn)::bigint;
         IF v_new_count < v_expected THEN
             RAISE WARNING '% has % rows, when at least % are expected',
-                v_table, v_new_count, v_expected;
+                p_bde_table, v_new_count, v_expected;
         END IF;
     END IF;
 
@@ -2102,7 +2109,7 @@ END;
 $$
 LANGUAGE plpgsql STABLE;
 
-ALTER FUNCTION bde_control.bde_CheckTableCount(INTEGER, NAME) OWNER TO bde_dba;
+ALTER FUNCTION bde_control._bde_CheckTableCount(REGCLASS, BIGINT) OWNER TO bde_dba;
 
 -- Function to expand a template, replacing %i% with the i'th element of the
 -- array of parameters.
