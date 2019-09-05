@@ -128,7 +128,6 @@ its id is first required to execute a function.
     removeOldJobData
     selectValidColumns
     setOption
-    checkTableCount
     startDataset
     tempTableExists
     tmpSchema
@@ -237,7 +236,6 @@ our @sqlFuncs = qw{
     endUploadTable
     finishUpload
     getOption
-    checkTableCount
     uploadIsActive
     lastUploadStats
     releaseExpiredLocks
