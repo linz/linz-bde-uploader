@@ -1765,6 +1765,9 @@ bde_control._bde_WorkingCopyTableOid(p_upload,bde_control._bde_ChangeTableName()
         INTO v_nins, v_ndel, v_nupd;
 
         DROP TABLE IF EXISTS _tmp_inc_actions;
+
+        RAISE NOTICE 'Checking table count';
+        PERFORM bde_control.bde_CheckTableCount(p_upload, p_table_name);
     ELSE
         RAISE NOTICE 'There are no changes to apply for %', p_table_name;
     END IF;
