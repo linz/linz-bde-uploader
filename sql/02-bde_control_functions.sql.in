@@ -1802,7 +1802,7 @@ EXCEPTION
     WHEN others THEN
         v_errmsg := 'Level 5 update of table ' || p_table_name ||
             ' from dataset ' || v_dataset || ' failed in ' || v_task ||
-            'Error:' || SQLERRM;
+            '. Error: ' || SQLERRM;
         IF v_sql <> '' THEN
             v_errmsg := v_errmsg || '. Last sql constructed: ' || v_sql;
         END IF;
