@@ -2,7 +2,7 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.6.0dev] - YYYY-MM-DD
+## [2.6.0] - 2019-09-09
 ### Added
 - Level5 updates will now also be checked for change tolerance (#221)
 ### Enhanced
@@ -13,6 +13,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 - Map database NOTICE messages to log INFO instead of DEBUG (#218)
 - Provide default values for `level5_starttime_{warn,fail}_tolerance`
   (#225)
+- Do not rely on stats for checking change tolerance
 ### Fixed
 - Avoid duplicated stdout messages on -v and empty `log_settings` in
   config file (#204)
