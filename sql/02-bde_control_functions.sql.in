@@ -1948,17 +1948,9 @@ BEGIN
         EXECUTE 'DROP TABLE ' || v_tmptable;
     ELSE
 
-        -- Is this too expensive on pg?
-
-        v_task := 'Counting current version of table';
-        RAISE NOTICE '%', v_task;
-
-        EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
-        v_nupd := 0;
-
         -- Replace the BDE table with the new version
 
-        v_task := 'Truncating current version of the table ' || v_bdetable;
+        v_task := 'Deleting data from current version of the table ' || v_bdetable;
         RAISE NOTICE '%', v_task;
 
         IF table_version.ver_is_table_versioned(v_bde_schema, p_table_name)
@@ -1967,11 +1959,12 @@ BEGIN
                         v_bde_schema, p_table_name);
         END IF;
 
-        v_sql := 'TRUNCATE TABLE ' || v_bdetable;
+        v_sql := 'DELETE FROM ' || v_bdetable;
         RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
+        GET DIAGNOSTICS v_ndel = ROW_COUNT;
 
-        v_task := 'Copying the data in new version to the target table';
+        v_task := 'Inserting new data to target table';
         RAISE NOTICE '%', v_task;
         v_sql := 'INSERT INTO ' || v_bdetable || ' SELECT * FROM ' || v_tmptable;
         RAISE DEBUG 'Moving data from % to % using %', v_tmptable, v_bdetable, v_sql;
@@ -1980,6 +1973,9 @@ BEGIN
 
         RAISE NOTICE 'Dropping table %', v_tmptable;
         EXECUTE 'DROP TABLE ' || v_tmptable;
+
+        v_nupd := 0;
+
     END IF;
 
     -- Record the update that has been applied
