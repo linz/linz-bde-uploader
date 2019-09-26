@@ -1979,6 +1979,8 @@ BEGIN
         RAISE DEBUG 'Moving data from % to % using %', v_tmptable, v_bdetable, v_sql;
         EXECUTE v_sql;
 
+        RAISE NOTICE 'Dropping table %', v_tmptable;
+        EXECUTE 'DROP TABLE ' || v_tmptable;
     END IF;
 
     -- Record the update that has been applied
