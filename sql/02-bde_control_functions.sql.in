@@ -2381,53 +2381,6 @@ LANGUAGE plpgsql VOLATILE;
 ALTER FUNCTION bde_control._bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
--- Return an array of SQL statements which can be executed
--- to restore every object dependent on the given table
---
--- NOTE: currently only supports restoring functions using
---       the given table as the type of any argument
---
--- {
-CREATE OR REPLACE FUNCTION bde_control._bde_GetDependentObjectSql(
-    p_upload INTEGER,
-    p_base regclass
-)
-RETURNS
-    text[]
-AS
-$body$
-DECLARE
-    defs TEXT[];
-    rec RECORD;
-BEGIN
-
-    -- Get functions using type table as argument type
-    FOR rec IN
-        SELECT p.oid, r.rolname
-        FROM pg_depend d, pg_type t, pg_proc p, pg_roles r
-        WHERE d.refclassid = 'pg_class'::regclass
-          AND d.refobjid = p_base
-          AND d.classid = 'pg_type'::regclass
-          AND t.oid = d.objid
-          AND t.oid = ANY(p.proargtypes)
-          AND r.oid = p.proowner
-    LOOP
-        -- pg_get_functiondef includes SECURITY DEFINER
-        -- and SEARCH PATH for the function
-        defs = array_append( defs, pg_get_functiondef(rec.oid) );
-        -- Set ownership (might not be possible)
-        defs = array_append( defs, format('ALTER FUNCTION %s OWNER TO %I',
-            rec.oid::regprocedure, rec.rolname));
-    END LOOP;
-
-    RETURN defs;
-END
-$body$
-LANGUAGE plpgsql STABLE;
--- }
-
-ALTER FUNCTION bde_control._bde_GetDependentObjectSql(INTEGER, REGCLASS) OWNER TO bde_dba;
-
 CREATE OR REPLACE FUNCTION bde_control._bde_GetOwnerAccessSql(
     p_reference regclass,
     p_target regclass
