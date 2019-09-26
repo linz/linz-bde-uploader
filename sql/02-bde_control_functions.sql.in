@@ -1949,13 +1949,11 @@ BEGIN
     ELSE
 
         -- Is this too expensive on pg?
-        -- NOTE: the count of new could be retrived on INSERT
 
-        v_task := 'Counting current and new version of table';
+        v_task := 'Counting current version of table';
         RAISE NOTICE '%', v_task;
 
         EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
-        EXECUTE 'SELECT COUNT(*) FROM ' || v_tmptable INTO v_nins;
         v_nupd := 0;
 
         -- Replace the BDE table with the new version
@@ -1978,6 +1976,7 @@ BEGIN
         v_sql := 'INSERT INTO ' || v_bdetable || ' SELECT * FROM ' || v_tmptable;
         RAISE DEBUG 'Moving data from % to % using %', v_tmptable, v_bdetable, v_sql;
         EXECUTE v_sql;
+        GET DIAGNOSTICS v_nins = ROW_COUNT;
 
         RAISE NOTICE 'Dropping table %', v_tmptable;
         EXECUTE 'DROP TABLE ' || v_tmptable;
