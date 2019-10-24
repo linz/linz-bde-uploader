@@ -2,6 +2,10 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.7.0] - 2019-MM-DD
+### Added
+- `linz-bde-uploader-schema-publish` script to publish schema tables (#237)
+
 ## [2.6.0] - 2019-09-09
 ### Added
 - Level5 updates will now also be checked for change tolerance (#221)
