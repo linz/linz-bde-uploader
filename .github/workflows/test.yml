@@ -1,0 +1,116 @@
+name: test
+
+on: [push, pull_request]
+
+jobs:
+
+  test:
+
+    name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }}, LINZ ${{ matrix.linz }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+        matrix:
+            linz: [ 'test' ]
+            pg: [ '9.6', '10', '11' ]
+            pgis: [ '2.4', '2.5' ]
+            perl: [ '5.24', '5.26' ]
+            os: [ ubuntu-18.04 ]
+            exclude:
+              # excludes PostGIS 2.4 on PostgreSQL 11
+              - pg: 11
+                pgis: 2.4
+    env:
+      # Set PATH as postgresql-server-dev-all pretends version is 11
+      PATH: /usr/lib/postgresql/${{ matrix.pg }}/bin:/bin:/usr/bin:/usr/local/bin
+      APT: "apt-get -o Dpkg::Progress=0 -o Dpkg::Use-Pty=0"
+      PCLOUD: https://packagecloud.io/linz
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install dependencies
+      run: |
+        sudo ${APT} -qq purge \
+            libpq* \
+            *php* \
+            postgresql*
+        sudo rm -rf /var/lib/postgresql
+        sudo ${APT} -qq install curl ca-certificates gnupg
+        distro=`lsb_release -cs`
+        # Enable fetching packages from apt.postgresql repository
+        curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        echo "deb http://apt.postgresql.org/pub/repos/apt/ ${distro}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+        # Enable fetching packages from packagecloud LINZ repository
+        curl -Ls ${PCLOUD}/${{ matrix.linz }}/gpgkey \
+            | sudo apt-key add -
+        echo "deb ${PCLOUD}/${{ matrix.linz }}/ubuntu ${distro} main" \
+            | sudo tee /etc/apt/sources.list.d/linz-${{ matrix.linz }}.list
+        # Update apt cache
+        sudo ${APT} -qq update
+        # Install dependencies
+        sudo ${APT} -qq install --no-install-recommends \
+            cpanminus \
+            debhelper \
+            fakeroot \
+            postgresql-client-${{ matrix.pg }} \
+            postgresql-contrib-${{ matrix.pg }} \
+            postgresql-${{ matrix.pg }} \
+            postgresql-${{ matrix.pg }}-dbpatch \
+            postgresql-${{ matrix.pg }}-pgtap \
+            postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }} \
+            postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }}-scripts \
+            postgresql-${{ matrix.pg }}-tableversion \
+            postgresql-server-dev-${{ matrix.pg }} \
+            libtest-cmd-perl \
+            libtest-exception-perl \
+            libtap-parser-sourcehandler-pgtap-perl \
+            linz-bde-copy \
+            linz-bde-schema
+        sudo cpanm \
+            DBI \
+            DBD::Pg \
+            Date::Calc \
+            File::Which \
+            Log::Log4perl \
+            Module::Build \
+            Test::Cmd \
+            Test::Exception \
+            Text::Diff
+        # TODO: install linz-utils-perl and linz-bde-perl via package,
+        #       when available on packagecloud
+        # Install LINZ::Config
+        pushd /tmp
+        wget https://github.com/linz/linz_utils_perl/archive/1.0.1.tar.gz
+        tar xzf 1.0.1.tar.gz
+        cd linz_utils_perl-1.0.1
+        perl Build.PL
+        sudo -E ./Build install
+        popd
+        # Install LINZ::Bde
+        pushd /tmp
+        wget https://github.com/linz/linz-bde-perl/archive/1.0.2.tar.gz
+        tar xzf 1.0.2.tar.gz && cd linz-bde-perl-1.0.2
+        perl Build.PL
+        sudo -E ./Build install
+        popd
+    - name: Setup PostgreSQL user
+      run: |
+        sudo -u postgres createuser -s "$USER"
+        sudo -u postgres createuser -s root
+    - name: Build
+      run: |
+        # Build
+        ./configure
+        make
+    - name: Test build
+      run: |
+        # Pre-install tests
+        make check
+    - name: Install
+      run: |
+        sudo -E make install
+    - name: Test distribution
+      run: |
+        make dist
+        make distcheck
+    - name: Test debian packaging
+      run: |
+        make deb
