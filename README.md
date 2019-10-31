@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/linz/linz-bde-uploader.svg?branch=master)](https://travis-ci.org/linz/linz-bde-uploader)
+[![Actions Status](https://github.com/linz/linz-bde-uploader/workflows/test/badge.svg?branch=master)](https://github.com/linz/linz-bde-uploader/actions)
 
 # LINZ Bulk Data Extract Uploader
 
