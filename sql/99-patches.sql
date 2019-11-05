@@ -61,6 +61,18 @@ PERFORM _patches.apply_patch(
     $P$
 );
 
+-------------------------------------------------------------------------------
+-- 2.7.0 Drop deprecated bde_control._bde_GetDependentObjectSql
+-------------------------------------------------------------------------------
+
+PERFORM _patches.apply_patch(
+    'linz-bde-uploader 2.7.0: '
+    'Drop deprecated bde_control._bde_GetDependentObjectSql',
+    $P$
+        DROP FUNCTION IF EXISTS bde_control._bde_GetDependentObjectSql(INTEGER, regclass);
+    $P$
+);
+
 
 END;
 $PATCHES$;
