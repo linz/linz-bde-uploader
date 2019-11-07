@@ -34,6 +34,7 @@ before_install:
   - sudo rm -rf /var/lib/postgresql
   # Install packages
   - sudo apt-get install -y
+    libtap-parser-sourcehandler-pgtap-perl
     postgresql-${PGSQL}
     postgresql-${PGSQL}-pgtap
     postgresql-server-dev-${PGSQL}
