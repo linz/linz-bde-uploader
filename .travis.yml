@@ -106,4 +106,4 @@ script:
   - sudo make install
   - make check-upgrades
   # Test building deb package
-  - git clean -dxf && dpkg-buildpackage -d -b -uc -us
+  - sudo git clean -dxf && dpkg-buildpackage -d -b -uc -us
