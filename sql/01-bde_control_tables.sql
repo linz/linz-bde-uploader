@@ -16,19 +16,31 @@
 DO $SCHEMA$
 BEGIN
 
-IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde_control') THEN
-    RETURN;
-END IF;
+-- Utility function to implement CREATE INDEX IF NOT EXISTS for
+-- PostgreSQL versions lower than 9.5 (where the syntax was introduced)
+--
+CREATE FUNCTION pg_temp.createIndexIfNotExists(p_name name, p_schema name, p_table name, p_column name)
+RETURNS VOID LANGUAGE 'plpgsql' AS $$
+BEGIN
+    IF NOT EXISTS ( SELECT c.oid
+                FROM pg_class c, pg_namespace n
+                WHERE c.relname = p_name
+                  AND c.relkind = 'i'
+                  AND c.relnamespace = n.oid
+                  AND n.nspname = p_schema )
+    THEN
+        EXECUTE format('CREATE INDEX %1I ON %2I.%3I (%4I)', p_name, p_schema, p_table, p_column);
+    END IF;
+END;
+$$;
 
-CREATE SCHEMA bde_control AUTHORIZATION bde_dba;
-
-GRANT USAGE ON SCHEMA bde_control TO bde_admin;
-GRANT USAGE ON SCHEMA bde_control TO bde_user;
+CREATE SCHEMA IF NOT EXISTS bde_control;
+ALTER SCHEMA bde_control OWNER TO bde_dba;
 
 -- bde_control.upload
 --
 
-CREATE TABLE bde_control.upload
+CREATE TABLE IF NOT EXISTS bde_control.upload
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -38,10 +50,6 @@ CREATE TABLE bde_control.upload
 );
 
 ALTER TABLE bde_control.upload OWNER TO bde_dba;
-REVOKE ALL ON TABLE bde_control.upload FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload TO bde_admin;
-GRANT SELECT ON TABLE bde_control.upload TO bde_user;
-
 
 COMMENT ON TABLE bde_control.upload IS
 $comment$
@@ -66,7 +74,7 @@ $comment$;
 
 -- bde_control.tables
 
-CREATE TABLE bde_control.upload_table
+CREATE TABLE IF NOT EXISTS bde_control.upload_table
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -87,9 +95,6 @@ CREATE TABLE bde_control.upload_table
 );
 
 ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
-REVOKE ALL ON TABLE bde_control.upload_table FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload_table TO bde_admin;
-GRANT SELECT ON TABLE bde_control.upload_table TO bde_user;
 
 COMMENT ON TABLE bde_control.upload_table IS
 'Tracks the status of uploads for each table.';
@@ -157,7 +162,7 @@ the ratio of new to old rows count.
 $comment$;
 
 -- upload_stats
-CREATE TABLE bde_control.upload_stats
+CREATE TABLE IF NOT EXISTS bde_control.upload_stats
 (
     id SERIAL NOT NULL PRIMARY KEY,
     upl_id INT NOT NULL,
@@ -173,13 +178,10 @@ CREATE TABLE bde_control.upload_stats
     ndelete BIGINT NOT NULL DEFAULT 0
 );
 
-CREATE INDEX idx_sts_tbl ON bde_control.upload_stats ( tbl_id );
-CREATE INDEX idx_sts_upl ON bde_control.upload_stats ( upl_id );
+PERFORM pg_temp.createIndexIfNotExists('idx_sts_tbl', 'bde_control', 'upload_stats', 'tbl_id');
+PERFORM pg_temp.createIndexIfNotExists('idx_sts_upl', 'bde_control', 'upload_stats', 'upl_id');
 
 ALTER TABLE bde_control.upload_stats OWNER TO bde_dba;
-REVOKE ALL ON TABLE bde_control.upload_stats FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE bde_control.upload_stats TO bde_admin;
-GRANT SELECT ON TABLE bde_control.upload_stats TO bde_user;
 
 COMMENT ON TABLE bde_control.upload_stats IS
 $comment$
@@ -195,6 +197,36 @@ nupdate is the number of records updated
 nnullupdate is the number records that had an incremental update but had no new data.
 ndelete is the number of records deleted
 $comment$;
+
+--------------------------------------------------------------------------------
+-- Fix up permissions on schema
+--------------------------------------------------------------------------------
+
+GRANT ALL ON SCHEMA bde_control TO bde_dba;
+GRANT USAGE ON SCHEMA bde_control TO bde_admin;
+GRANT USAGE ON SCHEMA bde_control TO bde_user;
+
+REVOKE ALL
+    ON ALL TABLES IN SCHEMA bde_control
+    FROM public;
+
+GRANT ALL
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_dba;
+
+GRANT SELECT, UPDATE, INSERT, DELETE
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_admin;
+
+GRANT SELECT
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_user;
+
+--------------------------------------------------------------------------------
+-- Cleanup
+--------------------------------------------------------------------------------
+
+DROP FUNCTION pg_temp.createIndexIfNotExists(name, name, name, name);
 
 END;
 $SCHEMA$;
