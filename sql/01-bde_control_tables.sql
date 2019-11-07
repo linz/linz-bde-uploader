@@ -30,7 +30,6 @@ BEGIN
                   AND n.nspname = p_schema )
     THEN
         EXECUTE format('CREATE INDEX %1I ON %2I.%3I (%4I)', p_name, p_schema, p_table, p_column);
-        EXECUTE format('ALTER INDEX %1I OWNER TO bde_dba', p_name);
     END IF;
 END;
 $$;
