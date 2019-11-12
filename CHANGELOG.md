@@ -5,6 +5,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [2.7.0] - 2019-MM-DD
 ### Added
 - `linz-bde-uploader-schema-publish` script to publish schema tables (#237)
+- Switch --readonly to `linz-bde-uploader-schema-load` (#238)
 ### Enhanced
 - Do not DROP TABLE on -full upload (#148)
 - Lost tables and permissions now recovered upon schema loading (#240)

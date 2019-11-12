@@ -107,6 +107,9 @@ jobs:
     - name: Install
       run: |
         sudo -E make install
+    - name: Test upgrades
+      run: |
+        make check-upgrades
     - name: Test distribution
       run: |
         make dist

@@ -34,6 +34,7 @@ before_install:
   - sudo rm -rf /var/lib/postgresql
   # Install packages
   - sudo apt-get install -y
+    libtap-parser-sourcehandler-pgtap-perl
     postgresql-${PGSQL}
     postgresql-${PGSQL}-pgtap
     postgresql-server-dev-${PGSQL}
@@ -102,5 +103,7 @@ script:
   - make check
   - make dist
   - make distcheck
+  - sudo make install
+  - make check-upgrades
   # Test building deb package
-  - git clean -dxf && dpkg-buildpackage -d -b -uc -us
+  - sudo git clean -dxf && dpkg-buildpackage -d -b -uc -us
