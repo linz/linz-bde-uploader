@@ -1,3 +1,9 @@
+linz-bde-uploader (2.7.0-1linz~bionic1) bionic; urgency=medium
+
+  * Package rebuild for bionic
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Mon, 18 Nov 2019 16:44:38 +0100
+
 linz-bde-uploader (2.7.0-1linz~trusty1) trusty; urgency=medium
 
   * New upstream version
