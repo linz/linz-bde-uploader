@@ -2,6 +2,10 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.8.0-dev] - 2020-MM-DD
+### Added
+- Printing of per-dataset revision (#246)
+
 ## [2.7.0] - 2019-11-12
 ### Added
 - `linz-bde-uploader-schema-publish` script to publish schema tables (#237)
