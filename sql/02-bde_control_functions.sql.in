@@ -2931,6 +2931,8 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload, '_revision', CAST(v_revision AS TEXT));
 
+    RAISE NOTICE 'Created revision % for dataset %', v_revision, v_dataset;
+
     RETURN v_revision;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
@@ -2952,8 +2954,6 @@ BEGIN
 
     v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
 
-    RAISE NOTICE 'Completing dataset revision for dataset %', v_dataset;
-
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
     END IF;
@@ -2962,6 +2962,9 @@ BEGIN
     IF v_revision IS NULL THEN
         RAISE EXCEPTION 'There is no revision in progress';
     END IF;
+
+    RAISE NOTICE 'Completing revision % for dataset %', v_revision, v_dataset;
+
 
     SELECT table_version.ver_complete_revision()
     INTO   v_status;
@@ -2991,7 +2994,7 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload,'_revision', NULL);
 
-    RAISE NOTICE 'Finished completing dataset revision for dataset %', v_dataset;
+    RAISE NOTICE 'Finished completing revision % for dataset %', v_revision, v_dataset;
 
     RETURN v_status;
 END;
