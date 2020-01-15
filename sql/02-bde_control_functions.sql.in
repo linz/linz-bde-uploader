@@ -2986,6 +2986,7 @@ BEGIN
             STS.dataset = v_dataset;
 
         IF v_tables_updated = 0 THEN
+            RAISE NOTICE 'Deleting unused revision %', v_revision;
             IF NOT (SELECT table_version.ver_delete_revision(v_revision)) THEN
                 RAISE WARNING 'Can not delete unused revision %', v_revision;
             END IF;
