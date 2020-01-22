@@ -1397,7 +1397,7 @@ is( @{$res}, 3, 'utf8 has 3 rows after full update' );
 
 ## Create new level5 update to drop two more records
 
-my $level5ds3 = $level5dir . '/20170631020000';
+my $level5ds3 = $level5dir . '/20170701020000';
 rename($level5ds2, $level5ds3)
   or die "Cannot rename $level5ds2 to $level5ds3: $!";
 
