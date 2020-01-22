@@ -1222,8 +1222,11 @@ unlink("${level0ds3}/test_file.crs");
 system("sed -i '/crs_parcel/d' ${tmpdir}/tables.conf")
     == 0 or die "Could not remove crs_parcel entry from tables.conf";
 
-$dbh->do("CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar)") or die
-      "Could not create bde.utf8 table";
+$dbh->do( <<"EOF"
+CREATE TABLE IF NOT EXISTS bde.utf8(id int primary key, des varchar);
+GRANT SELECT, UPDATE, INSERT, DELETE on bde.utf8 to bde_admin;
+EOF
+) or die "Could not create bde.utf8 table";
 
 truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
