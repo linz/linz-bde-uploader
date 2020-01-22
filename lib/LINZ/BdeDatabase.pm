@@ -329,6 +329,10 @@ sub new
         $self->{_pg_server_version} = 80400;
     }
 
+
+    # Immediately switch to the role meant to run uploads (`bde_admin`)
+    $dbh->do("SET SESSION AUTHORIZATION bde_admin");
+
     if ( $self->{_pg_server_version} >= 90000 )
     {
         my $row = $dbh->selectcol_arrayref("SELECT pg_is_in_recovery()");
