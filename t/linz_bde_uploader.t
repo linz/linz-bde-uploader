@@ -609,6 +609,32 @@ sub clean_stderr
     return $stderr;
 }
 
+# Non-incremental level0 upload should fail unless we start
+# revisioning on the table
+
+truncate $log_fh, 0;
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+is( $test->stderr, '', 'stderr, needs revision');
+is( $test->stdout, '', 'stdout, needs revision');
+is( $? >> 8, 1, 'exit status, needs revision');
+@logged = <$log_fh>;
+$log = join '', @logged;
+like( $log,
+  qr/you need to create a revision/,
+  'logfile - needs revision');
+
+# Ensure dataset loads are done within revisions
+
+open($cfg_fh, ">>", "${tmpdir}/cfg1")
+  or die "Can't append to ${tmpdir}/cfg1: $!";
+print $cfg_fh "dataset_load_start_sql <<EOT\n";
+print $cfg_fh "SELECT bde_CreateDatasetRevision({{id}});\n";
+print $cfg_fh "EOT\n";
+print $cfg_fh "dataset_load_end_sql <<EOT\n";
+print $cfg_fh "SELECT bde_CompleteDatasetRevision({{id}});\n";
+print $cfg_fh "EOT\n";
+close($cfg_fh);
+
 # This should supposedly be first successful upload
 
 truncate $log_fh, 0;
@@ -818,7 +844,9 @@ is( $res->[0]{'status'}, 'C', 'upload[5].status' );
 # Update target table, to check it is properly rebuilt
 
 $res = $dbh->do(
-  'UPDATE bde.crs_parcel_bndry set sequence = -sequence',
+  'SELECT table_version.ver_create_revision(\'test target update\');' .
+  'UPDATE bde.crs_parcel_bndry set sequence = -sequence;' .
+  'SELECT table_version.ver_complete_revision();' ,
 ) or die "Could not update bde.crs_parcel_bndry";
 
 # -rebuild can be also passed as -r
