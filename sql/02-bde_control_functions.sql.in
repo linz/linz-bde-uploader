@@ -1878,7 +1878,7 @@ BEGIN
         RETURN 0;
     END IF;
 
-    -- Copy additional schema information (constraints, indexes, ownership,
+    -- Copy additional schema information (constraints, indexes,
     -- etc) from the bde table to the temp table
 
     v_task := 'Copying schema information to temp table';
@@ -2551,14 +2551,6 @@ BEGIN
     RAISE NOTICE '%', v_task;
 
     PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
-
-    -- Copy ownership and access rights
-
-    v_task := 'Copying ownership and access information';
-    RAISE NOTICE '%', v_task;
-
-    PERFORM bde_control.bde_ExecuteSqlArray(p_upload,v_task,
-        bde_control._bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
 
     RETURN 0;
 
