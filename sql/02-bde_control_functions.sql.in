@@ -1953,12 +1953,6 @@ BEGIN
         v_task := 'Deleting data from current version of the table ' || v_bdetable;
         RAISE NOTICE '%', v_task;
 
-        IF table_version.ver_is_table_versioned(v_bde_schema, p_table_name)
-        THEN
-            PERFORM table_version.ver_disable_versioning(
-                        v_bde_schema, p_table_name);
-        END IF;
-
         v_sql := 'DELETE FROM ' || v_bdetable;
         RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
