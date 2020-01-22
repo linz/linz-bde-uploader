@@ -222,6 +222,13 @@ GRANT USAGE
     ON ALL SEQUENCES IN SCHEMA bde_control
     TO bde_admin;
 
+-- FIXME: Workaround for https://github.com/linz/linz-bde-schema/issues/173
+DO $$
+BEGIN
+    EXECUTE format('GRANT CREATE ON DATABASE %I TO bde_admin',
+            current_database());
+END; $$ LANGUAGE 'plpgsql';
+
 GRANT SELECT
     ON ALL TABLES IN SCHEMA bde_control
     TO bde_user;
