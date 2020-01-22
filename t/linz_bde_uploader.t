@@ -22,7 +22,7 @@ use File::Copy qw/ copy /;
 use DBI;
 use utf8;
 
-my $planned_tests = 317;
+my $planned_tests = 320;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -562,6 +562,7 @@ copy($datadir.'/pab1.crs', $level0ds1.'/test_file.crs') or die "Copy failed: $!"
 # Missing test_table table in database
 
 truncate $log_fh, 0;
+my $upl_id = 1;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, missing test_table');
 is( $test->stdout, '', 'stdout, missing test_table');
@@ -579,10 +580,10 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( @{$res}, 1, 'bde_control.upload is empty' );
-is( $res->[0]{'id'}, '1', 'upload[3].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[3].schema-name' );
-is( $res->[0]{'status'}, 'E', 'upload[3].status' );
+is( @{$res}, $upl_id, 'bde_control.upload is empty' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'E', "upload[$upl_id].status" );
 
 # Change tables.conf to reference one of the existing BDE tables
 
@@ -613,6 +614,7 @@ sub clean_stderr
 # revisioning on the table
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 is( $test->stderr, '', 'stderr, needs revision');
 is( $test->stdout, '', 'stdout, needs revision');
@@ -638,6 +640,7 @@ close($cfg_fh);
 # This should supposedly be first successful upload
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 my $stderr = $test->stderr;
 $stderr =~ s/WARNING:.*dev.stdout//;
@@ -647,7 +650,7 @@ is( $? >> 8, 0, 'exit status, success upload test_file');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
+  qr/INFO - Job $upl_id finished successfully/,
   'logfile - success upload test_file');
 
 # check actual table content
@@ -682,9 +685,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '2', 'upload[2].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[2].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[2].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Check bde_control.upload_stats
 
@@ -699,26 +702,27 @@ $res = $dbh->selectall_arrayref(
   { Slice => {} }
 );
 is( @{$res}, 1, 'bde_control.upload_stats for upload 2 has 1 entry' );
-is( $res->[0]{'upl_id'}, '2', 'upload_stats[2].upl_id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload_stats[2].schema_name' );
-is( $res->[0]{'table_name'}, 'crs_parcel_bndry', 'upload_stats[2].table_name' );
-is( $res->[0]{'ninsert'}, '3', 'upload_stats[2].ninsert' );
-is( $res->[0]{'ndelete'}, '0', 'upload_stats[2].ndelete' );
-is( $res->[0]{'nupdate'}, '0', 'upload_stats[2].nupdate' );
-is( $res->[0]{'nnullupdate'}, '0', 'upload_stats[2].nnullupdate' );
+is( $res->[0]{'upl_id'}, "$upl_id", "upload_stats[$upl_id].upl_id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload_stats[$upl_id].schema_name" );
+is( $res->[0]{'table_name'}, 'crs_parcel_bndry', "upload_stats[$upl_id].table_name" );
+is( $res->[0]{'ninsert'}, '3', "upload_stats[$upl_id].ninsert" );
+is( $res->[0]{'ndelete'}, '0', "upload_stats[$upl_id].ndelete" );
+is( $res->[0]{'nupdate'}, '0', "upload_stats[$upl_id].nupdate" );
+is( $res->[0]{'nnullupdate'}, '0', "upload_stats[$upl_id].nnullupdate" );
 
 # Run full upload again - no updates to apply this time (by date)
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates to apply!
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( $test->stderr, '', 'stderr, success upload test_file (2)');
-is( $test->stdout, '', 'stdout, success upload test_file (2)');
-is( $? >> 8, 0, 'exit status, success upload test_file (2)');
+is( $test->stderr, '', "stderr, success upload test_file ($upl_id)");
+is( $test->stdout, '', "stdout, success upload test_file ($upl_id)");
+is( $? >> 8, 0, "exit status, success upload test_file ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
   qr/INFO - No dataset updates to apply/,
-  'logfile - success upload test_file (2)');
+  "logfile - success upload test_file ($upl_id)");
 
 # Rename dataset dir
 
@@ -729,15 +733,16 @@ rename($level0ds1, $level0ds2)
 # Run full upload again, should find the new dataset now
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
-is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (3)');
-is( $test->stdout, '', 'stdout, success upload test_file (3)');
-is( $? >> 8, 0, 'exit status, success upload test_file (3)');
+is( clean_stderr($test->stderr), '', "stderr, success upload test_file ($upl_id)");
+is( $test->stdout, '', "stdout, success upload test_file ($upl_id)");
+is( $? >> 8, 0, "exit status, success upload test_file ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - success upload test_file (3)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - success upload test_file ($upl_id)");
 
 # check the new table content
 
@@ -753,9 +758,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '3', 'upload[3].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[3].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[3].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Rename dataset dir again
 
@@ -767,28 +772,30 @@ rename($level0ds2, $level0ds3)
 # available
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170625" );
-is( $test->stderr, '', 'stderr, no uploads available (4)');
-is( $test->stdout, '', 'stdout, no uploads available (4)');
-is( $? >> 8, 0, 'exit status, no uploads available (4)');
+is( $test->stderr, '', "stderr, no uploads available ($upl_id)");
+is( $test->stdout, '', "stdout, no uploads available ($upl_id)");
+is( $? >> 8, 0, "exit status, no uploads available ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
   qr/INFO - No level 0 uploads available/ms,
-  'logfile - success upload test_file (3)');
+  "logfile - success upload test_file ($upl_id)");
 
 # Now run full upload again but -before including available dataset
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -before 20170701" );
-is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (4)');
-is( $test->stdout, '', 'stdout, success upload test_file (4)');
-is( $? >> 8, 0, 'exit status, success upload test_file (4)');
+is( clean_stderr($test->stderr), '', "stderr, success upload test_file ($upl_id)");
+is( $test->stdout, '', "stdout, success upload test_file ($upl_id)");
+is( $? >> 8, 0, "exit status, success upload test_file ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - success upload test_file (4)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - success upload test_file ($upl_id)");
 
 # Check bde_control.upload
 
@@ -796,37 +803,39 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '4', 'upload[4].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[4].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[4].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Run full upload again, using -b for -before
 # No new data to upload
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701" );
-is( $test->stderr, '', 'stderr, no dataset updates to apply(5)');
-is( $test->stdout, '', 'stdout, no dataset updates to apply (5)');
-is( $? >> 8, 0, 'exit status, no dataset updates to apply (5)');
+is( $test->stderr, '', "stderr, no dataset updates to apply($upl_id)");
+is( $test->stdout, '', "stdout, no dataset updates to apply ($upl_id)");
+is( $? >> 8, 0, "exit status, no dataset updates to apply ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
   qr/No dataset updates to apply/,
-  'logfile - no dataset updates to apply (5)');
+  "logfile - no dataset updates to apply ($upl_id)");
 
 # Run again but with -rebuild
 # No new data to upload
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -rebuild" );
-is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (5)');
-is( $test->stdout, '', 'stdout, success upload test_file (5)');
-is( $? >> 8, 0, 'exit status, success upload test_file (5)');
+is( clean_stderr($test->stderr), '', "stderr, success upload test_file ($upl_id)");
+is( $test->stdout, '', "stdout, success upload test_file ($upl_id)");
+is( $? >> 8, 0, "exit status, success upload test_file ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - success upload test_file (5)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - success upload test_file ($upl_id)");
 
 # Check bde_control.upload
 
@@ -834,9 +843,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '5', 'upload[5].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[5].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[5].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Update target table, to check it is properly rebuilt
 
@@ -849,15 +858,16 @@ $res = $dbh->do(
 # -rebuild can be also passed as -r
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -b 20170701 -r" );
-is( clean_stderr($test->stderr), '', 'stderr, success upload test_file (6)');
-is( $test->stdout, '', 'stdout, success upload test_file (6)');
-is( $? >> 8, 0, 'exit status, success upload test_file (6)');
+is( clean_stderr($test->stderr), '', "stderr, success upload test_file ($upl_id)");
+is( $test->stdout, '', "stdout, success upload test_file ($upl_id)");
+is( $? >> 8, 0, "exit status, success upload test_file ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - success upload test_file (6)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - success upload test_file ($upl_id)");
 
 # Check bde_control.upload
 
@@ -865,9 +875,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '6', 'upload[6].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[6].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[6].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # check actual table content
 
@@ -877,23 +887,23 @@ $res = $dbh->selectall_arrayref(
 );
 is( @{$res}, 3, 'crs_parcel_bndry has 3 entries' );
 
-is( $res->[0]{'pri_id'}, '4457326', 'crs_parcel_bndry[0].pri_id (6)' );
-is( $res->[0]{'sequence'}, '3', 'crs_parcel_bndry[0].sequence (6)' );
-is( $res->[0]{'lin_id'}, '11960041', 'crs_parcel_bndry[0].lin_id (6)' );
-is( $res->[0]{'reversed'}, 'Y', 'crs_parcel_bndry[0].reversed (6)' );
-is( $res->[0]{'audit_id'}, '80401150', 'crs_parcel_bndry[0].audit_id (6)' );
+is( $res->[0]{'pri_id'}, '4457326', "crs_parcel_bndry[0].pri_id ($upl_id)" );
+is( $res->[0]{'sequence'}, '3', "crs_parcel_bndry[0].sequence ($upl_id)" );
+is( $res->[0]{'lin_id'}, '11960041', "crs_parcel_bndry[0].lin_id ($upl_id)" );
+is( $res->[0]{'reversed'}, 'Y', "crs_parcel_bndry[0].reversed ($upl_id)" );
+is( $res->[0]{'audit_id'}, '80401150', "crs_parcel_bndry[0].audit_id ($upl_id)" );
 
-is( $res->[1]{'pri_id'}, '4457327', 'crs_parcel_bndry[1].pri_id (6)' );
-is( $res->[1]{'sequence'}, '2', 'crs_parcel_bndry[1].sequence (6)' );
-is( $res->[1]{'lin_id'}, '29694578', 'crs_parcel_bndry[1].lin_id (6)' );
-is( $res->[1]{'reversed'}, 'N', 'crs_parcel_bndry[1].reversed (6)' );
-is( $res->[1]{'audit_id'}, '80401149', 'crs_parcel_bndry[1].audit_id (6)' );
+is( $res->[1]{'pri_id'}, '4457327', "crs_parcel_bndry[1].pri_id ($upl_id)" );
+is( $res->[1]{'sequence'}, '2', "crs_parcel_bndry[1].sequence ($upl_id)" );
+is( $res->[1]{'lin_id'}, '29694578', "crs_parcel_bndry[1].lin_id ($upl_id)" );
+is( $res->[1]{'reversed'}, 'N', "crs_parcel_bndry[1].reversed ($upl_id)" );
+is( $res->[1]{'audit_id'}, '80401149', "crs_parcel_bndry[1].audit_id ($upl_id)" );
 
-is( $res->[2]{'pri_id'}, '4457328', 'crs_parcel_bndry[2].pri_id (6)' );
-is( $res->[2]{'sequence'}, '1', 'crs_parcel_bndry[2].sequence (6)' );
-is( $res->[2]{'lin_id'}, '29694591', 'crs_parcel_bndry[2].lin_id (6)' );
-is( $res->[2]{'reversed'}, 'Y', 'crs_parcel_bndry[2].reversed (6)' );
-is( $res->[2]{'audit_id'}, '80401148', 'crs_parcel_bndry[2].audit_id (6)' );
+is( $res->[2]{'pri_id'}, '4457328', "crs_parcel_bndry[2].pri_id ($upl_id)" );
+is( $res->[2]{'sequence'}, '1', "crs_parcel_bndry[2].sequence ($upl_id)" );
+is( $res->[2]{'lin_id'}, '29694591', "crs_parcel_bndry[2].lin_id ($upl_id)" );
+is( $res->[2]{'reversed'}, 'Y', "crs_parcel_bndry[2].reversed ($upl_id)" );
+is( $res->[2]{'audit_id'}, '80401148', "crs_parcel_bndry[2].audit_id ($upl_id)" );
 
 # Pretend a job is active
 
@@ -905,6 +915,7 @@ INSERT INTO bde_control.upload VALUES (
   '2017-06-28 13:00:00', 'A')
 END_OF_SQL
 ) or die "Could not INSERT INTO bde_control.upload";
+++$upl_id; # we added a syntetic one
 
 # Check bde_control.upload
 
@@ -912,44 +923,46 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '7', 'upload[7].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[7].schema-name' );
-is( $res->[0]{'status'}, 'A', 'upload[7].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'A', "upload[$upl_id].status" );
 
 
 # Attempt to run a new job now
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r" );
-is( $test->stderr, '', 'stderr, another job is already active (8)');
-is( $test->stdout, '', 'stdout, another job is already active (8)');
-is( $? >> 8, 1, 'exit status, another job is already active (8)');
+is( $test->stderr, '', "stderr, another job is already active ($upl_id)");
+is( $test->stdout, '', "stdout, another job is already active ($upl_id)");
+is( $? >> 8, 1, "exit status, another job is already active ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
   qr/Cannot create upload job - another job is already active/,
-  'logfile - another job is already active (8)');
+  "logfile - another job is already active ($upl_id)");
 
 # Override lock to run a new job now
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -override-locks" );
-is( clean_stderr($test->stderr), '', 'stderr, override-locks (8)');
-is( $test->stdout, '', 'stdout, override-locks (8)');
-is( $? >> 8, 0, 'exit status, override-locks (8)');
+is( clean_stderr($test->stderr), '', "stderr, override-locks ($upl_id)");
+is( $test->stdout, '', "stdout, override-locks ($upl_id)");
+is( $? >> 8, 0, "exit status, override-locks ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - override-locks (8)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - override-locks ($upl_id)");
 
 # Check bde_control.upload
 
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} });
-is( $res->[0]{'id'}, '8', 'upload[8].id' );
-is( $res->[0]{'status'}, 'C', 'upload[8].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Pretend job 8 is still active
 
@@ -959,23 +972,24 @@ $res = $dbh->do("UPDATE bde_control.upload set status = 'A' where id = 8")
 # override-locks can be passed as -o too
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r -o" );
-is( clean_stderr($test->stderr), '', 'stderr, override-locks (9)');
-is( $test->stdout, '', 'stdout, override-locks (9)');
-is( $? >> 8, 0, 'exit status, override-locks (9)');
+is( clean_stderr($test->stderr), '', "stderr, override-locks ($upl_id)");
+is( $test->stdout, '', "stdout, override-locks ($upl_id)");
+is( $? >> 8, 0, "exit status, override-locks ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
-  'logfile - override-locks (9)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - override-locks ($upl_id)");
 
 # Check bde_control.upload
 
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} });
-is( $res->[0]{'id'}, '9', 'upload[9].id' );
-is( $res->[0]{'status'}, 'C', 'upload[9].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Remove any active job record
 $res = $dbh->do("UPDATE bde_control.upload set status = 'C' where status = 'A'")
@@ -991,29 +1005,30 @@ print $cfg_fh "EOT\n";
 close($cfg_fh);
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-f -c ${tmpdir}/cfg1 -r" );
-is( $? >> 8, 0, 'exit status, keep_temp_schema (10)');
-is( clean_stderr($test->stderr), '', 'stderr, keep_temp_schema (10)' );
-is( $test->stdout, '', 'stdout, keep_temp_schema (10)' );
+is( $? >> 8, 0, "exit status, keep_temp_schema ($upl_id)");
+is( clean_stderr($test->stderr), '', "stderr, keep_temp_schema ($upl_id)" );
+is( $test->stdout, '', "stdout, keep_temp_schema ($upl_id)" );
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job 10 finished successfully/,
-  'logfile - keep_temp_schema (10)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - keep_temp_schema ($upl_id)");
 
 $res = $dbh->selectall_arrayref(
   "SELECT nspname FROM pg_namespace where nspname like 'bde_upload_%'",
   { Slice => {} });
-is( scalar @{ $res }, 1, 'kept just one temp schema (10)' );
-is( $res->[0]{'nspname'}, 'bde_upload_10', 'kept temp schema (10)' );
+is( scalar @{ $res }, 1, "kept just one temp schema ($upl_id)" );
+is( $res->[0]{'nspname'}, 'bde_upload_' . $upl_id, "kept temp schema ($upl_id)" );
 
 # Check bde_control.upload
 
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} });
-is( $res->[0]{'id'}, '10', 'upload[10].id' );
-is( $res->[0]{'status'}, 'C', 'upload[10].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 #######################################
 #
@@ -1027,6 +1042,7 @@ my $level5dir = $repodir . '/level_5';
 mkdir $level5dir or die "Cannot create $level5dir";
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (no dataset)');
 is( $test->stdout, '', 'stdout, -incremental (no dataset)');
@@ -1061,6 +1077,7 @@ system('sed', '-i',
 # Run incremental upload w/out known changetable in config
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (missing changetable)');
 is( $test->stdout, '', 'stdout, -incremental (missing changetable)');
@@ -1077,9 +1094,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '11', 'upload[11].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[11].schema-name' );
-is( $res->[0]{'status'}, 'E', 'upload[11].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'E', "upload[$upl_id].status" );
 
 # Add l5_change_table in tables.conf
 
@@ -1093,6 +1110,9 @@ close($cfg_fh);
 # Run incremental upload w/out changetable file
 
 truncate $log_fh, 0;
+# no updates, but it looks like we do get an increment in sequence
+# FIXME: avoid incrementing the sequence on having this error ?
+++$upl_id;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
 is( clean_stderr($test->stderr), '', 'stderr, -incremental (no changetable file)');
 is( $test->stdout, '', 'stdout, -incremental (no changetable file)');
@@ -1109,9 +1129,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '12', 'upload[12].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[12].schema-name' );
-is( $res->[0]{'status'}, 'E', 'upload[12].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'E', "upload[$upl_id].status" );
 
 # Make test_changeset.crs available
 
@@ -1120,15 +1140,16 @@ copy($datadir.'/xaud.crs', $level5ds1.'/test_changeset.crs') or die "Copy failed
 # Run incremental upload
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
-is( clean_stderr($test->stderr), '', 'stderr, -incremental (13)');
-is( $test->stdout, '', 'stdout, -incremental (13)');
-is( $? >> 8, 0, 'exit status, -incremental (13)');
+is( clean_stderr($test->stderr), '', "stderr, -incremental ($upl_id)");
+is( $test->stdout, '', "stdout, -incremental ($upl_id)");
+is( $? >> 8, 0, "exit status, -incremental ($upl_id)");
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job 13 finished successfully/,
-  'logfile - -incremental (13)');
+  qr/INFO - Job $upl_id finished successfully/,
+  "logfile - -incremental ($upl_id)");
 
 # Check bde_control.upload
 
@@ -1136,9 +1157,9 @@ $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde_control.upload ORDER BY id DESC LIMIT 1',
   { Slice => {} }
 );
-is( $res->[0]{'id'}, '13', 'upload[13].id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload[13].schema-name' );
-is( $res->[0]{'status'}, 'C', 'upload[13].status' );
+is( $res->[0]{'id'}, "$upl_id", "upload[$upl_id].id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload[$upl_id].schema-name" );
+is( $res->[0]{'status'}, 'C', "upload[$upl_id].status" );
 
 # Check bde_control.upload_stats
 
@@ -1153,13 +1174,13 @@ $res = $dbh->selectall_arrayref(
   { Slice => {} }
 );
 is( @{$res}, 1, 'bde_control.upload_stats for upload 13 has 1 entry' );
-is( $res->[0]{'upl_id'}, '13', 'upload_stats[13].upl_id' );
-is( $res->[0]{'schema_name'}, 'bde', 'upload_stats[13].schema_name' );
-is( $res->[0]{'table_name'}, 'crs_parcel_bndry', 'upload_stats[13].table_name' );
-is( $res->[0]{'ninsert'}, '3', 'upload_stats[13].ninsert' );
-is( $res->[0]{'ndelete'}, '1', 'upload_stats[13].ndelete' );
-is( $res->[0]{'nupdate'}, '2', 'upload_stats[13].nupdate' );
-is( $res->[0]{'nnullupdate'}, '0', 'upload_stats[13].nnullupdate' );
+is( $res->[0]{'upl_id'}, "$upl_id", "upload_stats[$upl_id].upl_id" );
+is( $res->[0]{'schema_name'}, 'bde', "upload_stats[$upl_id].schema_name" );
+is( $res->[0]{'table_name'}, 'crs_parcel_bndry', "upload_stats[$upl_id].table_name" );
+is( $res->[0]{'ninsert'}, '3', "upload_stats[$upl_id].ninsert" );
+is( $res->[0]{'ndelete'}, '1', "upload_stats[$upl_id].ndelete" );
+is( $res->[0]{'nupdate'}, '2', "upload_stats[$upl_id].nupdate" );
+is( $res->[0]{'nnullupdate'}, '0', "upload_stats[$upl_id].nnullupdate" );
 
 # check contents of the crs_parcel_bndry table
 
@@ -1226,6 +1247,7 @@ EOF
 ) or die "Could not create bde.utf8 table";
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1" );
 $stderr = $test->stderr;
 $stderr =~ s/WARNING:.*dev.stdout//;
@@ -1235,7 +1257,7 @@ is( $? >> 8, 0, 'exit status, success upload test_utf8_file');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/INFO - Job.*finished successfully/,
+  qr/INFO - Job $upl_id finished successfully/,
   'logfile - success upload test_utf8_file');
 
 # check actual table content
@@ -1271,6 +1293,7 @@ EOF
 close($cfg_fh);
 
 truncate $log_fh, 0;
+#++$upl_id; # no updates
 $test->run( args => "-full -verbose -c ${tmpdir}/cfg1" );
 is( $? >> 8, 0, 'exit status, -verbose');
 @logged = <$log_fh>;
@@ -1294,6 +1317,7 @@ $res = $dbh->do("TRUNCATE bde_control.upload_table")
   or die "Could not TRUNCATE bde_control.upload_table";
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full-incremental -verbose -c ${tmpdir}/cfg1" );
 is( $? >> 8, 0, 'exit status, -full-incremental warned 1/4 reduction');
 @logged = <$log_fh>;
@@ -1318,6 +1342,7 @@ $res = $dbh->do("TRUNCATE bde_control.upload_table")
   or die "Could not TRUNCATE bde_control.upload_table";
 
 truncate $log_fh, 0;
+++$upl_id;
 $test->run( args => "-full-incremental -verbose -c ${tmpdir}/cfg1" );
 is( $? >> 8, 1, 'exit status, -full-incremental errored 2/3 reduction');
 @logged = <$log_fh>;
@@ -1381,10 +1406,10 @@ system("sed '/^3|/q' ${datadir}/utf8.crs > ${level5ds2}/test_utf8_file.crs")
 
 truncate $log_fh, 0;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
-is( clean_stderr($test->stderr), '', 'stderr, -incremental (18)');
-is( $? >> 8, 0, 'exit status, -incremental (18)');
+is( clean_stderr($test->stderr), '', "stderr, -incremental ($upl_id)");
+is( $? >> 8, 0, "exit status, -incremental ($upl_id)");
 like( $test->stdout, qr/WARN.*has 3 rows, when at least 4 are expected/,
-    '-incremental warned 1/4 reduction (18)');
+    "-incremental warned 1/4 reduction ($upl_id)");
 
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde.utf8 ORDER BY id',
@@ -1416,10 +1441,10 @@ system("sed '/^1|/q' ${datadir}/utf8.crs > ${level5ds3}/test_utf8_file.crs")
 
 truncate $log_fh, 0;
 $test->run( args => "-incremental -c ${tmpdir}/cfg1" );
-is( clean_stderr($test->stderr), '', 'stderr, -incremental (19)');
-is( $? >> 8, 1, 'exit status, -incremental (19)');
+is( clean_stderr($test->stderr), '', "stderr, -incremental ($upl_id)");
+is( $? >> 8, 1, "exit status, -incremental ($upl_id)");
 like( $test->stdout, qr/Error: bde.utf8 has 1 rows, when at least 2 are expected/,
-     '-incremental errored 2/3 reduction (19)');
+     "-incremental errored 2/3 reduction ($upl_id)");
 
 $res = $dbh->selectall_arrayref(
   'SELECT * FROM bde.utf8 ORDER BY id',
