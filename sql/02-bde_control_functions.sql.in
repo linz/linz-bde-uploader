@@ -3036,4 +3036,7 @@ BEGIN
 END
 $$;
 
+-- Ensure bde_admin can execute the bde_control functions
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bde_control TO bde_admin;
+
 COMMIT;
