@@ -218,6 +218,10 @@ GRANT SELECT, UPDATE, INSERT, DELETE
     ON ALL TABLES IN SCHEMA bde_control
     TO bde_admin;
 
+GRANT USAGE
+    ON ALL SEQUENCES IN SCHEMA bde_control
+    TO bde_admin;
+
 GRANT SELECT
     ON ALL TABLES IN SCHEMA bde_control
     TO bde_user;
