@@ -6,11 +6,10 @@ jobs:
 
   test:
 
-    name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }}, LINZ ${{ matrix.linz }} on ${{ matrix.os }}
+    name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
         matrix:
-            linz: [ 'test' ]
             pg: [ '9.6', '10', '11' ]
             pgis: [ '2.4', '2.5' ]
             perl: [ '5.24', '5.26' ]
@@ -38,11 +37,12 @@ jobs:
         # Enable fetching packages from apt.postgresql repository
         curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
         echo "deb http://apt.postgresql.org/pub/repos/apt/ ${distro}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-        # Enable fetching packages from packagecloud LINZ repository
-        curl -Ls ${PCLOUD}/${{ matrix.linz }}/gpgkey \
-            | sudo apt-key add -
-        echo "deb ${PCLOUD}/${{ matrix.linz }}/ubuntu ${distro} main" \
-            | sudo tee /etc/apt/sources.list.d/linz-${{ matrix.linz }}.list
+        # Enable fetching packages from packagecloud LINZ test repository
+        for repo in test prod; do \
+            curl -Ls ${PCLOUD}/${repo}/gpgkey \ | sudo apt-key add -; \
+            echo "deb ${PCLOUD}/${repo}/ubuntu ${distro} main" | \
+                sudo tee /etc/apt/sources.list.d/linz-${repo}.list; \
+        done
         # Update apt cache
         sudo ${APT} -qq update
         # Install dependencies
