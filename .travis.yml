@@ -12,7 +12,7 @@ matrix:
   include:
 
   # Found on Debian 9 (stretch)
-  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=release-1.6 DBPATCH_BRANCH=release-1.4
+  - env: PGSQL=9.6 PGIS=2.3 TABLEVERSION_BRANCH=release-1.7 DBPATCH_BRANCH=release-1.4
     perl: 5.24
 
   # Found on Debian 9 (stretch)
@@ -20,7 +20,7 @@ matrix:
     perl: 5.24
 
   # Found on Ubuntu 18.04 (bionic)
-  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=release-1.6 DBPATCH_BRANCH=release-1.4
+  - env: PGSQL=10 PGIS=2.4 TABLEVERSION_BRANCH=release-1.7 DBPATCH_BRANCH=release-1.4
     perl: 5.26
 
   # Found on Ubuntu 18.04 (bionic)
