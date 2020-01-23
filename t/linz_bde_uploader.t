@@ -282,7 +282,7 @@ is( $? >> 8, 1, 'exit status, empty db');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
+  qr/ERROR.*bde.*not exist.*Duration of job/ms,
   'logfile - empty db');
 
 # Run with both .test config and config-extension (-x)
@@ -309,7 +309,7 @@ close($cfg_fh);
 truncate $log_fh, 0;
 $test->run( args => "-full -config-path ${tmpdir}/cfg1 -x ext" );
 like( $test->stderr,
-    qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
+    qr/ERROR.*bde.*not exist.*Duration of job/ms,
     'stderr, empty db (-x)');
 is( $test->stdout, '', 'stdout, empty db (-x)');
 
@@ -333,7 +333,7 @@ is( $? >> 8, 1, 'exit status, empty db (terse)');
 @logged = <$log_fh>;
 $log = join '', @logged;
 like( $log,
-  qr/ERROR.*function bde_checkschema.*not exist.*Duration of job/ms,
+  qr/ERROR.*bde.*not exist.*Duration of job/ms,
   'logfile - empty db (terse)');
 
 # Prepare the database now
