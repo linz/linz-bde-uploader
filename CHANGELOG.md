@@ -3,6 +3,13 @@
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
 ## [2.8.0-dev] - 2020-MM-DD
+### Changed
+- PostgreSQL session auth changed to `bde_admin` as soon as possible (#249)
+- Grant EXECUTE on all `bde_control` functions to `bde_admin`
+- Grant CREATE on current database to `bde_admin`
+- Grant USAGE of all sequences in `bde_control` to `bde_admin`
+### Enhanced
+- Stop copying ownership information to temporary tables
 ### Added
 - Printing of per-dataset revision (#246)
 - Print NOTICE upon deleting a revision (#247)
