@@ -108,16 +108,16 @@ by setting a `BDEUPLOADER_SQLDIR` environment variable.
 #### User setup
 
 Lastly the `linz_bde_uploader` software should be run under a UNIX account that
-also has PostgreSQL `bde_dba` database access. It is best to first create a
+also has PostgreSQL `bde_admin` database access. It is best to first create a
 system user account as well so ident authentication can be used.
 
 ```shell
 adduser --system --gecos "BDE Maintainer" bde
 ```
 
-The bde PostgreSQL user account needs to have `bde_dba` rights, but does not
-need to have superuser rights by default. An example SQL create user script
-could look like:
+The bde PostgreSQL user account needs to have `bde_admin` rights, but does
+not need to have superuser rights by default.
+An example SQL create user script could look like:
 
 ```sql
 DO $$
@@ -126,7 +126,7 @@ BEGIN
         CREATE ROLE bde LOGIN
               NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE;
         ALTER ROLE bde SET search_path=bde, bde_control, lds, public;
-        GRANT bde_dba TO bde;
+        GRANT bde_admin TO bde;
     END IF;
 END
 $$;
