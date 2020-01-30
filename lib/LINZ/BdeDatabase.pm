@@ -331,6 +331,8 @@ sub new
 
 
     # Immediately switch to the role meant to run uploads (`bde_admin`)
+    # FIXME: Workaround for https://github.com/linz/linz-bde-schema/issues/173
+    $dbh->do("DO \$\$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO bde_admin', current_database()); END; \$\$ LANGUAGE 'plpgsql'");
     $dbh->do("SET SESSION AUTHORIZATION bde_admin");
 
     if ( $self->{_pg_server_version} >= 90000 )
