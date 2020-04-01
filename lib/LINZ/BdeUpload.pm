@@ -1021,10 +1021,20 @@ sub LoadFile
             if $checktime;
 
         # Determine which columns are to be copied
-        my $columns = join("|",$reader->fields);
+        my $fields = join("|",$reader->fields);
+        if ($fields eq '') {
+            die "BDE file has no fields defined";
+        }
+        DEBUG("BDE Fields: $fields");
 
-        $columns = $db->selectValidColumns($tablename,$columns);
-        $reader->output_fields(split(/\|/,$columns));
+        my $columns = $db->selectValidColumns($tablename,$fields);
+        if ($columns eq '') {
+            die "No BDE field ($fields) matches column names in DB table $tablename";
+        }
+        DEBUG("DB Columns: $columns");
+
+        my @columns = split(/\|/,$columns);
+        $reader->output_fields(@columns);
 
         # Open data file (throw on failure)
         $tabledatafh = $self->_OpenDataFile($dataset,$reader);
