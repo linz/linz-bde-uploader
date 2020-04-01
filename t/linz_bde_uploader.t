@@ -22,7 +22,7 @@ use File::Copy qw/ copy /;
 use DBI;
 use utf8;
 
-my $planned_tests = 320;
+my $planned_tests = 323;
 
 my $script = "./blib/script/linz_bde_uploader";
 my $confdir = "conf";
@@ -1453,5 +1453,43 @@ $res = $dbh->selectall_arrayref(
 is( @{$res}, 3, 'utf8 has 3 rows after full update' );
 
 
+# Test error message when field names in BDE file
+# do not match any column name in database
+
+my $level0ds4 = $level0dir . '/20200101010101';
+mkdir $level0ds4 or die "Cannot create $level0ds4";
+
+open($testfileh, ">", "$level0ds4/test_utf8_file.crs")
+    or die "Cannot open $level0ds4/test_utf8_file.crs for write";
+print $testfileh <<"EOF";
+HEDR     2.0.0
+SOFTWARE cbe_b30 V1.0.1
+SCHEMA   3.19.14
+USER     crs_bde
+START    2019-06-01 20:51:45
+END      2019-07-06 20:57:38
+SQL      SELECT * FROM utf8
+TABLE    utf8
+COLUMN   a  int NULL
+COLUMN   b  varchar NULL
+COLUMN   c  varchar NULL
+DESC
+SIZE          312
+{CRS-DATA}
+1|one|uno|
+2|two|due|
+EOF
+close($testfileh);
+
+truncate $log_fh, 0;
+++$upl_id;
+$test->run( args => "-full -config-path ${tmpdir}/cfg1" );
+$stderr = $test->stderr;
+$stderr =~ s/WARNING:.*dev.stdout//;
+is( clean_stderr($test->stderr), '', 'stderr, no field/column match');
+like( $test->stdout, qr/ERROR.*No.*field.*match.*column names/,
+     "no field/column match trigger human-readable error ($upl_id)");
+is( $? >> 8, 1, 'exit status, no field/column match');
+@logged = <$log_fh>;
 
 done_testing($planned_tests);
