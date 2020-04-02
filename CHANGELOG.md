@@ -2,6 +2,11 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.8.1] - 2020-04-02
+### Enhanced
+- Log a readable error when no BDE field name matches target col names (#255)
+- Drop PostgreSQL dependency in in Debian packaging (#141)
+
 ## [2.8.0] - 2020-02-11
 ### Changed
 - PostgreSQL session auth changed to `bde_admin` as soon as possible (#249)
