@@ -1,3 +1,9 @@
+linz-bde-uploader (2.8.1-1linz~bionic1) bionic; urgency=medium
+
+  * New upstream version
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Mon, 06 Apr 2020 09:30:18 +0200
+
 linz-bde-uploader (2.8.0-1linz~bionic1) bionic; urgency=medium
 
   * New upstream version
