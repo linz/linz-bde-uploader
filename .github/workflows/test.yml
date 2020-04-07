@@ -54,10 +54,12 @@ jobs:
             postgresql-contrib-${{ matrix.pg }} \
             postgresql-${{ matrix.pg }} \
             postgresql-${{ matrix.pg }}-dbpatch \
+            dbpatch \
             postgresql-${{ matrix.pg }}-pgtap \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }} \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }}-scripts \
             postgresql-${{ matrix.pg }}-tableversion \
+            tableversion \
             postgresql-server-dev-${{ matrix.pg }} \
             libtest-cmd-perl \
             libtest-exception-perl \
