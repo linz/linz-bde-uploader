@@ -57,6 +57,8 @@ jobs:
             postgresql-${{ matrix.pg }}-pgtap \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }} \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }}-scripts \
+            postgresql-${{ matrix.pg }}-dbpatch \
+            postgresql-${{ matrix.pg }}-tableversion \
             dbpatch \
             tableversion \
             libtest-cmd-perl \
