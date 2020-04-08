@@ -50,15 +50,15 @@ jobs:
             cpanminus \
             debhelper \
             fakeroot \
+            postgresql-${{ matrix.pg }} \
             postgresql-client-${{ matrix.pg }} \
             postgresql-contrib-${{ matrix.pg }} \
-            postgresql-${{ matrix.pg }} \
-            postgresql-${{ matrix.pg }}-dbpatch \
+            postgresql-server-dev-${{ matrix.pg }} \
             postgresql-${{ matrix.pg }}-pgtap \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }} \
             postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }}-scripts \
-            postgresql-${{ matrix.pg }}-tableversion \
-            postgresql-server-dev-${{ matrix.pg }} \
+            dbpatch \
+            tableversion \
             libtest-cmd-perl \
             libtest-exception-perl \
             libtap-parser-sourcehandler-pgtap-perl \
