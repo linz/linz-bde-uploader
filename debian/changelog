@@ -1,3 +1,9 @@
+linz-bde-uploader (2.8.1-2linz~bionic1) bionic; urgency=medium
+
+  * Changed dependency on non-PostgreSQL tableversion and dbpatch
+
+ -- Ivan Mincik <imincik@linz.govt.nz>  Thu, 09 Apr 2020 08:38:01 +0200
+
 linz-bde-uploader (2.8.1-1linz~bionic1) bionic; urgency=medium
 
   * New upstream version
