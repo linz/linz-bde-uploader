@@ -2,6 +2,9 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.9.0-dev] - 2020-MM-DD
+### Enhanced
+
 ## [2.8.0] - 2020-02-11
 ### Changed
 - PostgreSQL session auth changed to `bde_admin` as soon as possible (#249)
