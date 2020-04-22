@@ -49,7 +49,13 @@ CREATE TABLE IF NOT EXISTS bde_control.upload
     status CHAR(1) NOT NULL DEFAULT 'U'
 );
 
-ALTER TABLE bde_control.upload OWNER TO bde_dba;
+IF u.usename != 'bde_dba'
+    FROM pg_user u, pg_class c
+    WHERE u.usesysid = c.relowner
+    AND c.oid = 'bde_control.upload'::regclass
+THEN
+    ALTER TABLE bde_control.upload OWNER TO bde_dba;
+END IF;
 
 COMMENT ON TABLE bde_control.upload IS
 $comment$
@@ -94,7 +100,13 @@ CREATE TABLE IF NOT EXISTS bde_control.upload_table
     UNIQUE (schema_name,table_name)
 );
 
-ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
+IF u.usename != 'bde_dba'
+    FROM pg_user u, pg_class c
+    WHERE u.usesysid = c.relowner
+    AND c.oid = 'bde_control.upload_table'::regclass
+THEN
+    ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
+END IF;
 
 COMMENT ON TABLE bde_control.upload_table IS
 'Tracks the status of uploads for each table.';
@@ -181,7 +193,13 @@ CREATE TABLE IF NOT EXISTS bde_control.upload_stats
 PERFORM pg_temp.createIndexIfNotExists('idx_sts_tbl', 'bde_control', 'upload_stats', 'tbl_id');
 PERFORM pg_temp.createIndexIfNotExists('idx_sts_upl', 'bde_control', 'upload_stats', 'upl_id');
 
-ALTER TABLE bde_control.upload_stats OWNER TO bde_dba;
+IF u.usename != 'bde_dba'
+    FROM pg_user u, pg_class c
+    WHERE u.usesysid = c.relowner
+    AND c.oid = 'bde_control.upload_stats'::regclass
+THEN
+    ALTER TABLE bde_control.upload_stats OWNER TO bde_dba;
+END IF;
 
 COMMENT ON TABLE bde_control.upload_stats IS
 $comment$
