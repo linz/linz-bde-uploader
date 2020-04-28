@@ -6,7 +6,7 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ### Enhanced
 - Only ALTER table on upgrade if really needed (#256)
 ### Fixed
-- UTF8 characters encoding (#210)
+- Schema loader transactionality (#267)
 
 ## [2.8.0] - 2020-02-11
 ### Changed
