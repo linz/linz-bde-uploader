@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS bde_control.upload
     status CHAR(1) NOT NULL DEFAULT 'U'
 );
 
-IF u.usename != 'bde_dba'
-    FROM pg_user u, pg_class c
-    WHERE u.usesysid = c.relowner
+IF r.rolname != 'bde_dba'
+    FROM pg_roles r, pg_class c
+    WHERE r.oid = c.relowner
     AND c.oid = 'bde_control.upload'::regclass
 THEN
     ALTER TABLE bde_control.upload OWNER TO bde_dba;
@@ -100,9 +100,9 @@ CREATE TABLE IF NOT EXISTS bde_control.upload_table
     UNIQUE (schema_name,table_name)
 );
 
-IF u.usename != 'bde_dba'
-    FROM pg_user u, pg_class c
-    WHERE u.usesysid = c.relowner
+IF r.rolname != 'bde_dba'
+    FROM pg_roles r, pg_class c
+    WHERE r.oid = c.relowner
     AND c.oid = 'bde_control.upload_table'::regclass
 THEN
     ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
