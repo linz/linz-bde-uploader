@@ -2,7 +2,7 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.9.0-dev] - 2020-MM-DD
+## [2.9.0] - 2020-05-05
 ### Enhanced
 - Only ALTER table on upgrade if really needed (#256)
 ### Fixed
