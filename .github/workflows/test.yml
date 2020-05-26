@@ -1,6 +1,16 @@
 name: test
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - packagecloud
+      - 'release-*'
+    tags-ignore:
+      - 'debian/*'
+  pull_request:
+    branches:
+      - '*'
 
 jobs:
 
@@ -119,3 +129,38 @@ jobs:
     - name: Test debian packaging
       run: |
         make deb
+
+  package:
+    needs: test
+    name: Package for Debian
+    runs-on: ubuntu-18.04
+    strategy:
+        matrix:
+            distro: [ 'bionic' ]
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Determine packagecloud publication target
+      run: |
+        # TODO: it would be nice to turn this into a single-liner in
+        #       github-action syntax
+        echo "GitHub ref: ${{ github.ref }}"
+        echo "GitHub event_name: ${{ github.event_name }}"
+        PACKAGECLOUD_REPOSITORY=
+        if test "${{ github.event_name }}" = 'push'; then
+          if expr "${{ github.ref }}" : "refs/tags/" > /dev/null; then
+            PACKAGECLOUD_REPOSITORY=test
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+          elif test "${{ github.ref }}" = 'refs/heads/packagecloud' \
+                 -o "${{ github.ref }}" = 'refs/heads/master'
+          then
+            PACKAGECLOUD_REPOSITORY=dev
+          fi
+        fi
+        echo "PACKAGECLOUD_REPOSITORY: $PACKAGECLOUD_REPOSITORY"
+        echo ::set-env name=PACKAGECLOUD_REPOSITORY::"$PACKAGECLOUD_REPOSITORY"
+
+    - uses: linz/linz-software-repository@v4
+      with:
+        packagecloud_token: ${{ secrets.LINZCI_PACKAGECLOUD_TOKEN }}
+        packagecloud_repository: ${{ env.PACKAGECLOUD_REPOSITORY }}
