@@ -75,6 +75,8 @@ jobs:
             libtest-exception-perl \
             libtap-parser-sourcehandler-pgtap-perl \
             linz-bde-copy \
+            liblinz-utils-perl \
+            liblinz-bde-perl \
             linz-bde-schema
         sudo cpanm \
             DBI \
@@ -86,23 +88,6 @@ jobs:
             Test::Cmd \
             Test::Exception \
             Text::Diff
-        # TODO: install linz-utils-perl and linz-bde-perl via package,
-        #       when available on packagecloud
-        # Install LINZ::Config
-        pushd /tmp
-        wget https://github.com/linz/linz_utils_perl/archive/1.0.1.tar.gz
-        tar xzf 1.0.1.tar.gz
-        cd linz_utils_perl-1.0.1
-        perl Build.PL
-        sudo -E ./Build install
-        popd
-        # Install LINZ::Bde
-        pushd /tmp
-        wget https://github.com/linz/linz-bde-perl/archive/1.0.2.tar.gz
-        tar xzf 1.0.2.tar.gz && cd linz-bde-perl-1.0.2
-        perl Build.PL
-        sudo -E ./Build install
-        popd
     - name: Setup PostgreSQL user
       run: |
         sudo -u postgres createuser -s "$USER"
