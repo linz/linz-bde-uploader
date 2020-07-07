@@ -2,6 +2,10 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.10.0dev] - 2020-MM-YY
+### Added
+- Update default configuration for LOL-3.22b
+
 ## [2.9.0] - 2020-05-05
 ### Enhanced
 - Only ALTER table on upgrade if really needed (#256)
