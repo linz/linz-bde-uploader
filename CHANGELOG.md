@@ -2,7 +2,7 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
-## [2.10.0dev] - 2020-MM-YY
+## [2.10.0] - 2020-07-21
 ### Added
 - Update default configuration for LOL-3.22b
 
