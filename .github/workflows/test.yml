@@ -142,8 +142,7 @@ jobs:
             PACKAGECLOUD_REPOSITORY=dev
           fi
         fi
-        echo "PACKAGECLOUD_REPOSITORY: $PACKAGECLOUD_REPOSITORY"
-        echo ::set-env name=PACKAGECLOUD_REPOSITORY::"$PACKAGECLOUD_REPOSITORY"
+        echo "PACKAGECLOUD_REPOSITORY=$PACKAGECLOUD_REPOSITORY" | tee -a $GITHUB_ENV
 
     - uses: linz/linz-software-repository@v4
       with:
