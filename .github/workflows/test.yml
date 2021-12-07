@@ -19,6 +19,7 @@ jobs:
     name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+        fail-fast: false
         matrix:
             pg: [ '9.6', '10', '11' ]
             pgis: [ '2.4', '2.5' ]
@@ -78,9 +79,10 @@ jobs:
             liblinz-utils-perl \
             liblinz-bde-perl \
             linz-bde-schema
+        # TODO: Remove DBD::Pg version specifier once https://github.com/bucardo/dbdpg/issues/79 is released
         sudo cpanm \
             DBI \
-            DBD::Pg \
+            DBD::Pg@3.14.2 \
             Date::Calc \
             File::Which \
             Log::Log4perl \
@@ -88,6 +90,12 @@ jobs:
             Test::Cmd \
             Test::Exception \
             Text::Diff
+    - name: Save PostgreSQL package install logs if failed
+      uses: actions/upload-artifact@v2
+      with:
+        name: cpanm-logs
+        path: /home/runner/.cpanm/work/*/*.log
+      if: failure()
     - name: Setup PostgreSQL user
       run: |
         sudo -u postgres createuser -s "$USER"
@@ -142,8 +150,7 @@ jobs:
             PACKAGECLOUD_REPOSITORY=dev
           fi
         fi
-        echo "PACKAGECLOUD_REPOSITORY: $PACKAGECLOUD_REPOSITORY"
-        echo ::set-env name=PACKAGECLOUD_REPOSITORY::"$PACKAGECLOUD_REPOSITORY"
+        echo "PACKAGECLOUD_REPOSITORY=$PACKAGECLOUD_REPOSITORY" | tee -a $GITHUB_ENV
 
     - uses: linz/linz-software-repository@v4
       with:
