@@ -2,6 +2,16 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.10.0] - 2020-07-21
+### Added
+- Update default configuration for LOL-3.22b
+
+## [2.9.0] - 2020-05-05
+### Enhanced
+- Only ALTER table on upgrade if really needed (#256)
+### Fixed
+- Schema loader transactionality (#267)
+
 ## [2.8.1] - 2020-04-02
 ### Enhanced
 - Log a readable error when no BDE field name matches target col names (#255)
@@ -394,4 +404,3 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [1.0.0] - 2011-05-06
 ### Added
 - Initial release.
-

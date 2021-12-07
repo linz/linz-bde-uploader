@@ -1,6 +1,16 @@
 name: test
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - packagecloud
+      - 'release-*'
+    tags-ignore:
+      - 'debian/*'
+  pull_request:
+    branches:
+      - '*'
 
 jobs:
 
@@ -65,6 +75,8 @@ jobs:
             libtest-exception-perl \
             libtap-parser-sourcehandler-pgtap-perl \
             linz-bde-copy \
+            liblinz-utils-perl \
+            liblinz-bde-perl \
             linz-bde-schema
         sudo cpanm \
             DBI \
@@ -76,23 +88,6 @@ jobs:
             Test::Cmd \
             Test::Exception \
             Text::Diff
-        # TODO: install linz-utils-perl and linz-bde-perl via package,
-        #       when available on packagecloud
-        # Install LINZ::Config
-        pushd /tmp
-        wget https://github.com/linz/linz_utils_perl/archive/1.0.1.tar.gz
-        tar xzf 1.0.1.tar.gz
-        cd linz_utils_perl-1.0.1
-        perl Build.PL
-        sudo -E ./Build install
-        popd
-        # Install LINZ::Bde
-        pushd /tmp
-        wget https://github.com/linz/linz-bde-perl/archive/1.0.2.tar.gz
-        tar xzf 1.0.2.tar.gz && cd linz-bde-perl-1.0.2
-        perl Build.PL
-        sudo -E ./Build install
-        popd
     - name: Setup PostgreSQL user
       run: |
         sudo -u postgres createuser -s "$USER"
@@ -119,3 +114,37 @@ jobs:
     - name: Test debian packaging
       run: |
         make deb
+
+  package:
+    needs: test
+    name: Package for Debian
+    runs-on: ubuntu-18.04
+    strategy:
+        matrix:
+            distro: [ 'bionic' ]
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Determine packagecloud publication target
+      run: |
+        # TODO: it would be nice to turn this into a single-liner in
+        #       github-action syntax
+        echo "GitHub ref: ${{ github.ref }}"
+        echo "GitHub event_name: ${{ github.event_name }}"
+        PACKAGECLOUD_REPOSITORY=
+        if test "${{ github.event_name }}" = 'push'; then
+          if expr "${{ github.ref }}" : "refs/tags/" > /dev/null; then
+            PACKAGECLOUD_REPOSITORY=test
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+          elif test "${{ github.ref }}" = 'refs/heads/packagecloud' \
+                 -o "${{ github.ref }}" = 'refs/heads/master'
+          then
+            PACKAGECLOUD_REPOSITORY=dev
+          fi
+        fi
+        echo "PACKAGECLOUD_REPOSITORY=$PACKAGECLOUD_REPOSITORY" | tee -a $GITHUB_ENV
+
+    - uses: linz/linz-software-repository@v4
+      with:
+        packagecloud_token: ${{ secrets.LINZCI_PACKAGECLOUD_TOKEN }}
+        packagecloud_repository: ${{ env.PACKAGECLOUD_REPOSITORY }}
