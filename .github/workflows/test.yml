@@ -19,6 +19,7 @@ jobs:
     name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+        fail-fast: false
         matrix:
             pg: [ '9.6', '10', '11' ]
             pgis: [ '2.4', '2.5' ]
