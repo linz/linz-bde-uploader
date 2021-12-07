@@ -1878,7 +1878,7 @@ BEGIN
         RETURN 0;
     END IF;
 
-    -- Copy additional schema information (constraints, indexes, ownership,
+    -- Copy additional schema information (constraints, indexes,
     -- etc) from the bde table to the temp table
 
     v_task := 'Copying schema information to temp table';
@@ -1947,56 +1947,29 @@ BEGIN
         RAISE NOTICE 'Dropping table %', v_tmptable;
         EXECUTE 'DROP TABLE ' || v_tmptable;
     ELSE
-        -- Get dependent object SQL
-
-        v_task := 'Retrieving dependent object information';
-        RAISE NOTICE '%', v_task;
-
-        v_depsql := bde_control._bde_GetDependentObjectSql(p_upload,v_bdetable);
-
-        -- Is this too expensive on pg?
-
-        v_task := 'Counting current and new version of table';
-        RAISE NOTICE '%', v_task;
-
-        EXECUTE 'SELECT COUNT(*) FROM ' || v_bdetable INTO v_ndel;
-        EXECUTE 'SELECT COUNT(*) FROM ' || v_tmptable INTO v_nins;
-        v_nupd := 0;
 
         -- Replace the BDE table with the new version
 
-        v_task := 'Dropping current version of the table ' || v_bdetable;
+        v_task := 'Deleting data from current version of the table ' || v_bdetable;
         RAISE NOTICE '%', v_task;
 
-        PERFORM bde_control._bde_GetExclusiveLock(p_upload,v_bdetable);
-
-        IF table_version.ver_is_table_versioned(v_bde_schema, p_table_name)
-        THEN
-            PERFORM table_version.ver_disable_versioning(
-                        v_bde_schema, p_table_name);
-        END IF;
-
-        v_sql := 'DROP TABLE ' || v_bdetable || ' CASCADE';
+        v_sql := 'DELETE FROM ' || v_bdetable;
         RAISE DEBUG 'SQL: %',v_sql;
         EXECUTE v_sql;
+        GET DIAGNOSTICS v_ndel = ROW_COUNT;
 
-        v_task := 'Renaming the new version to replace the current version';
+        v_task := 'Inserting new data to target table';
         RAISE NOTICE '%', v_task;
-        v_sql := 'ALTER TABLE ' || v_tmptable || ' SET SCHEMA ' || v_bde_schema;
-        RAISE DEBUG 'Moving % into % schema: %', v_tmptable, v_bde_schema, v_sql;
+        v_sql := 'INSERT INTO ' || v_bdetable || ' SELECT * FROM ' || v_tmptable;
+        RAISE DEBUG 'Moving data from % to % using %', v_tmptable, v_bdetable, v_sql;
         EXECUTE v_sql;
+        GET DIAGNOSTICS v_nins = ROW_COUNT;
 
-        -- Restore the dependent objects
+        RAISE NOTICE 'Dropping table %', v_tmptable;
+        EXECUTE 'DROP TABLE ' || v_tmptable;
 
-        v_task := 'Restoring dependent objects';
-        RAISE NOTICE '%', v_task;
+        v_nupd := 0;
 
-        -- TODO: avoid the call to bde_control.bde_ExecuteSqlArray,
-        --       not really needed as we are catching
-        --       exceptions ourselves
-        PERFORM bde_control.bde_ExecuteSqlArray(
-            p_upload,v_task,v_depsql
-        );
     END IF;
 
     -- Record the update that has been applied
@@ -2399,53 +2372,6 @@ LANGUAGE plpgsql VOLATILE;
 ALTER FUNCTION bde_control._bde_CreateIncUpdates(REGCLASS, REGCLASS, NAME)
     OWNER TO bde_dba;
 
--- Return an array of SQL statements which can be executed
--- to restore every object dependent on the given table
---
--- NOTE: currently only supports restoring functions using
---       the given table as the type of any argument
---
--- {
-CREATE OR REPLACE FUNCTION bde_control._bde_GetDependentObjectSql(
-    p_upload INTEGER,
-    p_base regclass
-)
-RETURNS
-    text[]
-AS
-$body$
-DECLARE
-    defs TEXT[];
-    rec RECORD;
-BEGIN
-
-    -- Get functions using type table as argument type
-    FOR rec IN
-        SELECT p.oid, r.rolname
-        FROM pg_depend d, pg_type t, pg_proc p, pg_roles r
-        WHERE d.refclassid = 'pg_class'::regclass
-          AND d.refobjid = p_base
-          AND d.classid = 'pg_type'::regclass
-          AND t.oid = d.objid
-          AND t.oid = ANY(p.proargtypes)
-          AND r.oid = p.proowner
-    LOOP
-        -- pg_get_functiondef includes SECURITY DEFINER
-        -- and SEARCH PATH for the function
-        defs = array_append( defs, pg_get_functiondef(rec.oid) );
-        -- Set ownership (might not be possible)
-        defs = array_append( defs, format('ALTER FUNCTION %s OWNER TO %I',
-            rec.oid::regprocedure, rec.rolname));
-    END LOOP;
-
-    RETURN defs;
-END
-$body$
-LANGUAGE plpgsql STABLE;
--- }
-
-ALTER FUNCTION bde_control._bde_GetDependentObjectSql(INTEGER, REGCLASS) OWNER TO bde_dba;
-
 CREATE OR REPLACE FUNCTION bde_control._bde_GetOwnerAccessSql(
     p_reference regclass,
     p_target regclass
@@ -2619,14 +2545,6 @@ BEGIN
     RAISE NOTICE '%', v_task;
 
     PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
-
-    -- Copy ownership and access rights
-
-    v_task := 'Copying ownership and access information';
-    RAISE NOTICE '%', v_task;
-
-    PERFORM bde_control.bde_ExecuteSqlArray(p_upload,v_task,
-        bde_control._bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
 
     RETURN 0;
 
@@ -2999,6 +2917,8 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload, '_revision', CAST(v_revision AS TEXT));
 
+    RAISE NOTICE 'Created revision % for dataset %', v_revision, v_dataset;
+
     RETURN v_revision;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
@@ -3020,8 +2940,6 @@ BEGIN
 
     v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
 
-    RAISE NOTICE 'Completing dataset revision for dataset %', v_dataset;
-
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
     END IF;
@@ -3030,6 +2948,9 @@ BEGIN
     IF v_revision IS NULL THEN
         RAISE EXCEPTION 'There is no revision in progress';
     END IF;
+
+    RAISE NOTICE 'Completing revision % for dataset %', v_revision, v_dataset;
+
 
     SELECT table_version.ver_complete_revision()
     INTO   v_status;
@@ -3051,6 +2972,7 @@ BEGIN
             STS.dataset = v_dataset;
 
         IF v_tables_updated = 0 THEN
+            RAISE NOTICE 'Deleting unused revision %', v_revision;
             IF NOT (SELECT table_version.ver_delete_revision(v_revision)) THEN
                 RAISE WARNING 'Can not delete unused revision %', v_revision;
             END IF;
@@ -3059,7 +2981,7 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload,'_revision', NULL);
 
-    RAISE NOTICE 'Finished completing dataset revision for dataset %', v_dataset;
+    RAISE NOTICE 'Finished completing revision % for dataset %', v_revision, v_dataset;
 
     RETURN v_status;
 END;
@@ -3099,5 +3021,8 @@ BEGIN
     END LOOP;
 END
 $$;
+
+-- Ensure bde_admin can execute the bde_control functions
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bde_control TO bde_admin;
 
 COMMIT;

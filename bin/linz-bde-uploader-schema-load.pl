@@ -29,18 +29,20 @@ if ( defined( $ENV{'BDEUPLOADER_SQLDIR'} ) ) {
 our $DB_NAME;
 our $EXTENSION_MODE = 1;
 our $SHOW_VERSION = 0;
+our $READ_ONLY = 0;
 
 sub help
 {
     my ($exitcode) = @_;
-    print STDERR "Usage: $0 [--noextension] { <database> | - }\n";
+    print STDERR "Usage: $0 [--noextension] [--readonly] { <database> | - }\n";
     print STDERR "       $0 --version\n";
     exit $exitcode;
 }
 
 GetOptions (
     "extension!" => \$EXTENSION_MODE,
-    "version!" => \$SHOW_VERSION
+    "version!" => \$SHOW_VERSION,
+    "readonly!" => \$READ_ONLY
 ) || help(0);
 
 $DB_NAME=$ARGV[0];
@@ -140,7 +142,8 @@ if ( $TABLEVERSION_SUPPORTS_STDOUT ) {
     open(my $loader, "table_version-loader ${EXTOPT} - |")
         or die "Could not run table_version -\n";
     while (<$loader>) {
-        # NOTE: begin/commit will be filtered later
+        next if /^BEGIN;/;
+        next if /^COMMIT;/;
         print $sql $_;
     }
     close($loader);
@@ -151,7 +154,8 @@ if ( $DBPATCH_SUPPORTS_STDOUT ) {
     open(my $loader, "dbpatch-loader ${EXTOPT} - _patches |")
         or die "Could not run dbpatch_loader -\n";
     while (<$loader>) {
-        # NOTE: begin/commit will be filtered later
+        next if /^BEGIN;/;
+        next if /^COMMIT;/;
         print $sql $_;
     }
     close($loader);
@@ -167,6 +171,14 @@ foreach my $f (@sqlfiles) {
         print $sql $_;
     }
     close(F);
+}
+
+if ( $READ_ONLY ) {
+    print $sql <<EOF;
+REVOKE UPDATE, INSERT, DELETE, TRUNCATE
+    ON ALL TABLES IN SCHEMA bde_control
+    FROM bde_dba, bde_admin, bde_user;
+EOF
 }
 
 print $sql "COMMIT;\n";
