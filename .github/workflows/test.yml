@@ -78,9 +78,10 @@ jobs:
             liblinz-utils-perl \
             liblinz-bde-perl \
             linz-bde-schema
+        # TODO: Remove DBD::Pg version specifier once https://github.com/bucardo/dbdpg/issues/79 is released
         sudo cpanm \
             DBI \
-            DBD::Pg \
+            DBD::Pg@3.14.2 \
             Date::Calc \
             File::Which \
             Log::Log4perl \
