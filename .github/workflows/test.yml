@@ -90,6 +90,12 @@ jobs:
             Test::Cmd \
             Test::Exception \
             Text::Diff
+    - name: Save PostgreSQL package install logs if failed
+      uses: actions/upload-artifact@v2
+      with:
+        name: cpanm-logs
+        path: /home/runner/.cpanm/work/*/*.log
+      if: failure()
     - name: Setup PostgreSQL user
       run: |
         sudo -u postgres createuser -s "$USER"
