@@ -99,9 +99,9 @@ GetOptions (
     "log-level=s" => \$log_level,
     "version" => \$print_version,
     )
-    || help(0);
+    || help(0, *STDERR, 1);
 
-help(1) if $showhelp;
+help(1, *STDOUT, 0) if $showhelp;
 
 if ($print_version)
 {
@@ -118,6 +118,13 @@ if (defined $log_level && !exists $LOG_LEVELS{$log_level})
 if($apply_level0_inc && !$apply_level0)
 {
     $apply_level0 = 1;
+}
+
+if($apply_level0_inc && $rebuild)
+{
+    # See https://github.com/linz/linz-bde-uploader/issues/116
+    print STDERR "-full-incremental and -rebuild are contraddictory, use one or the other\n";
+    help(0, *STDERR, 1);
 }
 
 if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
@@ -164,13 +171,16 @@ try
     };
 
     my $cfg = new LINZ::Config($options);
+    my $log_config;
 
     # turn off config logging if doing a dry run.
-    my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
+    my $log_layout_string = "%d %p> %F{1}:%L - %m%n";
+    my $layout = Log::Log4perl::Layout::PatternLayout->new($log_layout_string);
     if ($dry_run)
     {
         Log::Log4perl->easy_init( { level    => $INFO,
-                                    file     => "STDOUT" } );
+                                    file     => "STDOUT",
+                                    layout   => $log_layout_string} );
         $logger = get_logger("");
     }
     else
@@ -189,7 +199,8 @@ try
         else
         {
             Log::Log4perl->easy_init( { level    => $INFO,
-                                        file     => "STDOUT" } );
+                                        file     => "STDOUT",
+                                        layout   => $log_layout_string} );
             $logger = get_logger("");
         }
 
@@ -208,7 +219,7 @@ try
         }
     }
 
-    if($verbose)
+    if($verbose and $log_config and not $dry_run)
     {
         my $stdout_appender = Log::Log4perl::Appender->new(
             "Log::Log4perl::Appender::Screen",

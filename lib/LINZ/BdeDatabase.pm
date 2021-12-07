@@ -128,7 +128,6 @@ its id is first required to execute a function.
     removeOldJobData
     selectValidColumns
     setOption
-    checkTableCount
     startDataset
     tempTableExists
     tmpSchema
@@ -237,7 +236,6 @@ our @sqlFuncs = qw{
     endUploadTable
     finishUpload
     getOption
-    checkTableCount
     uploadIsActive
     lastUploadStats
     releaseExpiredLocks
@@ -260,7 +258,7 @@ my %pg_log_message_map = (
     DEBUG4  => 'debug',
     DEBUG5  => 'debug',
     LOG     => 'debug',
-    NOTICE  => 'debug',
+    NOTICE  => 'info',
     INFO    => 'info',
     WARNING => 'warn'
 );
@@ -330,6 +328,12 @@ sub new
         WARN "WARNING: no pg_server_version!  Assuming >= 8.4";
         $self->{_pg_server_version} = 80400;
     }
+
+
+    # Immediately switch to the role meant to run uploads (`bde_admin`)
+    # FIXME: Workaround for https://github.com/linz/linz-bde-schema/issues/173
+    $dbh->do("DO \$\$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO bde_admin', current_database()); END; \$\$ LANGUAGE 'plpgsql'");
+    $dbh->do("SET SESSION AUTHORIZATION bde_admin");
 
     if ( $self->{_pg_server_version} >= 90000 )
     {
@@ -638,7 +642,7 @@ sub _setupFunctions
     return if $funcsLoaded;
 
     my $dbschema = $self->{_dbschema};
-    my $sql = "SELECT * FROM bde_GetBdeFunctions(?)";
+    my $sql = 'SELECT * FROM '.$dbschema.'.bde_GetBdeFunctions(?)';
     my $sth = $self->_dbh->prepare($sql) || die $self->_dbh->errstr;
     $sth->execute($dbschema);
 
@@ -652,7 +656,7 @@ sub _setupFunctions
         next if ! $name;
         $name =~ s/^bde_//i;
 
-        my $sqlf = $func.'('.join(",",("?")x$nparam).')';
+        my $sqlf = $dbschema.'.'.$func.'('.join(",",("?")x$nparam).')';
         $sqlf = '* FROM '.$sqlf if ($returntype eq 'RECORD' || $returntype eq 'TABLE');
         $sqlf = 'SELECT '.$sqlf;
 

@@ -14,8 +14,6 @@
 -- in this file should be done sequentially i.e Newest patches go at the bottom
 -- of the file.
 --------------------------------------------------------------------------------
-SET client_min_messages TO WARNING;
-SET search_path = bde_control, bde, public;
 
 DO $PATCHES$
 BEGIN
@@ -33,6 +31,48 @@ END IF;
 
 -- Patches start from here
 
+-------------------------------------------------------------------------------
+-- 2.5.0 Fix swapped ninsert/ndelete in bde_control.upload_stat
+-------------------------------------------------------------------------------
+
+-- Fix swapped ninsert/ndelete in bde_control.upload_stat
+-- if coming from version < 2.5.0
+PERFORM _patches.apply_patch(
+    'linz-bde-uploader 2.5.0: '
+    'Fix swapped ninsert/ndelete in bde_control.upload_stat',
+    $P$
+        UPDATE bde_control.upload_stats
+        SET ninsert = ndelete, ndelete = ninsert
+        WHERE incremental IS TRUE;
+    $P$
+);
+
+
+
+-------------------------------------------------------------------------------
+-- 2.6.0 Drop deprecated bde_control.bde_CheckTableCount
+-------------------------------------------------------------------------------
+
+PERFORM _patches.apply_patch(
+    'linz-bde-uploader 2.6.0: '
+    'Drop deprecated bde_control.bde_CheckTableCount',
+    $P$
+        DROP FUNCTION IF EXISTS bde_control.bde_CheckTableCount(INTEGER, NAME);
+    $P$
+);
+
+-------------------------------------------------------------------------------
+-- 2.7.0 Drop deprecated bde_control._bde_GetDependentObjectSql
+-------------------------------------------------------------------------------
+
+PERFORM _patches.apply_patch(
+    'linz-bde-uploader 2.7.0: '
+    'Drop deprecated bde_control._bde_GetDependentObjectSql',
+    $P$
+        DROP FUNCTION IF EXISTS bde_control._bde_GetDependentObjectSql(INTEGER, regclass);
+    $P$
+);
+
 
 END;
-$PATCHES$
+$PATCHES$;

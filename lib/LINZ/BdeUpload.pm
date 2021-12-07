@@ -622,7 +622,8 @@ sub GetLevel0Updates
 
     if (! @datasets)
     {
-        die ("No level 0 uploads available");
+        INFO ("No level 0 uploads available");
+        return;
     }
 
     my $dataset = $datasets[-1];
@@ -663,7 +664,7 @@ sub GetLevel5Updates
 
     my %complete_datasets;
     my $l5_tableset = $self->tables->level5_subset;
-    my $require_all = $self->cfg->require_all_dataset_files;
+    my $require_all = $self->cfg->require_all_dataset_files(1);
     foreach my $t ($l5_tableset->tables )
     {
         my $lastl5;
@@ -769,8 +770,19 @@ sub ApplyDatasetUpdates
             $tablestate->{$tablename} .= "|".$dataset->name;
         }
 
-        $change_table_name = $self->CreateLevel5ChangeTable($dataset,$changetable)
-            if $need_change_table;
+        if ( $need_change_table )
+        {
+            if ( $changetable )
+            {
+                $change_table_name =
+                    $self->CreateLevel5ChangeTable($dataset,$changetable);
+            }
+            else
+            {
+                die("Configuration error: missing required changetable " .
+                     "for incremental update");
+            }
+        }
 
         foreach my $table ( @loadtables )
         {
@@ -925,9 +937,9 @@ sub UploadTable
         $db->beginTable($tablename) ||
             die ("Cannot acquire upload lock for $tablename");
 
-        # If this is a level 0 update, then need the last update details
-        # in order to check that the start time of the current update
-        # matches the end time.
+        # If this is a level 5 update, we need the last update details
+        # in order to check that the start time of the current update is not
+        # too late when compared against the end time of the previous upload.
 
         my %lastdetails = ();
         if( ! $is_level0 )
@@ -1009,10 +1021,20 @@ sub LoadFile
             if $checktime;
 
         # Determine which columns are to be copied
-        my $columns = join("|",$reader->fields);
+        my $fields = join("|",$reader->fields);
+        if ($fields eq '') {
+            die "BDE file has no fields defined";
+        }
+        DEBUG("BDE Fields: $fields");
 
-        $columns = $db->selectValidColumns($tablename,$columns);
-        $reader->output_fields(split(/\|/,$columns));
+        my $columns = $db->selectValidColumns($tablename,$fields);
+        if ($columns eq '') {
+            die "No BDE field ($fields) matches column names in DB table $tablename";
+        }
+        DEBUG("DB Columns: $columns");
+
+        my @columns = split(/\|/,$columns);
+        $reader->output_fields(@columns);
 
         # Open data file (throw on failure)
         $tabledatafh = $self->_OpenDataFile($dataset,$reader);
@@ -1050,8 +1072,8 @@ sub CheckStartDate
     my ($self,$dataset,$file,$starttime,$checktime) = @_;
     return if $starttime eq $checktime;
 
-    my $warntol = $self->cfg->level5_starttime_warn_tolerance;
-    my $failtol = $self->cfg->level5_starttime_fail_tolerance;
+    my $warntol = $self->cfg->level5_starttime_warn_tolerance(0);
+    my $failtol = $self->cfg->level5_starttime_fail_tolerance(0);
     my $re = qw/^\d{4}\-\d\d\-\d\d\s+\d\d\:\d\d\:\d\d$/;
 
     if( $starttime !~ $re || $checktime !~ $re )
@@ -1181,6 +1203,7 @@ sub _OpenDataPipe
 sub _OpenDataFile
 {
     my($self,$dataset,$reader) = @_;
+    my $ret;
     if ( $reader->can('pipe') )
     {
         # pipe method was added in linz-bde-perl 1.1.0
@@ -1188,15 +1211,17 @@ sub _OpenDataFile
         # TODO: save logfile somewhere ?
         #       it'll keep being written to while
         #       streaming !
-        return $fh;
+        $ret = $fh;
     }
     else
     {
         my $tmpfile = $self->BuildTempFile($dataset,$reader);
         open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
         unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
-        return $tabledatafh;
+        $ret = $tabledatafh;
     }
+    $ret->binmode(":encoding(UTF-8)");
+    return $ret;
 }
 
 1;
@@ -1306,7 +1331,10 @@ Two useful functions that these may use are:
 
 =item INT bde_control.bde_TablesAffected( upload_id INT, tables name[], test TEXT )
 
-Tests tables that are affected by an upload. I<tables> is a list of tables to check.
+Tests tables that are affected by an upload. I<tables> is a list of
+table names to check. Names must NOT be qualified with schema name as
+the schema name is taken from the target schema of the given upload.
+
 <test> is a string specifying the test to apply and can include the following
 space separated items:
 
