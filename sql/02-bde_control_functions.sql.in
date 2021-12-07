@@ -1878,7 +1878,7 @@ BEGIN
         RETURN 0;
     END IF;
 
-    -- Copy additional schema information (constraints, indexes, ownership,
+    -- Copy additional schema information (constraints, indexes,
     -- etc) from the bde table to the temp table
 
     v_task := 'Copying schema information to temp table';
@@ -1952,12 +1952,6 @@ BEGIN
 
         v_task := 'Deleting data from current version of the table ' || v_bdetable;
         RAISE NOTICE '%', v_task;
-
-        IF table_version.ver_is_table_versioned(v_bde_schema, p_table_name)
-        THEN
-            PERFORM table_version.ver_disable_versioning(
-                        v_bde_schema, p_table_name);
-        END IF;
 
         v_sql := 'DELETE FROM ' || v_bdetable;
         RAISE DEBUG 'SQL: %',v_sql;
@@ -2552,14 +2546,6 @@ BEGIN
 
     PERFORM bde_control._bde_CopyStatisticsInformation(p_upload,p_bdetable,p_tmptable);
 
-    -- Copy ownership and access rights
-
-    v_task := 'Copying ownership and access information';
-    RAISE NOTICE '%', v_task;
-
-    PERFORM bde_control.bde_ExecuteSqlArray(p_upload,v_task,
-        bde_control._bde_GetOwnerAccessSql(p_bdetable,p_tmptable));
-
     RETURN 0;
 
 EXCEPTION
@@ -2931,6 +2917,8 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload, '_revision', CAST(v_revision AS TEXT));
 
+    RAISE NOTICE 'Created revision % for dataset %', v_revision, v_dataset;
+
     RETURN v_revision;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
@@ -2952,8 +2940,6 @@ BEGIN
 
     v_dataset := bde_control.bde_GetOption(p_upload, '_dataset');
 
-    RAISE NOTICE 'Completing dataset revision for dataset %', v_dataset;
-
     IF v_dataset IS NULL OR v_dataset = '(undefined dataset)' THEN
         RAISE EXCEPTION 'A dataset has not been defined for this upload yet';
     END IF;
@@ -2962,6 +2948,9 @@ BEGIN
     IF v_revision IS NULL THEN
         RAISE EXCEPTION 'There is no revision in progress';
     END IF;
+
+    RAISE NOTICE 'Completing revision % for dataset %', v_revision, v_dataset;
+
 
     SELECT table_version.ver_complete_revision()
     INTO   v_status;
@@ -2983,6 +2972,7 @@ BEGIN
             STS.dataset = v_dataset;
 
         IF v_tables_updated = 0 THEN
+            RAISE NOTICE 'Deleting unused revision %', v_revision;
             IF NOT (SELECT table_version.ver_delete_revision(v_revision)) THEN
                 RAISE WARNING 'Can not delete unused revision %', v_revision;
             END IF;
@@ -2991,7 +2981,7 @@ BEGIN
 
     PERFORM bde_control.bde_SetOption(p_upload,'_revision', NULL);
 
-    RAISE NOTICE 'Finished completing dataset revision for dataset %', v_dataset;
+    RAISE NOTICE 'Finished completing revision % for dataset %', v_revision, v_dataset;
 
     RETURN v_status;
 END;
@@ -3031,5 +3021,8 @@ BEGIN
     END LOOP;
 END
 $$;
+
+-- Ensure bde_admin can execute the bde_control functions
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bde_control TO bde_admin;
 
 COMMIT;

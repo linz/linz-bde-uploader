@@ -2,6 +2,28 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.10.0] - 2020-07-21
+### Added
+- Update default configuration for LOL-3.22b
+
+## [2.9.0] - 2020-05-05
+### Enhanced
+- Only ALTER table on upgrade if really needed (#256)
+### Fixed
+- Schema loader transactionality (#267)
+
+## [2.8.0] - 2020-02-11
+### Changed
+- PostgreSQL session auth changed to `bde_admin` as soon as possible (#249)
+- Grant EXECUTE on all `bde_control` functions to `bde_admin`
+- Grant CREATE on current database to `bde_admin`
+- Grant USAGE of all sequences in `bde_control` to `bde_admin`
+### Enhanced
+- Stop copying ownership information to temporary tables
+### Added
+- Printing of per-dataset revision (#246)
+- Print NOTICE upon deleting a revision (#247)
+
 ## [2.7.0] - 2019-11-12
 ### Added
 - `linz-bde-uploader-schema-publish` script to publish schema tables (#237)

@@ -142,7 +142,8 @@ if ( $TABLEVERSION_SUPPORTS_STDOUT ) {
     open(my $loader, "table_version-loader ${EXTOPT} - |")
         or die "Could not run table_version -\n";
     while (<$loader>) {
-        # NOTE: begin/commit will be filtered later
+        next if /^BEGIN;/;
+        next if /^COMMIT;/;
         print $sql $_;
     }
     close($loader);
@@ -153,7 +154,8 @@ if ( $DBPATCH_SUPPORTS_STDOUT ) {
     open(my $loader, "dbpatch-loader ${EXTOPT} - _patches |")
         or die "Could not run dbpatch_loader -\n";
     while (<$loader>) {
-        # NOTE: begin/commit will be filtered later
+        next if /^BEGIN;/;
+        next if /^COMMIT;/;
         print $sql $_;
     }
     close($loader);
