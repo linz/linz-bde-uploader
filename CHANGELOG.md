@@ -399,4 +399,3 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [1.0.0] - 2011-05-06
 ### Added
 - Initial release.
-
