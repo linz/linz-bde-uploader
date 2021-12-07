@@ -1,0 +1,89 @@
+CREATE EXTENSION IF NOT EXISTS pgtap;
+
+CREATE SCHEMA IF NOT EXISTS _patches;
+CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;
+
+\i blib/sql/01-bde_control_tables.sql
+\i blib/sql/02-bde_control_functions.sql
+\i blib/sql/03-bde_control_version.sql
+\i blib/sql/99-patches.sql
+
+SELECT * FROM plan(23);
+
+-- Test schema existance {
+SELECT has_schema('bde_control'::name);
+SELECT schema_owner_is('bde_control'::name, 'bde_dba'::name);
+SELECT schema_privs_are('bde_control'::name, 'bde_admin'::name, ARRAY['USAGE']);
+SELECT schema_privs_are('bde_control'::name, 'bde_user'::name, ARRAY['USAGE']);
+-- }
+
+
+-- Test tables existance and their composition {
+
+SELECT has_table('bde_control'::name, 'upload'::name);
+SELECT table_privs_are('bde_control'::name, 'upload'::name, 'bde_admin'::name, ARRAY['DELETE','INSERT','SELECT','UPDATE']);
+SELECT table_privs_are('bde_control'::name, 'upload'::name, 'bde_user'::name, ARRAY['SELECT']);
+SELECT table_owner_is('bde_control'::name, 'upload'::name, 'bde_dba'::name);
+SELECT columns_are('bde_control'::name, 'upload'::name,
+  ARRAY[
+  'id',
+  'schema_name',
+  'start_time',
+  'end_time',
+  'status'
+  ]);
+
+SELECT has_table('bde_control'::name, 'upload_table'::name);
+SELECT table_privs_are('bde_control'::name, 'upload_table'::name, 'bde_admin'::name, ARRAY['DELETE','INSERT','SELECT','UPDATE']);
+SELECT table_privs_are('bde_control'::name, 'upload_table'::name, 'bde_user'::name, ARRAY['SELECT']);
+SELECT table_owner_is('bde_control'::name, 'upload_table'::name, 'bde_dba'::name);
+SELECT columns_are('bde_control'::name, 'upload_table'::name,
+  ARRAY[
+  'id',
+  'schema_name',
+  'table_name',
+  'key_column',
+  'last_upload_id',
+  'last_upload_dataset',
+  'last_upload_type',
+  'last_upload_incremental',
+  'last_upload_details',
+  'last_upload_time',
+  'last_upload_bdetime',
+  'last_level0_dataset',
+  'upl_id_lock',
+  'row_tol_warning',
+  'row_tol_error'
+  ]);
+
+SELECT has_table('bde_control'::name, 'upload_stats'::name);
+SELECT table_privs_are('bde_control'::name, 'upload_stats'::name, 'bde_admin'::name, ARRAY['DELETE','INSERT','SELECT','UPDATE']);
+SELECT table_privs_are('bde_control'::name, 'upload_stats'::name, 'bde_user'::name, ARRAY['SELECT']);
+SELECT table_owner_is('bde_control'::name, 'upload_stats'::name, 'bde_dba'::name);
+SELECT columns_are('bde_control'::name, 'upload_stats'::name,
+  ARRAY[
+  'id',
+  'upl_id',
+  'tbl_id',
+  'type',
+  'incremental',
+  'dataset',
+  'upload_time',
+  'duration',
+  'ninsert',
+  'nupdate',
+  'nnullupdate',
+  'ndelete'
+  ]);
+
+-- }
+
+-- Test indexes existance {
+
+SELECT has_index('bde_control'::name, 'upload_stats'::name, 'idx_sts_tbl'::name, ARRAY['tbl_id']);
+SELECT index_owner_is('bde_control'::name, 'upload_stats'::name, 'idx_sts_tbl'::name, 'bde_dba'::name);
+
+SELECT has_index('bde_control'::name, 'upload_stats'::name, 'idx_sts_upl'::name, ARRAY['upl_id']);
+SELECT index_owner_is('bde_control'::name, 'upload_stats'::name, 'idx_sts_upl'::name, 'bde_dba'::name);
+
+-- }

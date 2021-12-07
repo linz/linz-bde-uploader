@@ -2,6 +2,54 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.10.0] - 2020-07-21
+### Added
+- Update default configuration for LOL-3.22b
+
+## [2.9.0] - 2020-05-05
+### Enhanced
+- Only ALTER table on upgrade if really needed (#256)
+### Fixed
+- Schema loader transactionality (#267)
+
+## [2.8.0] - 2020-02-11
+### Changed
+- PostgreSQL session auth changed to `bde_admin` as soon as possible (#249)
+- Grant EXECUTE on all `bde_control` functions to `bde_admin`
+- Grant CREATE on current database to `bde_admin`
+- Grant USAGE of all sequences in `bde_control` to `bde_admin`
+### Enhanced
+- Stop copying ownership information to temporary tables
+### Added
+- Printing of per-dataset revision (#246)
+- Print NOTICE upon deleting a revision (#247)
+
+## [2.7.0] - 2019-11-12
+### Added
+- `linz-bde-uploader-schema-publish` script to publish schema tables (#237)
+- Switch --readonly to `linz-bde-uploader-schema-load` (#238)
+### Enhanced
+- Do not DROP TABLE on -full upload (#148)
+- Lost tables and permissions now recovered upon schema loading (#240)
+
+## [2.6.0] - 2019-09-09
+### Added
+- Level5 updates will now also be checked for change tolerance (#221)
+### Enhanced
+- `linz_bde_uploader` will fail if both -rebuild and -full-incremental
+  are given (#116)
+- Qualify calls to `bde_control` database functions for improved security
+- Downgrade INFO messages to NOTICE messages (#202)
+- Map database NOTICE messages to log INFO instead of DEBUG (#218)
+- Provide default values for `level5_starttime_{warn,fail}_tolerance`
+  (#225)
+- Do not rely on stats for checking change tolerance
+### Fixed
+- Avoid duplicated stdout messages on -v and empty `log_settings` in
+  config file (#204)
+- Stop attempting to disable synchronous commit in default config
+  (#222)
+
 ## [2.5.2] - 2019-07-17
 ### Fixed
 - UTF8 characters encoding (#210)
@@ -351,4 +399,3 @@ All notable changes for the LINZ BDE Uploader are documented in this file.
 ## [1.0.0] - 2011-05-06
 ### Added
 - Initial release.
-

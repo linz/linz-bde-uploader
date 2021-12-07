@@ -937,9 +937,9 @@ sub UploadTable
         $db->beginTable($tablename) ||
             die ("Cannot acquire upload lock for $tablename");
 
-        # If this is a level 0 update, then need the last update details
-        # in order to check that the start time of the current update
-        # matches the end time.
+        # If this is a level 5 update, we need the last update details
+        # in order to check that the start time of the current update is not
+        # too late when compared against the end time of the previous upload.
 
         my %lastdetails = ();
         if( ! $is_level0 )
@@ -1021,10 +1021,20 @@ sub LoadFile
             if $checktime;
 
         # Determine which columns are to be copied
-        my $columns = join("|",$reader->fields);
+        my $fields = join("|",$reader->fields);
+        if ($fields eq '') {
+            die "BDE file has no fields defined";
+        }
+        DEBUG("BDE Fields: $fields");
 
-        $columns = $db->selectValidColumns($tablename,$columns);
-        $reader->output_fields(split(/\|/,$columns));
+        my $columns = $db->selectValidColumns($tablename,$fields);
+        if ($columns eq '') {
+            die "No BDE field ($fields) matches column names in DB table $tablename";
+        }
+        DEBUG("DB Columns: $columns");
+
+        my @columns = split(/\|/,$columns);
+        $reader->output_fields(@columns);
 
         # Open data file (throw on failure)
         $tabledatafh = $self->_OpenDataFile($dataset,$reader);
@@ -1062,8 +1072,8 @@ sub CheckStartDate
     my ($self,$dataset,$file,$starttime,$checktime) = @_;
     return if $starttime eq $checktime;
 
-    my $warntol = $self->cfg->level5_starttime_warn_tolerance;
-    my $failtol = $self->cfg->level5_starttime_fail_tolerance;
+    my $warntol = $self->cfg->level5_starttime_warn_tolerance(0);
+    my $failtol = $self->cfg->level5_starttime_fail_tolerance(0);
     my $re = qw/^\d{4}\-\d\d\-\d\d\s+\d\d\:\d\d\:\d\d$/;
 
     if( $starttime !~ $re || $checktime !~ $re )
