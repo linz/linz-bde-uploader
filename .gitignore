@@ -16,3 +16,4 @@ debian/*.log
 debian/*.substvars
 debian/files
 debian/debhelper-build-stamp
+.idea/
