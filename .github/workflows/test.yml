@@ -45,10 +45,6 @@ jobs:
               pgis: '3'
               perl: '5.24'
             - os: ubuntu-18.04
-              pg: '14'
-              pgis: '3'
-              perl: '5.24'
-            - os: ubuntu-18.04
               pg: '10'
               pgis: '2.4'
               perl: '5.26'
@@ -68,10 +64,7 @@ jobs:
               pg: '12'
               pgis: '3'
               perl: '5.26'
-            - os: ubuntu-18.04
-              pg: '14'
-              pgis: '3'
-              perl: '5.26'
+
     env:
       # Set PATH as postgresql-server-dev-all pretends version is 11
       PATH: /usr/lib/postgresql/${{ matrix.pg }}/bin:/bin:/usr/bin:/usr/local/bin
