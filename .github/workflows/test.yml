@@ -71,7 +71,7 @@ jobs:
       APT: "apt-get -o Dpkg::Progress=0 -o Dpkg::Use-Pty=0"
       PCLOUD: https://packagecloud.io/linz
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.4.0
     - name: Install dependencies
       run: |
         sudo ${APT} -qq purge \
@@ -167,7 +167,7 @@ jobs:
         matrix:
             distro: [ 'bionic' ]
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.4.0
 
     - name: Determine packagecloud publication target
       run: |
