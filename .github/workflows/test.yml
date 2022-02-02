@@ -186,7 +186,7 @@ jobs:
           fi
           echo "PACKAGECLOUD_REPOSITORY=$PACKAGECLOUD_REPOSITORY" | tee -a $GITHUB_ENV
 
-      - uses: linz/linz-software-repository@v7
+      - uses: linz/linz-software-repository@v8
         with:
           release: ${{ matrix.distro }}
           packagecloud_token: ${{ secrets.LINZCI_PACKAGECLOUD_TOKEN }}
