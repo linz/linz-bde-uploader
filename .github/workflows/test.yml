@@ -13,6 +13,20 @@ on:
       - '*'
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: sudo snap install --classic pre-commit
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
   test:
     name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
