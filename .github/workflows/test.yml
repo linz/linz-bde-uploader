@@ -1,4 +1,4 @@
-name: test
+name: Test
 
 on:
   push:
@@ -13,6 +13,20 @@ on:
       - '*'
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: sudo snap install --classic pre-commit
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
   test:
     name: PostgreSQL ${{ matrix.pg }}, PostGIS ${{ matrix.pgis }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -69,7 +83,9 @@ jobs:
       APT: 'apt-get -o Dpkg::Progress=0 -o Dpkg::Use-Pty=0'
       PCLOUD: https://packagecloud.io/linz
     steps:
-      - uses: actions/checkout@v1
+      - name: Check out repository
+        uses: actions/checkout@v1
+
       - name: Install dependencies
         run: |
           sudo ${APT} -qq purge \
@@ -124,38 +140,41 @@ jobs:
               Test::Cmd \
               Test::Exception \
               Text::Diff
+
       - name: Save PostgreSQL package install logs if failed
         uses: actions/upload-artifact@v2
         with:
           name: cpanm-logs
           path: /home/runner/.cpanm/work/*/*.log
         if: failure()
+
       - name: Setup PostgreSQL user
         run: |
           sudo -u postgres createuser -s "$USER"
           sudo -u postgres createuser -s root
+
       - name: Build
         run: |
           # Build
           ./configure
           make
+
       - name: Test build
-        run: |
-          # Pre-install tests
-          make check
+        run: make check
+
       - name: Install
-        run: |
-          sudo -E make install
+        run: sudo -E make install
+
       - name: Test upgrades
-        run: |
-          make check-upgrades
+        run: make check-upgrades
+
       - name: Test distribution
         run: |
           make dist
           make distcheck
+
       - name: Test debian packaging
-        run: |
-          make deb
+        run: make deb
 
   package:
     needs: test
@@ -165,7 +184,8 @@ jobs:
       matrix:
         distro: ['bionic']
     steps:
-      - uses: actions/checkout@v1
+      - name: Check out repository
+        uses: actions/checkout@v1
 
       - name: Determine packagecloud publication target
         run: |
@@ -186,7 +206,8 @@ jobs:
           fi
           echo "PACKAGECLOUD_REPOSITORY=$PACKAGECLOUD_REPOSITORY" | tee -a $GITHUB_ENV
 
-      - uses: linz/linz-software-repository@v8
+      - name: Build and upload to packagecloud
+        uses: linz/linz-software-repository@v8
         with:
           release: ${{ matrix.distro }}
           packagecloud_token: ${{ secrets.LINZCI_PACKAGECLOUD_TOKEN }}
