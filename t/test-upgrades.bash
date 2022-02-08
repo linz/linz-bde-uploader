@@ -14,18 +14,17 @@ upgradeable_versions=(
     '2.10.1'
 )
 
+project_root="$(dirname "$0")/.."
+# Install all older versions
+trap 'rm -r "$work_directory"' EXIT
+work_directory="$(mktemp --directory)"
+git clone "$project_root" "$work_directory"
+
 test_database=linz-bde-uploader-test-db
-
-git fetch --tags # to get all commits/tags
-
-tmpdir=/tmp/linz-bde-uploader-test-$$
-mkdir -p "${tmpdir}"
-
 export PGDATABASE="${test_database}"
 
-for ver in "${upgradeable_versions[@]}"; do
-    owd="$PWD"
-
+for version in "${upgradeable_versions[@]}"
+do
     dropdb --if-exists "${test_database}"
     createdb "${test_database}"
 
@@ -34,25 +33,21 @@ CREATE SCHEMA IF NOT EXISTS _patches;
 CREATE EXTENSION IF NOT EXISTS dbpatch SCHEMA _patches;
 EOF
 
-    cd "${tmpdir}"
-    test -d linz-bde-uploader || {
-        git clone --quiet --reference "$owd" \
-            https://github.com/linz/linz-bde-uploader
-    }
-    cd linz-bde-uploader
-    git checkout "${ver}"
-    ./configure && make
-    sudo env "PATH=$PATH" make install DESTDIR="$PWD/inst"
+    echo "-------------------------------------"
+    echo "Installing version $version"
+    echo "-------------------------------------"
+    git -C "$work_directory" clean -dx --force
+    git -C "$work_directory" checkout "$version"
+    "${work_directory}/configure" && make --directory="$work_directory"
+    sudo env "PATH=$PATH" make --directory="$work_directory" install DESTDIR="$PWD/inst"
 
     # Install the just-installed linz-bde-uploader first !
     linz-bde-schema-load --revision "${test_database}"
     for file in inst/usr/local/share/linz-bde-uploader/sql/*.sql
     do
-        echo "Loading $file from linz-bde-uploader ${ver}"
+        echo "Loading $file from linz-bde-uploader ${version}"
         psql -o /dev/null -XtA -f "$file" "${test_database}" --set ON_ERROR_STOP=1
     done
-
-    cd "${owd}"
 
 # Turn DB to read-only mode, as it would be done
 # by linz-bde-uploader-schema-load --readonly
