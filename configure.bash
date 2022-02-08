@@ -25,5 +25,5 @@ check:
 	\$(MAKE) test TEST_VERBOSE=1
 
 check-upgrades:
-	t/test-upgrades.sh
+	t/test-upgrades.bash
 EOF

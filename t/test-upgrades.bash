@@ -32,7 +32,7 @@ EOF
     }
     cd linz-bde-uploader || exit 1
     git checkout ${ver} || exit 1
-    ./configure && make || exit 1
+    ./configure.bash && make || exit 1
     sudo env "PATH=$PATH" make install DESTDIR=$PWD/inst || exit 1
 
     # Install the just-installed linz-bde-uploader first !

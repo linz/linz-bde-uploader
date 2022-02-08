@@ -158,7 +158,7 @@ jobs:
       - name: Build
         run: |
           # Build
-          ./configure
+          ./configure.bash
           make
 
       - name: Test build
