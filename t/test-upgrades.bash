@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+set -o errexit -o noclobber -o nounset -o pipefail
+shopt -s failglob inherit_errexit
 
 UPGRADEABLE_VERSIONS="
     2.5.2
@@ -7,7 +10,7 @@ UPGRADEABLE_VERSIONS="
 
 TEST_DATABASE=linz-bde-uploader-test-db
 
-git fetch --unshallow --tags # to get all commits/tags
+git fetch --tags # to get all commits/tags
 
 TMPDIR=/tmp/linz-bde-uploader-test-$$
 mkdir -p ${TMPDIR}

@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+set -o errexit -o noclobber -o nounset -o pipefail
+shopt -s failglob inherit_errexit
 
 PERL=perl
 
@@ -25,5 +28,5 @@ check:
 	\$(MAKE) test TEST_VERBOSE=1
 
 check-upgrades:
-	t/test-upgrades.sh
+	t/test-upgrades.bash
 EOF
