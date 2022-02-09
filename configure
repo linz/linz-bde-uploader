@@ -6,16 +6,12 @@ shopt -s failglob inherit_errexit
 cd "$(dirname "$0")"
 
 perl Build.PL
-test "$?" = 0
 
 ./Build distmeta # builds Makefile.PL (among other things)
-test "$?" = 0
 
 ./Build manifest # builds MANIFEST
-test "$?" = 0
 
 perl Makefile.PL
-test "$?" = 0
 
 # Append custom rules
 cat <<EOF >> Makefile
