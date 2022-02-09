@@ -3,10 +3,16 @@
 set -o errexit -o noclobber -o nounset -o pipefail
 shopt -s failglob inherit_errexit
 
-upgradeable_versions="
-    2.5.2
-    2.6.0
-"
+upgradeable_versions=(
+    '2.5.2'
+    '2.6.0'
+    '2.7.0'
+    '2.8.0'
+    '2.8.1'
+    '2.9.0'
+    '2.10.0'
+    '2.10.1'
+)
 
 test_database=linz-bde-uploader-test-db
 
@@ -17,7 +23,7 @@ mkdir -p "${tmpdir}"
 
 export PGDATABASE="${test_database}"
 
-for ver in ${upgradeable_versions}; do
+for ver in "${upgradeable_versions[@]}"; do
     owd="$PWD"
 
     dropdb --if-exists "${test_database}"
