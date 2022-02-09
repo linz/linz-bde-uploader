@@ -10,7 +10,7 @@ UPGRADEABLE_VERSIONS="
 
 TEST_DATABASE=linz-bde-uploader-test-db
 
-git fetch --unshallow --tags # to get all commits/tags
+git fetch --tags # to get all commits/tags
 
 TMPDIR=/tmp/linz-bde-uploader-test-$$
 mkdir -p ${TMPDIR}
