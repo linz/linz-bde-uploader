@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
 
       - name: Install Dependencies
         run: sudo snap install --classic pre-commit
@@ -86,7 +86,9 @@ jobs:
       PCLOUD: https://packagecloud.io/linz
     steps:
       - name: Check out repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2.4.0
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies
         run: |
@@ -187,7 +189,9 @@ jobs:
         distro: ['bionic']
     steps:
       - name: Check out repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2.4.0
+        with:
+          fetch-depth: 0
 
       - name: Determine packagecloud publication target
         run: |
