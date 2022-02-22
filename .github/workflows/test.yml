@@ -42,47 +42,56 @@ jobs:
             pg: '10'
             pgis: '2.4'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.5'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '3'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '2.5'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '3'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.4'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.5'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '3'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '2.5'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '3'
             perl: '5.26'
+            release: bionic
 
     env:
       # Set PATH as postgresql-server-dev-all pretends version is 11
       PATH: /usr/lib/postgresql/${{ matrix.pg }}/bin:/bin:/usr/bin:/usr/local/bin
-      PCLOUD: https://packagecloud.io/linz
     steps:
       - name: Check out repository
         uses: actions/checkout@v2.4.0
@@ -188,7 +197,7 @@ jobs:
       - name: Build Perl
         run: ./configure
 
-      - name: Build Perl
+      - name: Build
         run: make
 
       - name: Test build
@@ -206,8 +215,15 @@ jobs:
       - name: Test distribution check
         run: make distcheck
 
+      - name: Build packages
+        uses: linz/linz-software-repository@v8
+        with:
+          release: ${{ matrix.release }}
+        env:
+          PG_SUPPORTED_VERSIONS: ${{ matrix.pg }}
+
       - name: Test debian packaging
-        run: make deb
+        run: sudo dpkg -i build-area/linz-bde-uploader*.deb
 
   package:
     needs: test
