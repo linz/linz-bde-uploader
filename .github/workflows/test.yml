@@ -114,30 +114,25 @@ jobs:
       - name: Install setup dependencies
         run: sudo apt-get --assume-yes install curl ca-certificates gnupg
 
-      - name: Get release codename
-        id: distro
-        run: echo "::set-output name=codename::$(lsb_release --codename --short)"
-
       - name: Add PostgreSQL APT repo
         run: |
           curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ steps.distro.outputs.codename
-          }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ matrix.release }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
 
       - name: Enable fetching packages from apt.postgresql repository
         run: |
           curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ steps.distro.outputs.codename }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ matrix.release }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
 
       - name: Enable fetching packages from packagecloud test repository
         run: |
           curl -Ls https://packagecloud.io/linz/test/gpgkey | sudo apt-key add -
-          echo "deb https://packagecloud.io/linz/test/ubuntu ${{ steps.distro.outputs.codename }} main" | sudo tee /etc/apt/sources.list.d/linz-test.list
+          echo "deb https://packagecloud.io/linz/test/ubuntu ${{ matrix.release }} main" | sudo tee /etc/apt/sources.list.d/linz-test.list
 
       - name: Enable fetching packages from packagecloud prod repository
         run: |
           curl -Ls https://packagecloud.io/linz/prod/gpgkey | sudo apt-key add -
-          echo "deb https://packagecloud.io/linz/prod/ubuntu ${{ steps.distro.outputs.codename }} main" | sudo tee /etc/apt/sources.list.d/linz-prod.list
+          echo "deb https://packagecloud.io/linz/prod/ubuntu ${{ matrix.release }} main" | sudo tee /etc/apt/sources.list.d/linz-prod.list
 
       - name: Update package database with PostgreSQL repo
         run: sudo apt-get update
@@ -213,14 +208,14 @@ jobs:
       - name: Test distribution check
         run: make distcheck
 
-      - name: Build packages
+      - name: Build package
         uses: linz/linz-software-repository@v8
         with:
           release: ${{ matrix.release }}
         env:
           PG_SUPPORTED_VERSIONS: ${{ matrix.pg }}
 
-      - name: Test debian packaging
+      - name: Install package
         run: sudo dpkg -i build-area/linz-bde-uploader*.deb
 
   package:
