@@ -42,79 +42,127 @@ jobs:
             pg: '10'
             pgis: '2.4'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.5'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '3'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '2.5'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '3'
             perl: '5.24'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.4'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '2.5'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '10'
             pgis: '3'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '2.5'
             perl: '5.26'
+            release: bionic
           - os: ubuntu-18.04
             pg: '12'
             pgis: '3'
             perl: '5.26'
+            release: bionic
 
     env:
       # Set PATH as postgresql-server-dev-all pretends version is 11
       PATH: /usr/lib/postgresql/${{ matrix.pg }}/bin:/bin:/usr/bin:/usr/local/bin
-      APT: 'apt-get -o Dpkg::Progress=0 -o Dpkg::Use-Pty=0'
-      PCLOUD: https://packagecloud.io/linz
     steps:
       - name: Check out repository
         uses: actions/checkout@v2.4.0
         with:
           fetch-depth: 0
 
+      - name: Remove conflicting packages
+        run: |
+          sudo apt-get --assume-yes -qq purge \
+          libpq* \
+          *php* \
+          postgresql*
+
+      - name: Remove PostgreSQL install files
+        run: sudo rm --force --recursive /var/lib/postgresql
+
+      - name: Update package database
+        run: sudo apt-get update
+
+      - name: Install setup dependencies
+        run: sudo apt-get --assume-yes install curl ca-certificates gnupg
+
+      - name: Add PostgreSQL APT repo
+        run: |
+          curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ matrix.release }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+      - name: Enable fetching packages from apt.postgresql repository
+        run: |
+          curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${{ matrix.release }}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+      - name: Enable fetching packages from packagecloud test repository
+        run: |
+          curl -Ls https://packagecloud.io/linz/test/gpgkey | sudo apt-key add -
+          echo "deb https://packagecloud.io/linz/test/ubuntu ${{ matrix.release }} main" | sudo tee /etc/apt/sources.list.d/linz-test.list
+
+      - name: Enable fetching packages from packagecloud prod repository
+        run: |
+          curl -Ls https://packagecloud.io/linz/prod/gpgkey | sudo apt-key add -
+          echo "deb https://packagecloud.io/linz/prod/ubuntu ${{ matrix.release }} main" | sudo tee /etc/apt/sources.list.d/linz-prod.list
+
+      - name: Update package database with PostgreSQL repo
+        run: sudo apt-get update
+
       - name: Install dependencies
         run: |
-          sudo ${APT} -qq purge \
-              libpq* \
-              *php* \
-              postgresql*
-          sudo rm -rf /var/lib/postgresql
-          sudo ${APT} -qq install curl ca-certificates gnupg
-          distro=`lsb_release -cs`
-          # Enable fetching packages from apt.postgresql repository
-          curl -s https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-          echo "deb http://apt.postgresql.org/pub/repos/apt/ ${distro}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          # Enable fetching packages from packagecloud LINZ test repository
-          for repo in test prod; do \
-              curl -Ls ${PCLOUD}/${repo}/gpgkey \ | sudo apt-key add -; \
-              echo "deb ${PCLOUD}/${repo}/ubuntu ${distro} main" | \
-                  sudo tee /etc/apt/sources.list.d/linz-${repo}.list; \
-          done
-          # Update apt cache
-          sudo ${APT} -qq update
-          # Install dependencies
-          sudo ${APT} -qq install --no-install-recommends \
-              cpanminus \
+          sudo apt-get --assume-yes -qq install --no-install-recommends \
+              dbpatch \
               debhelper \
               fakeroot \
+              libdate-calc-perl \
+              libdate-manip-perl \
+              libdbd-pg-perl \
+              libdbi-perl \
+              libfile-which-perl \
+              liblinz-bde-perl \
+              liblinz-utils-perl \
+              liblog-dispatch-filerotate-perl \
+              liblog-dispatch-perl \
+              liblog-log4perl-perl \
+              libmail-sender-perl \
+              libmodule-build-perl \
+              libtap-parser-sourcehandler-pgtap-perl \
+              libtest-cmd-perl \
+              libtest-exception-perl \
+              libtext-diff-perl \
+              libtry-tiny-perl \
+              linz-bde-copy \
+              linz-bde-schema \
+              perl-doc \
               postgresql-${{ matrix.pg }} \
               postgresql-client-${{ matrix.pg }} \
               postgresql-contrib-${{ matrix.pg }} \
@@ -124,26 +172,7 @@ jobs:
               postgresql-${{ matrix.pg }}-postgis-${{ matrix.pgis }}-scripts \
               postgresql-${{ matrix.pg }}-dbpatch \
               postgresql-${{ matrix.pg }}-tableversion \
-              dbpatch \
               tableversion \
-              libtest-cmd-perl \
-              libtest-exception-perl \
-              libtap-parser-sourcehandler-pgtap-perl \
-              linz-bde-copy \
-              liblinz-utils-perl \
-              liblinz-bde-perl \
-              linz-bde-schema
-          # TODO: Remove DBD::Pg version specifier once https://github.com/bucardo/dbdpg/issues/79 is released
-          sudo cpanm \
-              DBI \
-              DBD::Pg@3.14.2 \
-              Date::Calc \
-              File::Which \
-              Log::Log4perl \
-              Module::Build \
-              Test::Cmd \
-              Test::Exception \
-              Text::Diff
 
       - name: Save PostgreSQL package install logs if failed
         uses: actions/upload-artifact@v2
@@ -152,16 +181,17 @@ jobs:
           path: /home/runner/.cpanm/work/*/*.log
         if: failure()
 
-      - name: Setup PostgreSQL user
-        run: |
-          sudo -u postgres createuser -s "$USER"
-          sudo -u postgres createuser -s root
+      - name: Setup current user as PostgreSQL superuser
+        run: sudo --user=postgres createuser --superuser "$USER"
+
+      - name: Setup PostgreSQL root user
+        run: sudo --user=postgres createuser --superuser root
+
+      - name: Build Perl
+        run: ./configure
 
       - name: Build
-        run: |
-          # Build
-          ./configure
-          make
+        run: make
 
       - name: Test build
         run: make check
@@ -173,12 +203,20 @@ jobs:
         run: make check-upgrades
 
       - name: Test distribution
-        run: |
-          make dist
-          make distcheck
+        run: make dist
 
-      - name: Test debian packaging
-        run: make deb
+      - name: Test distribution check
+        run: make distcheck
+
+      - name: Build package
+        uses: linz/linz-software-repository@v8
+        with:
+          release: ${{ matrix.release }}
+        env:
+          PG_SUPPORTED_VERSIONS: ${{ matrix.pg }}
+
+      - name: Install package
+        run: sudo dpkg -i build-area/linz-bde-uploader*.deb
 
   package:
     needs: test
