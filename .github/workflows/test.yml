@@ -220,6 +220,7 @@ jobs:
     strategy:
       matrix:
         distro: ['bionic']
+      max-parallel: 1
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
