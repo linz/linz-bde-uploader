@@ -204,7 +204,7 @@ jobs:
         run: make distcheck
 
       - name: Build package
-        uses: linz/linz-software-repository@v8
+        uses: linz/linz-software-repository@v9
         with:
           release: ${{ steps.distro.outputs.codename }}
         env:
