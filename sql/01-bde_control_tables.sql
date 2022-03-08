@@ -1,4 +1,4 @@
-﻿--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --
 -- linz_bde_uploader -  LINZ BDE uploader for PostgreSQL
 --
@@ -6,32 +6,41 @@
 -- Land Information New Zealand and the New Zealand Government.
 -- All rights reserved
 --
--- This program is released under the terms of the new BSD license. See the 
+-- This program is released under the terms of the new BSD license. See the
 -- LICENSE file for more information.
 --
 --------------------------------------------------------------------------------
 -- Creates system tables required for linz_bde_uploader
 --------------------------------------------------------------------------------
-SET client_min_messages TO WARNING;
 
 DO $SCHEMA$
 BEGIN
 
-IF EXISTS (SELECT * FROM pg_namespace where LOWER(nspname) = 'bde_control') THEN
-    RETURN;
-END IF;
+-- Utility function to implement CREATE INDEX IF NOT EXISTS for
+-- PostgreSQL versions lower than 9.5 (where the syntax was introduced)
+--
+CREATE FUNCTION pg_temp.createIndexIfNotExists(p_name name, p_schema name, p_table name, p_column name)
+RETURNS VOID LANGUAGE 'plpgsql' AS $$
+BEGIN
+    IF NOT EXISTS ( SELECT c.oid
+                FROM pg_class c, pg_namespace n
+                WHERE c.relname = p_name
+                  AND c.relkind = 'i'
+                  AND c.relnamespace = n.oid
+                  AND n.nspname = p_schema )
+    THEN
+        EXECUTE format('CREATE INDEX %1I ON %2I.%3I (%4I)', p_name, p_schema, p_table, p_column);
+    END IF;
+END;
+$$;
 
-CREATE SCHEMA bde_control AUTHORIZATION bde_dba;
-
-GRANT USAGE ON SCHEMA bde_control TO bde_admin;
-GRANT USAGE ON SCHEMA bde_control TO bde_user;
-
-SET SEARCH_PATH TO bde_control, public;
+CREATE SCHEMA IF NOT EXISTS bde_control;
+ALTER SCHEMA bde_control OWNER TO bde_dba;
 
 -- bde_control.upload
 --
 
-CREATE TABLE upload
+CREATE TABLE IF NOT EXISTS bde_control.upload
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -40,32 +49,38 @@ CREATE TABLE upload
     status CHAR(1) NOT NULL DEFAULT 'U'
 );
 
-ALTER TABLE upload OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload TO bde_admin;
-GRANT SELECT ON TABLE upload TO bde_user;
+IF r.rolname != 'bde_dba'
+    FROM pg_roles r, pg_class c
+    WHERE r.oid = c.relowner
+    AND c.oid = 'bde_control.upload'::regclass
+THEN
+    ALTER TABLE bde_control.upload OWNER TO bde_dba;
+END IF;
 
-
-COMMENT ON TABLE upload IS
+COMMENT ON TABLE bde_control.upload IS
 $comment$
 Defines an upload job.  Each upload job may upload multipled BDE datasets
 to multiple tables.  The tables will all be in a single BDE schema, defined
 in this table.
 
 Each upload job is identified by an id.  When the upload is being applied
-the working files are placed in a temporary schema named after this id 
+the working files are placed in a temporary schema named after this id
 (bde_upload_##) where ## is the id.
 
 end_time will be periodically updated during the running of the job and will
-be used to determine if the job is still active
+be used to determine if the job is still active.
 
-status values are U (uninitiallized), A (active), C (completed successfully), and E (completed with errors)
+status values are:
+  U (uninitialized)
+  A (active)
+  C (completed successfully)
+  E (completed with errors)
 
 $comment$;
 
 -- bde_control.tables
 
-CREATE TABLE upload_table
+CREATE TABLE IF NOT EXISTS bde_control.upload_table
 (
     id SERIAL NOT NULL PRIMARY KEY,
     schema_name name NOT NULL,
@@ -85,32 +100,81 @@ CREATE TABLE upload_table
     UNIQUE (schema_name,table_name)
 );
 
-ALTER TABLE upload_table OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload_table FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_table TO bde_admin;
-GRANT SELECT ON TABLE upload_table TO bde_user;
+IF r.rolname != 'bde_dba'
+    FROM pg_roles r, pg_class c
+    WHERE r.oid = c.relowner
+    AND c.oid = 'bde_control.upload_table'::regclass
+THEN
+    ALTER TABLE bde_control.upload_table OWNER TO bde_dba;
+END IF;
 
-COMMENT ON TABLE upload_table IS
-$comment$
-Tracks the status of uploads for each table
-table_key_column is unique non-composite, not null integer or bigint column used for identifying the table row for incremental updates. This identifier must be the same as defined in the cbe_tables.tablekeycolumn
-last_upload_id is the id of the last upload job affecting this table
-last_upload_dataset is the dataset id of the last level 5 or 0 uploaded (since the level 0 upload will override any level 5 uploads that have been applied).
-last_upload_type is either 0 or 5
-last_upload_incremental is true if the table data was updated, and false if the table data was completely refreshed from a level 0
-last_upload_details is a text string with details of the last upload
-   (currently will contain constituent files and end times, for checking L5 uploads against.)
-last_upload_time records when the upload was applied
-last_upload_bdetime is a timestamp for the last BDE upload applied
-last_level0_dataset is the dataset id of the last level 0 uploaded
-upl_id_lock is the id of an upload currently locking the table (this is
-  in the sense of a process lock, not a database lock)
-row_tol_warning is the minimum ratio of the number of number of rows in the table after a level 0 update  to the number before the update before a warning is logged
-row_tol_error is the minimum ratio of the number of number of rows in the table after a level 0 update  to the number before the update before an exception is thrown
+COMMENT ON TABLE bde_control.upload_table IS
+'Tracks the status of uploads for each table.';
+
+COMMENT ON COLUMN bde_control.upload_table.key_column IS $comment$
+the name of a unique non-composite, not null
+integer or bigint column used for identifying the table row for
+incremental updates. This identifier must be the same as defined in
+the cbe_tables.tablekeycolumn field of the Landonline INFORMIX
+database.
 $comment$;
--- upload_stats
 
-CREATE TABLE upload_stats
+COMMENT ON COLUMN bde_control.upload_table.last_upload_id IS $comment$
+the id of the last upload job affecting this table,
+referencing the id field of the upload table.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_dataset IS $comment$
+the dataset id of the last level 5 or 0 uploaded
+(since the level 0 upload will override any level 5 uploads that have
+been applied).
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_type IS $comment$
+either 0 or 5.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_incremental IS $comment$
+true if the table data was updated, and
+false if the table data was completely refreshed from a level 0.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_details IS $comment$
+a text string with details of the last upload (currently will contain
+constituent files and end times, for checking L5 uploads against).
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_time IS $comment$
+records when the table upload was started.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_upload_bdetime IS $comment$
+timestamp found in the last BDE file uploaded.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.last_level0_dataset IS $comment$
+the dataset id of the last level 0 uploaded.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.upl_id_lock IS $comment$
+the id of an upload currently locking the table (this is
+in the sense of a process lock, not a database lock).
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.row_tol_warning IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before a warning is raised, expressed as the ratio of new to
+old rows count.
+$comment$;
+
+COMMENT ON COLUMN bde_control.upload_table.row_tol_error IS $comment$
+the maximum tolerated change in row count during a -full-incremental
+update  before an exception is thrown, expressed as
+the ratio of new to old rows count.
+$comment$;
+
+-- upload_stats
+CREATE TABLE IF NOT EXISTS bde_control.upload_stats
 (
     id SERIAL NOT NULL PRIMARY KEY,
     upl_id INT NOT NULL,
@@ -126,18 +190,21 @@ CREATE TABLE upload_stats
     ndelete BIGINT NOT NULL DEFAULT 0
 );
 
-CREATE INDEX idx_sts_tbl ON upload_stats ( tbl_id );
-CREATE INDEX idx_sts_upl ON upload_stats ( upl_id );
+PERFORM pg_temp.createIndexIfNotExists('idx_sts_tbl', 'bde_control', 'upload_stats', 'tbl_id');
+PERFORM pg_temp.createIndexIfNotExists('idx_sts_upl', 'bde_control', 'upload_stats', 'upl_id');
 
-ALTER TABLE upload_stats OWNER TO bde_dba;
-REVOKE ALL ON TABLE upload_stats FROM PUBLIC;
-GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE upload_stats TO bde_admin;
-GRANT SELECT ON TABLE upload_stats TO bde_user;
+IF u.usename != 'bde_dba'
+    FROM pg_user u, pg_class c
+    WHERE u.usesysid = c.relowner
+    AND c.oid = 'bde_control.upload_stats'::regclass
+THEN
+    ALTER TABLE bde_control.upload_stats OWNER TO bde_dba;
+END IF;
 
-COMMENT ON TABLE upload_stats IS
+COMMENT ON TABLE bde_control.upload_stats IS
 $comment$
-Statistics from uploads.  
-tbl_id is used to identify the table being uploaded. 
+Statistics from uploads.
+tbl_id is used to identify the table being uploaded.
 type is the data set type, 0 (level 0) or 5 (level 5)
 incremental is true if the table data was updated, and false if the table data was completely refreshed from a level 0
 dataset is the name of the upload dataset (yyyymmddhhmmss)
@@ -149,5 +216,39 @@ nnullupdate is the number records that had an incremental update but had no new 
 ndelete is the number of records deleted
 $comment$;
 
+--------------------------------------------------------------------------------
+-- Fix up permissions on schema
+--------------------------------------------------------------------------------
+
+GRANT ALL ON SCHEMA bde_control TO bde_dba;
+GRANT USAGE ON SCHEMA bde_control TO bde_admin;
+GRANT USAGE ON SCHEMA bde_control TO bde_user;
+
+REVOKE ALL
+    ON ALL TABLES IN SCHEMA bde_control
+    FROM public;
+
+GRANT ALL
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_dba;
+
+GRANT SELECT, UPDATE, INSERT, DELETE
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_admin;
+
+GRANT USAGE
+    ON ALL SEQUENCES IN SCHEMA bde_control
+    TO bde_admin;
+
+GRANT SELECT
+    ON ALL TABLES IN SCHEMA bde_control
+    TO bde_user;
+
+--------------------------------------------------------------------------------
+-- Cleanup
+--------------------------------------------------------------------------------
+
+DROP FUNCTION pg_temp.createIndexIfNotExists(name, name, name, name);
+
 END;
-$SCHEMA$
+$SCHEMA$;

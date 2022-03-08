@@ -5,6 +5,8 @@
 \B\.svn\b
 \B\.git\b
 \B\.cvsignore$
+\B\.gitignore$
+\B\.travis.yml$
 
 # Avoid Makemaker generated and utility files.
 \bMakefile$
@@ -13,6 +15,10 @@
 \bpm_to_blib$
 \bblibdirs$
 ^MANIFEST\.SKIP$
+^META.yml$
+^META.json$
+^MYMETA.yml$
+^MYMETA.json$
 
 # Avoid Module::Build generated and utility files.
 \bBuild$
@@ -31,6 +37,7 @@
 \#$
 \.#
 \.rej$
+\.swp$
 
 # Avoid OS-specific files/dirs
 #   Mac OSX metadata

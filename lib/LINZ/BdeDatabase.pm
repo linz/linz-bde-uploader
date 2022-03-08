@@ -6,7 +6,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -20,7 +20,7 @@ Interface between the BdeUpload process and a database
 
 =head1 Version
 
-Version: $Id$
+Version: @@VERSION@@ @@REVISION@@
 
 =over
 
@@ -28,7 +28,7 @@ Version: $Id$
 
 Creates a new BdeDatabase object, which provides a database connection
 and a set of functions for accessing the BDE functions in the database.
-Parameters are the connection string for the database, and the name of 
+Parameters are the connection string for the database, and the name of
 the schema holding the BDE tables to be updated.
 
 The following configuration functions are used:
@@ -39,23 +39,23 @@ The following configuration functions are used:
 
 The connection string (minus dbi:Pg:)
 
-=item  $cfg->db_user 
+=item  $cfg->db_user
 
 The database user
 
-=item  $cfg->db_pwd 
+=item  $cfg->db_pwd
 
 The database password
 
 =item  $cfg->db_connect_sql
 
 A set of ";" separated SQL commands that are run once the connection is
-established. 
+established.
 
 =item  $cfg->db_upload_complete_sql
 
-A set of ";" separated SQL commands that are after a successful upload 
-(one that has been applied to at least one table). Each SQL command 
+A set of ";" separated SQL commands that are after a successful upload
+(one that has been applied to at least one table). Each SQL command
 can be preceded by a conditional statement of the form
 
    "if" [any|all] [level0|level0_dataset] table ... table [loaded|affected] "?"
@@ -85,7 +85,7 @@ transaction option.
 =item   $cfg->table_exclusive_lock_timeout
 
 Timeout for acquiring exclusive locks on tables (seconds).  Use -1 to wait
-indefinitely. 
+indefinitely.
 
 =item   $cfg->allow_concurrent_uploads
 
@@ -99,42 +99,41 @@ prevent the upload running
 
 This is defined automagically for the following set of functions. Each
 of these is mapped to a function "bde_..." in the database.  If the first
-parameter of the database function is called upload or bde_schema, then 
+parameter of the database function is called upload or bde_schema, then
 it is not explicitly included in the perl function - instead it is supplied
-by the BdeDatabase object. An upload job is created automatically when 
+by the BdeDatabase object. An upload job is created automatically when
 its id is first required to execute a function.
 
     addTable
     anyUploadIsActive
-    applyLevel0Update 
-    applyLevel5Update 
+    applyLevel0Update
+    applyLevel5Update
     applyPostLevel0Functions
     applyPostLevel5Functions
     bdeSchema
-    bdeTableExists 
+    bdeTableExists
     beginUploadTable
     checkSchemaName
-    createL5ChangeTable 
+    createL5ChangeTable
     createUpload
-    createWorkingCopy 
-    dropWorkingCopy 
+    createWorkingCopy
+    getWorkingCopyOid
+    dropWorkingCopy
     endUploadTable
     finishUpload
     getOption
     uploadIsActive
     lastUploadStats
     releaseExpiredLocks
-    removeOldJobData 
-    selectValidColumns 
+    removeOldJobData
+    selectValidColumns
     setOption
-    checkTableCount
-    startDataset 
-    tempTableExists 
+    startDataset
+    tempTableExists
     tmpSchema
-    uploadDataToTempTable 
 
 
-The functions return either a scalar, or if the function returns a 
+The functions return either a scalar, or if the function returns a
 row, then a hash reference to the row.
 
 The C<lastUploadStats> returns a hash reference with the fields
@@ -182,15 +181,15 @@ transaction is committed. Returns true if successful.
 
 =item $success = $db->beginDataset($dataset_name)
 
-Starts a load for a dataset. If the dataset transaction option is set the cfg 
+Starts a load for a dataset. If the dataset transaction option is set the cfg
 then a long transaction is started. Also if dataset_load_start_sql is set in the
 cfg these SQL commands are executed. Returns true if successful.
 
 =item $db->endDataset($dataset_name)
 
-Ends a load for a dataset. If the dataset transaction option is set the cfg 
+Ends a load for a dataset. If the dataset transaction option is set the cfg
 then a transaction is committed. Also if dataset_load_end_sql is set in the cfg
-these SQL commands are executed. 
+these SQL commands are executed.
 
 =item $db->datasetInTransaction()
 
@@ -210,7 +209,7 @@ package LINZ::BdeDatabase;
 use Log::Log4perl qw(:easy :levels get_logger);
 use fields qw{
     _connection _user _pwd _dbh _pg_server_version _startSql
-    _finishSql _startDatasetSql _endDatasetSql _dbschema _lastUploadId
+    _finishSql _startDatasetSql _endDatasetSql _errorLevel _dbschema _lastUploadId
     _overrideLocks _usetbltransaction _usedstransaction _intransaction
     _locktimeout _allowConcurrent schema uploadId stack
 };
@@ -221,33 +220,32 @@ use DBI;
 our @sqlFuncs = qw{
     addTable
     anyUploadIsActive
-    applyLevel0Update 
-    applyLevel5Update 
+    applyLevel0Update
+    applyLevel5Update
     applyPostLevel0Functions
     applyPostUploadFunctions
     bdeSchema
-    bdeTableExists 
+    bdeTableExists
     beginUploadTable
     checkSchemaName
-    createL5ChangeTable 
+    createL5ChangeTable
     createUpload
-    createWorkingCopy 
-    dropWorkingCopy 
+    createWorkingCopy
+    getWorkingCopyOid
+    dropWorkingCopy
     endUploadTable
     finishUpload
     getOption
-    checkTableCount
     uploadIsActive
     lastUploadStats
     releaseExpiredLocks
-    removeOldJobData 
-    selectValidColumns 
+    removeOldJobData
+    selectValidColumns
     setOption
-    startDataset 
+    startDataset
     tablesAffected
-    tempTableExists 
+    tempTableExists
     tmpSchema
-    uploadDataToTempTable 
     };
 
 our $funcsLoaded = 0;
@@ -260,7 +258,7 @@ my %pg_log_message_map = (
     DEBUG4  => 'debug',
     DEBUG5  => 'debug',
     LOG     => 'debug',
-    NOTICE  => 'debug',
+    NOTICE  => 'info',
     INFO    => 'info',
     WARNING => 'warn'
 );
@@ -281,21 +279,22 @@ sub new
 {
     my($class,$cfg) = @_;
     my $self = fields::new($class);
-    $self->{_connection} = $cfg->db_connection;
-    $self->{_user} = $cfg->db_user;
-    $self->{_pwd} = $cfg->db_pwd;
-    $self->{_startSql} = $cfg->db_connect_sql;
-    $self->{_finishSql} = $cfg->db_upload_complete_sql;
-    $self->{_startDatasetSql} = $cfg->dataset_load_start_sql;
-    $self->{_endDatasetSql} = $cfg->dataset_load_end_sql;
-    $self->{_dbschema} = $cfg->db_schema;
+    $self->{_connection} = $cfg->db_connection; # no default, less problems
+    $self->{_user} = $cfg->db_user('');
+    $self->{_pwd} = $cfg->db_pwd('');
+    $self->{_startSql} = $cfg->db_connect_sql('');
+    $self->{_finishSql} = $cfg->db_upload_complete_sql('');
+    $self->{_startDatasetSql} = $cfg->dataset_load_start_sql('');
+    $self->{_endDatasetSql} = $cfg->dataset_load_end_sql('');
+    $self->{_dbschema} = $cfg->db_schema('bde_control');
     $self->{_overrideLocks} = $cfg->override_locks(0) ? 1 : 0;
     $self->{_usetbltransaction} = $cfg->use_table_transaction(0) ? 1 : 0;
     $self->{_usedstransaction} = $cfg->use_dataset_transaction(1) ? 1 : 0;
     $self->{_locktimeout} = $cfg->table_exclusive_lock_timeout(60)+0;
     $self->{_allowConcurrent} = $cfg->allow_concurrent_uploads(0);
+    $self->{_errorLevel} = $cfg->db_error_level('1') + 0;
 
-    $self->{schema} = $cfg->bde_schema;
+    $self->{schema} = $cfg->bde_schema('bde');
 
     if( $self->{_usedstransaction} && $self->{_usetbltransaction} )
     {
@@ -307,18 +306,18 @@ sub new
     $self->{_dbh} = undef;
     $self->{_intransaction} = 0;
 
-    my $dbh = DBI->connect("dbi:Pg:".$self->{_connection}, 
-        $self->{_user}, $self->{_pwd}, 
+    my $dbh = DBI->connect("dbi:Pg:".$self->{_connection},
+        $self->{_user}, $self->{_pwd},
         {
             AutoCommit    =>1,
-            PrintError    =>1,
+            PrintError    =>0,
             PrintWarn     =>1,
             RaiseError    =>1,
-            pg_errorlevel =>2,
+            pg_errorlevel => $self->{_errorLevel},
         }
     )
        || die "Cannot connect to database\n",DBI->errstr;
-    
+
     my $pg_server_version = $dbh->{'pg_server_version'};
     if ( $pg_server_version =~ /\d/ )
     {
@@ -329,7 +328,13 @@ sub new
         WARN "WARNING: no pg_server_version!  Assuming >= 8.4";
         $self->{_pg_server_version} = 80400;
     }
-    
+
+
+    # Immediately switch to the role meant to run uploads (`bde_admin`)
+    # FIXME: Workaround for https://github.com/linz/linz-bde-schema/issues/173
+    $dbh->do("DO \$\$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO bde_admin', current_database()); END; \$\$ LANGUAGE 'plpgsql'");
+    $dbh->do("SET SESSION AUTHORIZATION bde_admin");
+
     if ( $self->{_pg_server_version} >= 90000 )
     {
         my $row = $dbh->selectcol_arrayref("SELECT pg_is_in_recovery()");
@@ -339,7 +344,7 @@ sub new
                 "you are connected to a read-only slave";
         }
     }
-    
+
     $dbh->do("set search_path to ".$self->{_dbschema}.", public");
     my $schema2 = $dbh->selectrow_array("SELECT bde_CheckSchemaName(?)",{},
         $self->{_dbschema});
@@ -353,9 +358,9 @@ sub new
     my $logger = get_logger();
     my $pg_msg_level = $log_pg_message_map{$logger->level};
     $dbh->do("SET client_min_messages = $pg_msg_level") if $pg_msg_level;
-    
+
     $self->_runSQLBlock($self->{_startSql});
-    
+
     return $self;
 }
 
@@ -376,7 +381,7 @@ sub uploadId
     {
         if( ! $self->{_allowConcurrent} && ! $self->{_overrideLocks} && $self->anyUploadIsActive )
         {
-            die "Cannot create upload job - another job is already active\n";
+            die "Cannot create upload job - another job is already active (or zombied)\n";
         }
         $self->{uploadId} = $self->createUpload;
         INFO('Job ' . $self->{uploadId} . ' created');
@@ -419,7 +424,7 @@ sub finishJob
             ERROR("Could not run finish SQL: $_");
         };
     }
-    
+
     try
     {
         $self->finishUpload($error ? 1: 0);
@@ -428,7 +433,7 @@ sub finishJob
     {
         ERROR("Could not finish the job upload: $_");
     };
-    
+
     my $msg = 'Job ' . $self->{uploadId} . ' finished ' .
         ($error ? 'with errors' : 'successfully');
     INFO($msg);
@@ -502,6 +507,61 @@ sub rollBackDataset
         $self->_rollbackTransaction;
     }
     return $result;
+}
+
+sub streamDataToTempTable
+{
+    my($self,$tablename,$datafh,$columns) = @_;
+
+    $self->_setDbMessageHandler;
+
+    DEBUG('Streaming data into table ' . $tablename);
+
+    my $uploadId = $self->uploadId;
+    my $dbh = $self->_dbh;
+
+    my @quotedColumns;
+    foreach my $col (split(/\|/, $columns)) {
+        push(@quotedColumns, $dbh->quote_identifier( $col ));
+    }
+    #DEBUG('quoted columns are ' . join(',',@quotedColumns));
+
+    my $tmptable = $self->getWorkingCopyOid($tablename);
+
+    DEBUG('Temp table is ' . $tmptable);
+    if ( ! $tmptable ) {
+        ERROR 'Cannot get working copy of table ' . $tablename;
+        $self->_clearDbMessageHandler;
+        return 0;
+    }
+
+    my $sql = 'LOCK TABLE ' . $tmptable . ' IN ACCESS EXCLUSIVE MODE';
+    $dbh->do( $sql );
+
+    $sql = 'COPY ' . $tmptable . ' (' . join(',', @quotedColumns)
+         . ") FROM stdin WITH DELIMITER '|' NULL AS ''";
+    #DEBUG 'SQL: ' . $sql;
+    $dbh->do($sql);
+
+    # See https://metacpan.org/pod/DBD::Pg#COPY-support
+    my @buf;
+    while(<$datafh>) {
+        # We'll keep 16 lines of data to show upon catching
+        # an error
+        shift(@buf) if ( @buf > 16 );
+        push (@buf, $_);
+        $dbh->pg_putcopydata($_);
+    }
+    # NOTE: will throw, on error
+    try {
+        $dbh->pg_putcopyend();
+    }
+    catch {
+        die $_ . "\nLast 16 lines of sent COPY data: @buf";
+    };
+
+    $self->_clearDbMessageHandler;
+    return 1;
 }
 
 sub schema { return $_[0]->{schema} }
@@ -582,7 +642,7 @@ sub _setupFunctions
     return if $funcsLoaded;
 
     my $dbschema = $self->{_dbschema};
-    my $sql = "SELECT * FROM bde_GetBdeFunctions(?)";
+    my $sql = 'SELECT * FROM '.$dbschema.'.bde_GetBdeFunctions(?)';
     my $sth = $self->_dbh->prepare($sql) || die $self->_dbh->errstr;
     $sth->execute($dbschema);
 
@@ -596,19 +656,19 @@ sub _setupFunctions
         next if ! $name;
         $name =~ s/^bde_//i;
 
-        my $sqlf = $func.'('.join(",",("?")x$nparam).')';
+        my $sqlf = $dbschema.'.'.$func.'('.join(",",("?")x$nparam).')';
         $sqlf = '* FROM '.$sqlf if ($returntype eq 'RECORD' || $returntype eq 'TABLE');
         $sqlf = 'SELECT '.$sqlf;
 
-        my $sub = sub 
-            { 
+        my $sub = sub
+            {
                 my($self) = shift(@_);
                 return if $self->{stack}->{$name};
                 $self->{stack}->{$name} = 1;
-                my $result = $self->_executeFunction($name,$sqlf,\@_,$nparam,$returntype); 
+                my $result = $self->_executeFunction($name,$sqlf,\@_,$nparam,$returntype);
                 $self->{stack}->{$name} = 0;
                 return $result;
-            }; 
+            };
 
         my $sqlsub = $sub;
         $sqlsub = sub { my $self=shift(@_); return $sub->($self,$self->schema,@_) }
@@ -668,7 +728,7 @@ sub _executeFunction
         my $error = $self->_dbh->errstr;
         die "Database function $name failed: $error";
     };
-    return $result; 
+    return $result;
 }
 
 sub _setDbMessageHandler
