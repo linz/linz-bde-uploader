@@ -31,7 +31,7 @@ about LINZ BDE files and repository format.
 
 ## Compatibility
 
-Tested on Ubuntu 14.04
+Tested on Ubuntu 18.04/20.04
 
 ## Install
 
