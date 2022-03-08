@@ -1,2 +1,19 @@
-
-# /script/
+*.tar.gz
+*.swp
+blib/
+_build/
+Build
+MANIFEST
+MANIFEST.bak
+Makefile
+Makefile.PL
+META.*
+MYMETA.json
+MYMETA.yml
+.DS_Store
+debian/linz-bde-uploader
+debian/*.log
+debian/*.substvars
+debian/files
+debian/debhelper-build-stamp
+/.idea/

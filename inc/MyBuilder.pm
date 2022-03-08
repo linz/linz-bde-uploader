@@ -6,7 +6,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -30,14 +30,6 @@ sub new
     return $self;
 }
 
-sub resume
-{
-    my $class = shift;
-    my $self = $class->SUPER::resume(@_);
-    $self->_set_extra_install_paths();
-    return $self;
-}
-
 sub find_conf_files
 {
     shift->_find_files('conf', 'conf');
@@ -55,7 +47,7 @@ sub process_script_files {
 
     my $script_dir = File::Spec->catdir($self->blib, 'script');
     File::Path::mkpath( $script_dir );
-  
+
     foreach my $filepath (keys %$files) {
         my $file = File::Basename::basename($filepath);
         if ( !WIN32 )
@@ -66,14 +58,37 @@ sub process_script_files {
         my $to_file = File::Spec->catfile($script_dir, $file);
 
         my $result = $self->copy_if_modified(
-            from    => $filepath, 
-            to      => $to_file, 
+            from    => $filepath,
+            to      => $to_file,
             flatten => 'flatten'
         ) || next;
-        
+
         $self->fix_shebang_line($result) unless $self->is_vmsish;
         $self->substitute_version($result);
+        $self->substitute_prefix($result);
         $self->make_executable($result);
+    }
+}
+
+sub process_pm_files {
+    my $self = shift;
+    my $files = $self->find_pm_files;
+    return unless keys %$files;
+
+    my $lib_dir = File::Spec->catdir($self->blib, 'lib/LINZ');
+    File::Path::mkpath( $lib_dir );
+
+    foreach my $filepath (keys %$files) {
+        my $file = File::Basename::basename($filepath);
+        my $to_file = File::Spec->catfile($lib_dir, $file);
+
+        my $result = $self->copy_if_modified(
+            from    => $filepath,
+            to      => $to_file,
+            flatten => 'flatten'
+        ) || next;
+
+        $self->substitute_version($result);
     }
 }
 
@@ -84,11 +99,39 @@ sub substitute_version {
     my @lines = <FILE>;
     close(FILE);
     my $version = $self->dist_version;
+    my $revision = '';
+    $revision = `pwd`;
+    if ( `which git` && -d '.git' ) {
+        $revision = `git rev-parse --short HEAD`
+    }
     my @newlines;
-    my $updated;
+    my $updated = 0;
     foreach(@lines) {
        my $matched = $_ =~ s/\@\@VERSION\@\@/$version/g;
-       $updated = 1 if $matched;
+       $updated++ if $matched;
+       $matched = $_ =~ s/\@\@REVISION\@\@/$revision/g;
+       $updated++ if $matched;
+       push(@newlines,$_);
+    }
+    if ($updated) {
+        open(FILE, ">$file.new") || die "Can't write to '$file': $!";
+        print FILE @newlines;
+        close(FILE);
+        rename "$file.new", $file;
+    }
+}
+
+sub substitute_prefix {
+    my $self = shift;
+    my $file = shift;
+    open(FILE, "<$file") || die "Can't process '$file': $!";
+    my @lines = <FILE>;
+    close(FILE);
+    my $prefix = $self->prefix || ( $self->installdirs eq 'vendor' ? $Config::Config{'prefix'} : '/usr/local' );
+    my @newlines;
+    foreach(@lines) {
+       my $matched = $_ =~ s/\@\@PREFIX\@\@/$prefix/g;
+       $updated++ if $matched;
        push(@newlines,$_);
     }
     if ($updated) {
@@ -109,7 +152,7 @@ sub process_sql_files {
             $dest =~ s/\.[^.]+$//;
             $has_version = 1;
         }
-        
+
         my $result = $self->copy_if_modified(
             from => $file,
             to   => File::Spec->catfile($self->blib, $dest),
@@ -123,10 +166,10 @@ sub process_sql_files {
 sub _set_extra_install_paths
 {
     my $self = shift;
-    my $prefix = $self->install_base || $self->prefix || $Config::Config{'prefix'} || '';
+    my $prefix = $self->prefix || ( $self->installdirs eq 'vendor' ? $Config::Config{'prefix'} : '/usr/local' );
     my $sysconfdir =  $prefix eq '/usr' ? '/etc' : File::Spec->catdir($prefix, 'etc');
     my $datadir = File::Spec->catdir($prefix, 'share');
-    
+
     $self->install_path('conf' => File::Spec->catdir($sysconfdir, $PACKAGE_DIR));
     $self->install_path('sql'  => File::Spec->catdir($datadir, $PACKAGE_DIR, 'sql'));
 }
@@ -134,11 +177,11 @@ sub _set_extra_install_paths
 sub _find_files
 {
     my ($self, $type, $dir) = @_;
-    
+
     if (my $files = $self->{properties}{"${type}_files"}) {
       return { map $self->localize_file_path($_), %$files };
     }
-  
+
     return {} unless -d $dir;
     return { map {$_, $_}
         map $self->localize_file_path($_),
