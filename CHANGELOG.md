@@ -2,6 +2,16 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.11.0] - 2022-03-08
+
+### Added
+
+-   Support for Ubuntu 20.04/LTS
+
+### Enhanced
+
+-   Quality improvements
+
 ## [2.10.0] - 2020-07-21
 
 ### Added
