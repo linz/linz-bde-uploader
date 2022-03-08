@@ -30,7 +30,7 @@ Depends: ${misc:Depends}, ${perl:Depends},
  liblinz-bde-perl,
  cifs-utils,
  perl-doc,
- postgresql-client-12 | postgresql-client-10,
+  postgresql-client-14 | postgresql-client-12 | postgresql-client-10,
  tableversion,
  dbpatch
 Description: Programme for loading LINZ BDE files into a PostgreSQL

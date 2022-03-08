@@ -47,6 +47,19 @@ jobs:
         # `curl https://apt.postgresql.org/pub/repos/apt/dists/bionic-pgdg/main/binary-amd64/Packages | grep --only-matching '^Package: postgresql-[0-9.]\+-postgis-[0-9.]\+$' | sort --version-sort`.
         pg: ['10', '12', '14']
         pgis: ['2.4', '2.5', '3']
+        exclude:
+          - pg: 10
+            pgis: 2.4
+            os: ubuntu-20.04
+          - pg: 10
+            pgis: 2.4
+            os: ubuntu-latest
+          - pg: 12
+            pgis: 2.4
+          - pg: 14
+            pgis: 2.4
+          - pg: 14
+            pgis: 2.5
 
     env:
       # Set PATH as postgresql-server-dev-all pretends version is 11
