@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@
+	dh $@ --buildsystem=perl_build
 
+override_dh_auto_test:
+	@echo "Test are disabled for Debian packaging"

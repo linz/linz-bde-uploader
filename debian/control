@@ -1,19 +1,23 @@
 Source: linz-bde-uploader
 Section: misc
 Priority: optional
-Build-Depends: debhelper (>= 7)
-Build-Depends-Indep: perl (>= 5.8),
+Build-Depends:
+ debhelper (>= 7),
+ libtest-cmd-perl,
+ libtest-exception-perl
+Build-Depends-Indep:
+ perl (>= 5.8),
  libmodule-build-perl
 Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
 Homepage: http://www.linz.govt.nz
-Vcs-Git: git://github.com/linz/linz_bde_uploader.git
-Vcs-Browser: https://github.com/linz/linz_bde_uploader
+Vcs-Git: git://github.com/linz/linz-bde-uploader.git
+Vcs-Browser: https://github.com/linz/linz-bde-uploader
 
 Package: linz-bde-uploader
 Architecture: all
 Depends: ${misc:Depends}, ${perl:Depends},
- linz-bde-schema,
+ linz-bde-schema (>= 1.11.0),
  liblog-log4perl-perl,
  liblog-dispatch-perl,
  libdate-manip-perl,
@@ -26,10 +30,9 @@ Depends: ${misc:Depends}, ${perl:Depends},
  liblinz-bde-perl,
  cifs-utils,
  perl-doc,
- postgresql-9.3,
- postgresql-client-9.3,
- postgresql-9.3-tableversion
-Recommends:
+  postgresql-client-14 | postgresql-client-12 | postgresql-client-10,
+ tableversion,
+ dbpatch
 Description: Programme for loading LINZ BDE files into a PostgreSQL
  database. linz_bde_uploader has the ability to load full and incremental
  table Landonline BDE loads, as well as manage versioning information.

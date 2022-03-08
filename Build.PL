@@ -7,7 +7,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -15,6 +15,7 @@ use strict;
 use warnings;
 
 use Config;
+use lib '.';
 use inc::MyBuilder;
 
 my $requires = {
@@ -33,7 +34,7 @@ my $build =  inc::MyBuilder->new(
     module_name        => 'LINZ::BDEUploader',
     license            => 'bsd',
     dist_author        => 'LINZ',
-    dist_version       => '2.0.3',
+    dist_version       => '2.11.0',
     dist_abstract      => 'Software for loading LINZ BDE files into a PostgreSQL database',
     sign               => 1,
     requires           => $requires,
