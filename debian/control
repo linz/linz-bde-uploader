@@ -2,11 +2,11 @@ Source: linz-bde-uploader
 Section: misc
 Priority: optional
 Build-Depends:
- debhelper (>= 7),
+ debhelper,
  libtest-cmd-perl,
  libtest-exception-perl
 Build-Depends-Indep:
- perl (>= 5.8),
+ perl,
  libmodule-build-perl
 Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
@@ -17,7 +17,7 @@ Vcs-Browser: https://github.com/linz/linz-bde-uploader
 Package: linz-bde-uploader
 Architecture: all
 Depends: ${misc:Depends}, ${perl:Depends},
- linz-bde-schema (>= 1.11.0),
+ linz-bde-schema,
  liblog-log4perl-perl,
  liblog-dispatch-perl,
  libdate-manip-perl,
