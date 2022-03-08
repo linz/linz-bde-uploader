@@ -7,7 +7,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -19,6 +19,7 @@ use warnings;
 
 our $VERSION = '@@VERSION@@';
 
+use File::Basename qw( dirname );
 use FindBin;
 use lib $FindBin::Bin;
 use lib "$FindBin::Bin/../lib";
@@ -98,18 +99,18 @@ GetOptions (
     "log-level=s" => \$log_level,
     "version" => \$print_version,
     )
-    || help(0);
+    || help(0, *STDERR, 1);
 
-help(1) if $showhelp;
+help(1, *STDOUT, 0) if $showhelp;
 
-if ($print_version) 
+if ($print_version)
 {
     print "$VERSION\n";
     exit(0);
 }
 
 if (defined $log_level && !exists $LOG_LEVELS{$log_level})
-{ 
+{
     print "Log level must be one of " . join(', ', keys %LOG_LEVELS) . "\n";
     help(0);
 }
@@ -119,10 +120,18 @@ if($apply_level0_inc && !$apply_level0)
     $apply_level0 = 1;
 }
 
+if($apply_level0_inc && $rebuild)
+{
+    # See https://github.com/linz/linz-bde-uploader/issues/116
+    print STDERR "-full-incremental and -rebuild are contraddictory, use one or the other\n";
+    help(0, *STDERR, 1);
+}
+
 if( ! $apply_level0 && ! $apply_level5 && ! $do_purge_old && ! $do_remove_zombie && ! $rebuild)
-{ 
-    print "Need at least one option of -full, -incremental, -purge, or -remove-zombie\n";
-    help(0);
+{
+    # NOTE: $apply_level0_inc implies $apply_level0
+    print STDERR "Need at least one option of -full, -incremental, -full-incremental, -purge, or -remove-zombie\n";
+    help(0, *STDERR, 1);
 }
 
 $enddate .= '000000' if $enddate =~ /^\d{8}$/;
@@ -140,7 +149,7 @@ if( $rebuild && ! $apply_level0 )
 
 try
 {
-    my $options = 
+    my $options =
     {
         _configpath=>$cfgpath,
         _configextra=>$cfgext,
@@ -162,17 +171,21 @@ try
     };
 
     my $cfg = new LINZ::Config($options);
-    
+    my $log_config;
+
     # turn off config logging if doing a dry run.
-    my $layout = Log::Log4perl::Layout::PatternLayout->new("%d %p> %F{1}:%L - %m%n");
+    my $log_layout_string = "%d %p> %F{1}:%L - %m%n";
+    my $layout = Log::Log4perl::Layout::PatternLayout->new($log_layout_string);
     if ($dry_run)
     {
-        Log::Log4perl->easy_init($INFO);
+        Log::Log4perl->easy_init( { level    => $INFO,
+                                    file     => "STDOUT",
+                                    layout   => $log_layout_string} );
         $logger = get_logger("");
     }
     else
     {
-        my $log_config = $cfg->log_settings;
+        my $log_config = $cfg->has('log_settings') ?  $cfg->log_settings : "";
         if ($log_config)
         {
             if ( $log_config !~ /^[^#]?log4perl\.(root)?[Ll]ogger\s+\=\s+
@@ -185,10 +198,12 @@ try
         }
         else
         {
+            Log::Log4perl->easy_init( { level    => $INFO,
+                                        file     => "STDOUT",
+                                        layout   => $log_layout_string} );
             $logger = get_logger("");
-            $logger->level($INFO);
         }
-        
+
         if($listing_file)
         {
             my $file_appender = Log::Log4perl::Appender->new(
@@ -203,8 +218,8 @@ try
             $logger->add_appender( $file_appender );
         }
     }
-    
-    if($verbose || $dry_run)
+
+    if($verbose and $log_config and not $dry_run)
     {
         my $stdout_appender = Log::Log4perl::Appender->new(
             "Log::Log4perl::Appender::Screen",
@@ -217,7 +232,13 @@ try
     {
         $logger->level($LOG_LEVELS{$log_level});
     }
-    
+
+    # Set default value for bde_tables_config
+    if ( ! $cfg->has('bde_tables_config') ) {
+      my $bde_tables_config = dirname($cfgpath) . '/tables.conf';
+      $cfg->bde_tables_config( $bde_tables_config );
+    }
+
     $upload = new LINZ::BdeUpload($cfg);
     if(!$dry_run)
     {
@@ -233,7 +254,7 @@ catch
         $upload->FireEvent('error');
         undef $upload;
     }
-    Log::Log4perl->initialized() ? ERROR($_) : print $_;
+    Log::Log4perl->initialized() ? ERROR($_) : print STDERR $_;
     $status = 1;
 };
 
@@ -257,7 +278,7 @@ sub runtime_duration
         $day   = $hour     / 24;
         $hour  = $hour     % 24;
     }
-    
+
     if ($day) {
         $str = sprintf("%dd:%02d:%02d:%02d",$day, $hour, $min, $sec);
     }
@@ -282,16 +303,17 @@ sub signal_handler
 
 sub help
 {
-    my($full) = @_;
+    my($full, $stream, $exitcode) = @_;
     my $level = $full ? 2 : 99;
     my $sections = 'Syntax';
     require Pod::Usage;
     Pod::Usage::pod2usage({
         -verbose=>$level,
         -sections=>$sections,
-        -exitval=>'NOEXIT' 
+        -output=>$stream,
+        -exitval=>'NOEXIT'
     });
-    exit;
+    exit $exitcode;
 }
 __END__
 
@@ -302,17 +324,17 @@ Script for updating a database with BDE files generated by Landonline.
 =head1 Version
 
 Version: @@VERSION@@
- 
+
 =head1 Syntax
 
   perl linz_bde_uploader.pl [options..] [tables..]
 
-If no options are a brief help message is displayed. At least one of the 
+If no options are given a brief help message is displayed. At least one of the
 -full, -incremental, -rebuild, -purge, -remove-zombie options must be supplied.
 If tables are included, then only those tables will be updated.
 
 The list of tables is optional and defines the subset of the tables that will
-be updated.  Only tables defined in the configuration will be updated - 
+be updated.  Only tables defined in the configuration will be updated -
 any additional tables listed are silently ignored(!)
 
 Options:
@@ -339,13 +361,13 @@ Options:
 
 =item -maintain-database or -m
 
-=item -dry-run or -d 
+=item -dry-run or -d
 
 =item -full-timeout or -t I<timeout>
 
 =item -inc-timeout or -u I<timeout>
 
-=item -override-locks or -o 
+=item -override-locks or -o
 
 =item -skip-postupload-tasks
 
@@ -367,7 +389,7 @@ Options:
 
 =head1 Options
 
-=over 
+=over
 
 =item -config-path or -c I<cfgpath>
 
@@ -375,15 +397,19 @@ Select the configuration file that will be used.  Default is
 ~/config/linz_bde_uploader.cfg, where ~ is the directory in which the
 linz_bde_uploader.pl script is located.
 
+If a file I<cfgpath>.test exists, it is parsed after all the other
+configuration files (including the one specified via -config-extension)
+allowing for override of all configuration items.
+
 =item -config-extension or -x  I<cfgext>
 
 Extra configuration extension.  Overrides selected configuration items with
-values from bde.cfg.I<cfgext> 
+values from I<cfgpath>.I<cfgext>
 
 =item -purge or -p
 
-Purge old jobs from the database and file system.  The expiry times for 
-old jobs is defined in the configuration file.  This clears locks and 
+Purge old jobs from the database and file system.  The expiry times for
+old jobs is defined in the configuration file.  This clears locks and
 purges expired jobs from the system
 
 =item -remove-zombie or -z
@@ -401,20 +427,25 @@ Apply any pending level 0 updates
 Apply any pending level 0 updates not replacing table data, rather apply
 differences between the current table data and the pending level 0 data. This
 is useful when versioning is enabled on tables.
+Also works in absence of a previously populated table, but it is
+faster to use -full in that case, to avoid incurring in the cost of
+computing table difference against empty tables.
 
 =item -incremental or -i
 
-Apply any pending level 5 updates. If level 5 file is a full unload of the table
-data, then differences will be calculated between the current table and the new,
-file data. Those difference will then be applied as as an incremental update.
+Apply any pending level 5 updates.
+Differences will be calculated between the current table and the new file data.
+Those difference will then be applied as an incremental update.
+Only works in presence of a previously populated table, lacking of
+which results in skipping the upload for that table.
 
 =item -rebuild or -r
 
-Apply the last level 0 and any subsequent level 5 updates to rebuild the 
+Apply the last level 0 and any subsequent level 5 updates to rebuild the
 tables.  If -rebuild and -full are specified, then only the last level 0
 is loaded.
 
-=item -dry-run or -d 
+=item -dry-run or -d
 
 Just list the updates that will be applied - don't actually make any changes.
 
@@ -437,14 +468,14 @@ No level 0 jobs will be started after this time has expired.
 
 Specify the timeout in hours for incremental (level 5) updates.
 
-=item -override-locks or -o 
+=item -override-locks or -o
 
 Override any existing locks on files when doing the update. This will
 also override constraints on allowing concurrent uploads.
 
 =item -skip-postupload-tasks
 
-Choose not to run any postupload tasks defined for the schema.  
+Choose not to run any postupload tasks defined for the schema.
 
 =item -listing_file or -l I<listing_file>
 
@@ -453,7 +484,7 @@ the config file.
 
 =item -keep-files or -k
 
-Keeps the files generated during the upload rather than deleting them 
+Keeps the files generated during the upload rather than deleting them
 for debugging use.
 
 =item -enable-hooks or -e
@@ -464,12 +495,12 @@ Fire any defined command line hooks in the configuration.
 
 Print the version number for the software.
 
-=item -log-level
+=item -log-level I<level>
 
 Set the logging level for the software. Will override the defined value in the
 config.  Only useful if logging is set in config or if the verbose or
-listing_file options are used. Can be one of the following values: OFF, FATAL,
-ERROR, WARN, INFO, DEBUG, TRACE, ALL
+-listing options are used.  I<level> can be one of the following values:
+OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL
 
 =item -verbose or -v
 

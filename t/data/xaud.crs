@@ -1,0 +1,22 @@
+HEDR     2.0.0
+SOFTWARE cbe_b30 V1.0.1
+SCHEMA   V1.0
+USER     crs_bde
+START    2016-06-01 17:12:46
+END      2016-06-01 17:12:46
+SQL      SELECT * FROM cbe_data
+TABLE   cbe_data
+COLUMN   id                             integer NOT NULL
+COLUMN   tablename                      varchar NOT NULL
+COLUMN   tablekeyvalue                  integer NOT NULL
+COLUMN   action                         char NOT NULL
+COLUMN   timestamp                      datetime NOT NULL
+DESC
+SIZE          785
+{CRS-DATA}
+1|crs_parcel_bndry|80401150|D|2016-06-01 17:12:17|
+2|crs_parcel_bndry|300|I|2016-06-01 17:12:17|
+3|crs_parcel_bndry|400|I|2016-06-01 17:12:17|
+4|crs_parcel_bndry|100|I|2016-06-01 17:12:17|
+5|crs_parcel_bndry|80401148|U|2016-06-01 17:12:17|
+6|crs_parcel_bndry|80401149|U|2016-06-01 17:12:17|

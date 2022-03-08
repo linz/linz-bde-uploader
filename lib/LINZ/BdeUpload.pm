@@ -6,7 +6,7 @@
 # Land Information New Zealand and the New Zealand Government.
 # All rights reserved
 #
-# This program is released under the terms of the new BSD license. See the 
+# This program is released under the terms of the new BSD license. See the
 # LICENSE file for more information.
 #
 ################################################################################
@@ -112,7 +112,7 @@ sub new
 sub _report_config_error
 {
     my($self,@message) = @_;
-    LOGDIE("Error reading BDE upload dataset configuration from ",
+    LOGEXIT("Error reading BDE upload dataset configuration from ",
         $self->{config_file}, "\n", @message)
 }
 
@@ -128,7 +128,7 @@ sub _read_config
     $self->{config_file} = $config_file;
     $self->{tables}=[];
 
-    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!"); 
+    open(my $in, "<$config_file") || $self->_report_config_error("Cannot open file:$!");
     my $table;
     my $errors = [];
     my %tables = ();
@@ -213,7 +213,7 @@ sub is_available_in_dataset
     return (@missing ? 0 : 1, \@missing);
 }
 
-sub _subset_clone 
+sub _subset_clone
 {
     my($self,@tables) = @_;
     my $clone = fields::new(ref($self));
@@ -262,7 +262,7 @@ sub level5_change_table
     return $change_table
 }
 
-sub table 
+sub table
 {
     my ($self,$name) = @_;
     $name = lc($name);
@@ -309,7 +309,7 @@ sub datasets
 sub tables
 {
     my($self,$dataset) = @_;
-    my @tables = $dataset ? 
+    my @tables = $dataset ?
         @{$self->{dstables}->{$dataset->name}} :
         values %{$self->{tables}};
     @tables =  sort {$a->id <=> $b->id} @tables;
@@ -363,7 +363,7 @@ use File::Spec;
 use Date::Calc;
 
 use fields qw{ cfg db repository tables tmp_base tmp fid current_dataset
-               timeout timeout_message dbl0updated dbupdated error_message 
+               timeout timeout_message dbl0updated dbupdated error_message
                keepfiles changetable jobfinished current_level event_hooks
                upload_id};
 
@@ -377,8 +377,8 @@ sub new
     $self->{cfg} = $cfg;
 
     # Load the tables configuration and process any inclusions/exclusions
-    
-    my $tables = new BdeUploadDatasetDef($cfg->bde_tables_config); 
+
+    my $tables = new BdeUploadDatasetDef($cfg->bde_tables_config);
     my $changetable = $tables->level5_change_table;
 
     # Override for command line selection
@@ -406,7 +406,7 @@ sub new
 
     $self->{tables} = $tables;
     $self->{changetable} = $changetable;
-    
+
     # Load any event hooks
     if ($cfg->enable_hooks)
     {
@@ -419,17 +419,20 @@ sub new
             }
         }
     }
-    
+
     # Set up the repository and the database
 
     $self->{db} = new LINZ::BdeDatabase( $cfg );
-    $self->{db}->setApplication($cfg->application_name);
+    if ( $cfg->has('application_name') ) {
+        # Rely on libpq default otherwise (PGAPPNAME)
+        $self->{db}->setApplication($cfg->application_name());
+    }
 
     $self->{repository} = new LINZ::BdeRepository( $cfg->bde_repository );
-   
+
     # Check for the base scratch directory - create it if it doesn't exist
-    
-    my $scratch = $cfg->tmp_base_dir;
+
+    my $scratch = $cfg->tmp_base_dir('/tmp');
     if( ! -d $scratch )
     {
         mkpath($scratch);
@@ -469,7 +472,7 @@ sub tables { return $_[0]->{tables}; }
 sub repository { return $_[0]->{repository}; }
 sub fid { $_[0]->{fid}++; return $_[0]->{fid}; }
 
-sub tmp 
+sub tmp
 {
     my($self) = @_;
     return $self->{tmp} if defined $self->{tmp};
@@ -547,7 +550,7 @@ sub CheckTimeout
     my($self) = @_;
     my $t = $self->{timeout};
     if( $t && $t < time() )
-    { 
+    {
         my $message = $self->{timeout_message};
         die ($message);
     }
@@ -561,18 +564,18 @@ sub ApplyUpdates
     try
     {
         my $updates = new BdeUploadSet();
-        
+
         if( $self->cfg->apply_level0(0) )
         {
-            $self->GetLevel0Updates($updates); 
+            $self->GetLevel0Updates($updates);
         }
         if( $self->cfg->apply_level5(0) )
         {
             $self->GetLevel5Updates($updates);
         }
-        
+
         # Apply updates
-        
+
         if( $dry_run )
         {
             print "Dataset updates\n";
@@ -619,14 +622,15 @@ sub GetLevel0Updates
 
     if (! @datasets)
     {
-        die ("No level 0 uploads available");
+        INFO ("No level 0 uploads available");
+        return;
     }
-    
+
     my $dataset = $datasets[-1];
 
     my $rebuild = $self->cfg->rebuild(0);
-    
-    if ( $self->cfg->require_all_dataset_files )
+
+    if ( $self->cfg->require_all_dataset_files(1) )
     {
         my $l0_tableset = $self->tables->level0_subset;
         my ($avail, $missing) = $l0_tableset->is_available_in_dataset($dataset);
@@ -655,12 +659,12 @@ sub GetLevel5Updates
     my $enddate = $self->cfg->end_date('');
 
     my $l5repository = $self->repository->level5;
-    
+
     my $rebuild = $self->cfg->rebuild(0);
-    
+
     my %complete_datasets;
     my $l5_tableset = $self->tables->level5_subset;
-    my $require_all = $self->cfg->require_all_dataset_files;
+    my $require_all = $self->cfg->require_all_dataset_files(1);
     foreach my $t ($l5_tableset->tables )
     {
         my $lastl5;
@@ -716,18 +720,18 @@ sub ApplyDatasetUpdates
     my $db = $self->db;
     $self->{upload_id} = $self->db->uploadId;
     $self->FireEvent('start');
-    
+
     my $changetable = $self->{changetable};
 
     # Record status of each table
     my $tablestate = {};
-    
+
     foreach my $dataset ( sort {$a->name cmp $b->name} $uploadset->datasets )
     {
         my $load_type  = "level " . $dataset->level;
         my $is_level_0_ds = $dataset->level == '0';
-        
-        $self->CheckTimeout;      
+
+        $self->CheckTimeout;
         my $timeout;
         if ( $is_level_0_ds )
         {
@@ -745,12 +749,12 @@ sub ApplyDatasetUpdates
         $self->{current_dataset} = $dataset->name;
         $self->{current_level} = $dataset->level;
         $self->FireEvent('start_dataset');
-        
+
         my $change_table_name;
-        
+
         my @loadtables = ();
         my $need_change_table = 0;
-          
+
         foreach my $table ($uploadset->tables($dataset))
         {
             my $tablename = $table->name;
@@ -758,17 +762,28 @@ sub ApplyDatasetUpdates
             # for processing
             if(! $tablestate->{$tablename})
             {
-                push(@loadtables,$table); 
+                push(@loadtables,$table);
                 $need_change_table = 1 if !$is_level_0_ds && !$table->level5_is_full;
             }
             # tablestate accumulates failed uploads.  This will
             # be cleared if the table is successfully uploaded.
             $tablestate->{$tablename} .= "|".$dataset->name;
         }
-        
-        $change_table_name = $self->CreateLevel5ChangeTable($dataset,$changetable)
-            if $need_change_table;
-        
+
+        if ( $need_change_table )
+        {
+            if ( $changetable )
+            {
+                $change_table_name =
+                    $self->CreateLevel5ChangeTable($dataset,$changetable);
+            }
+            else
+            {
+                die("Configuration error: missing required changetable " .
+                     "for incremental update");
+            }
+        }
+
         foreach my $table ( @loadtables )
         {
             $self->CheckTimeout;
@@ -787,12 +802,12 @@ sub ApplyDatasetUpdates
         }
 
         $db->dropWorkingCopy($change_table_name) if $change_table_name;
-        
+
         $self->db->endDataset($dataset->name);
         $self->FireEvent('finish_dataset');
         $self->{current_dataset} = undef;
         $self->{current_level} = undef;
-        
+
         if ( $is_level_0_ds )
         {
             if( $self->cfg->skip_postupload_tasks )
@@ -805,7 +820,7 @@ sub ApplyDatasetUpdates
             }
         }
     }
-    
+
     # Record any unreported table errors.
     foreach my $tablename (keys %$tablestate )
     {
@@ -814,13 +829,13 @@ sub ApplyDatasetUpdates
         my @dsnames = split(/\|/,substr($state,1));
         my $dsname0 = shift(@dsnames);
         ERROR("Failed to load update for ",$tablename,
-            " from ", $dsname0) 
-            if $dsname0; 
+            " from ", $dsname0)
+            if $dsname0;
         ERROR("Updates of $tablename from ",join(", ",@dsnames),
             " where bypassed due to previous error for that table")
             if @dsnames;
     }
-    
+
     return 1;
 }
 
@@ -830,7 +845,7 @@ sub ApplyPostUploadFunctions
     return if ! $self->{dbupdated};
     if( $self->cfg->skip_postupload_tasks )
     {
-         
+
         WARN("Post upload tasks have not been run by user choice");
     }
     else
@@ -859,9 +874,9 @@ sub FinishJob
 sub CreateLevel5ChangeTable
 {
     my($self,$dataset,$table) = @_;
-    
+
     $self->CheckTimeout();
-    
+
     my $db = $self->db;
     my $temp = 1;
     $db->beginTable("");
@@ -894,12 +909,12 @@ sub CreateLevel5ChangeTable
 sub UploadTable
 {
     my($self,$dataset,$table) = @_;
-    
+
     $self->CheckTimeout();
 
     INFO("Loading ",$table->name," from dataset ", $dataset->name);
     my ($available,$missing) = $table->is_available_in_dataset($dataset);
-    if( !$available ) 
+    if( !$available )
     {
         die ("The files ",join(", ",@$missing)," required to update ",$table->name,
             " are not available in dataset ",$dataset->name);
@@ -918,20 +933,20 @@ sub UploadTable
             $table->row_tol_error,
             $table->row_tol_warning
         );
-        
+
         $db->beginTable($tablename) ||
             die ("Cannot acquire upload lock for $tablename");
 
-        # If this is a level 0 update, then need the last update details
-        # in order to check that the start time of the current update 
-        # matches the end time.
-    
+        # If this is a level 5 update, we need the last update details
+        # in order to check that the start time of the current update is not
+        # too late when compared against the end time of the previous upload.
+
         my %lastdetails = ();
         if( ! $is_level0 )
         {
             my $stats = $db->lastUploadStats($tablename);
             my $details = '';
-            $details = $stats->{last_upload_details} 
+            $details = $stats->{last_upload_details}
                 if $stats->{last_upload_type} eq '5';
 
             if( $details =~ /^BdeUpload(\s+\S+\s+\d{4}\-\d\d\-\d\d\s+\d\d\:\d\d\:\d\d)+\s*$/ )
@@ -942,7 +957,7 @@ sub UploadTable
                 }
             }
         }
-        
+
         my $create_temp = $self->cfg->apply_level0_inc || $dataset->level eq '5' || 0;
         $db->createWorkingCopy($tablename,  $create_temp )
             || die ("Cannot create working copy of table ", $table->name);
@@ -956,7 +971,7 @@ sub UploadTable
             $details .=" $file $enddate";
             $bdedate = $enddate if $enddate gt $bdedate;
         }
-        
+
         $self->CheckTimeout();
 
         if( $is_level0 )
@@ -964,7 +979,7 @@ sub UploadTable
             INFO('Applying level 0 update '. $dataset->name. ' into table '. $tablename);
             my $is_incremental = $self->cfg->apply_level0_inc || $table->level5_is_full;
             $db->applyLevel0Update($tablename,$bdedate,$details, $is_incremental)
-                || die ("Cannot apply level ",$dataset->level, 
+                || die ("Cannot apply level ",$dataset->level,
                     " update for ",$tablename," in ",$dataset->name);
             $self->{dbl0updated} = 1;
         }
@@ -972,7 +987,7 @@ sub UploadTable
         {
             INFO('Applying level 5 update '. $dataset->name. ' into table '. $tablename);
             $db->applyLevel5Update($tablename,$bdedate,$details, $self->cfg->fail_if_inconsistent_data(1))
-                || die ("Cannot apply level ",$dataset->level, 
+                || die ("Cannot apply level ",$dataset->level,
                     " update for ",$tablename," in ",$dataset->name);
         }
         $self->{dbupdated} = 1;
@@ -995,9 +1010,9 @@ sub LoadFile
 
     my $db = $self->db;
 
-    my $tmpfile = '';
     my $result = '';
     my $reader = $dataset->open($file);
+    my $tabledatafh;
 
     INFO("Loading file ",$file," from dataset ",$dataset->name);
     try
@@ -1006,19 +1021,35 @@ sub LoadFile
             if $checktime;
 
         # Determine which columns are to be copied
-        my $columns = join("|",$reader->fields);
+        my $fields = join("|",$reader->fields);
+        if ($fields eq '') {
+            die "BDE file has no fields defined";
+        }
+        DEBUG("BDE Fields: $fields");
 
-        $columns = $db->selectValidColumns($tablename,$columns);
-        $reader->output_fields(split(/\|/,$columns));
+        my $columns = $db->selectValidColumns($tablename,$fields);
+        if ($columns eq '') {
+            die "No BDE field ($fields) matches column names in DB table $tablename";
+        }
+        DEBUG("DB Columns: $columns");
 
-        # Create the temporary file
-        $tmpfile = $self->BuildTempFile($dataset,$reader);
+        my @columns = split(/\|/,$columns);
+        $reader->output_fields(@columns);
 
-        # Upload to the database
-        $db->uploadDataToTempTable($tablename,$tmpfile,$columns)
-            || die "Error uploading data from ",$file," in ",$dataset->name," to ",$tablename;
-        
-        DEBUG("Loaded file $tmpfile into working table $tablename");
+        # Open data file (throw on failure)
+        $tabledatafh = $self->_OpenDataFile($dataset,$reader);
+
+        # Stream data to the database
+        $db->streamDataToTempTable($tablename, $tabledatafh, $columns)
+            || die "Error streaming data to ",$tablename;
+        DEBUG("Loaded data file into working table $tablename");
+        # As $tabledatafh could be a pipe, here
+        # we check return status
+        $? = 0;
+        close($tabledatafh);
+        if ($?) {
+            die "Command used to output datafile failed";
+        }
     }
     catch
     {
@@ -1029,7 +1060,6 @@ sub LoadFile
         try
         {
             $reader->close;
-            unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
         };
     };
 
@@ -1042,17 +1072,17 @@ sub CheckStartDate
     my ($self,$dataset,$file,$starttime,$checktime) = @_;
     return if $starttime eq $checktime;
 
-    my $warntol = $self->cfg->level5_starttime_warn_tolerance;
-    my $failtol = $self->cfg->level5_starttime_fail_tolerance;
+    my $warntol = $self->cfg->level5_starttime_warn_tolerance(0);
+    my $failtol = $self->cfg->level5_starttime_fail_tolerance(0);
     my $re = qw/^\d{4}\-\d\d\-\d\d\s+\d\d\:\d\d\:\d\d$/;
-    
+
     if( $starttime !~ $re || $checktime !~ $re )
     {
         WARN("Cannot check start time of $file of ",
             $dataset->name," level 5 update");
         return;
     }
-        
+
     my $start = Date::Calc::Mktime($starttime =~ /(\d+)/g);
     my $end = Date::Calc::Mktime($checktime =~ /(\d+)/g);
     my $diff = abs($start-$end)/3600.0;
@@ -1072,7 +1102,7 @@ sub CheckStartDate
 sub FireEvent
 {
     my ($self, $event) = @_;
-    
+
     # if no upload id is defined then don't fire the event
     if (! $self->{upload_id}) {
         return;
@@ -1118,6 +1148,12 @@ sub BuildTempFile
     my($self,$dataset,$reader) = @_;
     my $tmpname = $self->tmp."/".$reader->name."_".$dataset->name."_".$self->fid.".unl";
     my $cfg = $self->cfg->bde_copy_configuration('');
+    # Ensure file_separator and line_terminator configurations
+    # are those expected by the COPY command as issued by the
+    # BdeDatabase::streamDataToTempTable function
+    # See https://github.com/linz/linz_bde_uploader/issues/90
+    $cfg .= "field_separator |\n";
+    $cfg .= "line_terminator \\x0A\n";
     my $log = $tmpname.".log";
     my $result = $reader->copy
         (
@@ -1140,8 +1176,52 @@ sub BuildTempFile
     chmod 0755, $tmpname;
     INFO($result->{nrec}," records copied from ",$reader->path,
             " with ",$result->{nerrors}," errors");
-    
+
     return $tmpname;
+}
+
+sub _OpenDataPipe
+{
+    my($self,$dataset,$reader) = @_;
+    my $cfg = $self->cfg->bde_copy_configuration('');
+    # Ensure file_separator and line_terminator configurations
+    # are those expected by the COPY command as issued by the
+    # BdeDatabase::streamDataToTempTable function
+    # See https://github.com/linz/linz_bde_uploader/issues/90
+    $cfg .= "field_separator |\n";
+    $cfg .= "line_terminator \\x0A\n";
+    my $log = $self->tmp."/".$reader->name."_".$dataset->name."_".$self->fid.".unl.log";
+    my $fh = $reader->pipe
+        (
+        log_file => $log,
+        config => $cfg
+        );
+
+    return ($fh,$log);
+}
+
+sub _OpenDataFile
+{
+    my($self,$dataset,$reader) = @_;
+    my $ret;
+    if ( $reader->can('pipe') )
+    {
+        # pipe method was added in linz-bde-perl 1.1.0
+        my ($fh, $logfile) = $self->_OpenDataPipe($dataset,$reader);
+        # TODO: save logfile somewhere ?
+        #       it'll keep being written to while
+        #       streaming !
+        $ret = $fh;
+    }
+    else
+    {
+        my $tmpfile = $self->BuildTempFile($dataset,$reader);
+        open(my $tabledatafh, "<$tmpfile") || die ("Cannot open $tmpfile: $!");
+        unlink $tmpfile if $tmpfile && ! $self->{keepfiles};
+        $ret = $tabledatafh;
+    }
+    $ret->binmode(":encoding(UTF-8)");
+    return $ret;
 }
 
 1;
@@ -1150,12 +1230,12 @@ __END__
 
 =head1 NAME
 
-LINZ::BdeUpload - A module to manage the a BDE upload job.
+LINZ::BdeUpload - A module to manage a BDE upload job.
 
 =head1 Synopsis
 
-Module to manage the a BDE upload job.  Manages the configuration of tables
-to upload, the target database, and the repository from which files are 
+Module to manage a BDE upload job.  Manages the configuration of tables
+to upload, the target database, and the repository from which files are
 uploaded.
 
 =head2 Public Functions
@@ -1228,30 +1308,33 @@ uploaded.
 
 =head2 Upload process
 
-=head2 Post upload functions 
+=head2 Post upload functions
 
 The post upload functions are functions in the target schema that are
-run when after files have been affected by level0 or level 5 updates.
+run when after files have been affected by level 0 or level 5 updates.
 
 Functions with a signature
 
    INT bde_PostUpload_xxxxx( INT upload_id )
 
-are run (in alphabetical order) at the completion of every upload.  
+are run (in alphabetical order) at the completion of every upload.
 
-Functions with a signature 
+Functions with a signature
 
    INT bde_PostLevel0_xxxxx( upload_id INT )
 
-are run at the completion of every level 0 upload.  
+are run at the completion of every level 0 upload.
 
 Two useful functions that these may use are:
 
 =over
 
-=item INT bde_control.bde_TablesAffected( upload_id INT, tables name[], test TEXT ) 
+=item INT bde_control.bde_TablesAffected( upload_id INT, tables name[], test TEXT )
 
-Tests tables that are affected by an upload. I<tables> is a list of tables to check.
+Tests tables that are affected by an upload. I<tables> is a list of
+table names to check. Names must NOT be qualified with schema name as
+the schema name is taken from the target schema of the given upload.
+
 <test> is a string specifying the test to apply and can include the following
 space separated items:
 
@@ -1259,7 +1342,7 @@ space separated items:
 
 =item 'any'
 
-The test will return true if any of the tables meet the criteria.  The default 
+The test will return true if any of the tables meet the criteria.  The default
 is to return true if all the tables pass.
 
 =item 'all'
@@ -1279,12 +1362,12 @@ false if there are no level 0 files have been uploaded.
 
 =item 'level0_dataset'
 
-The test will apply only to level 0 files in the upload, or level 0 files 
+The test will apply only to level 0 files in the upload, or level 0 files
 in other uploads from the same level 0 dataset.
 
 =back
 
-Using this function may require multiple calls, for example to see if 
+Using this function may require multiple calls, for example to see if
 all tables are loaded and any are affected.
 
 =back
@@ -1303,7 +1386,7 @@ all tables are loaded and any are affected.
 
 =item $upload->fid
 
-=item $upload->tmp 
+=item $upload->tmp
 
 =item $upload->CheckTimeout
 
@@ -1351,7 +1434,7 @@ Defines the levels which will apply for this table, 0, 5, or both.
 
 =item $def->add_files($file,...)
 
-Adds a list of files to the files to be uploaded.  
+Adds a list of files to the files to be uploaded.
 
 =item $def->add_columns($column,...)
 
@@ -1360,7 +1443,7 @@ specified they override those in the BDE header (use with care!)
 
 =item $def->set_level5_is_full
 
-Specifies that level 5 files actually contain a complete table dump - 
+Specifies that level 5 files actually contain a complete table dump -
 equivalent to a level 0 unload.
 
 =item $def->is_available_in_dataset($dataset)
@@ -1393,12 +1476,12 @@ Loads and manages a set of BdeUploadTableDef definitions
 
 =item $datasetdef = new BdeUploadDatasetDef($config_file)
 
-Loads configuration file containing definitions of data sets.  Will die 
+Loads configuration file containing definitions of data sets.  Will die
 if the file cannot be loaded or contains errors.
 
 =item $datasetdef->tables
 
-Returns a list of the BdeUploadTableDef items in the definition 
+Returns a list of the BdeUploadTableDef items in the definition
 
 =item $subset = $datasetdef->subset($table1, $table2, ... )
 
@@ -1414,14 +1497,14 @@ Returns a new dataset definition excluding the specified tables
 
 =item $subset = $dataset->level5_subset
 
-Return subsets consisting of only tables used applicable to the specified 
-level 
+Return subsets consisting of only tables used applicable to the specified
+level
 
 =item @tables = $dataset->level0_tables
 
 =item @tables = $dataset->level5_tables
 
-Returns an array or array reference of the tables applicable to the 
+Returns an array or array reference of the tables applicable to the
 specified level
 
 =item $subset = $dataset->level5_change_table
