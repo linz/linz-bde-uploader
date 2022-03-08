@@ -2,11 +2,11 @@ Source: linz-bde-uploader
 Section: misc
 Priority: optional
 Build-Depends:
- debhelper (>= 7),
+ debhelper,
  libtest-cmd-perl,
  libtest-exception-perl
 Build-Depends-Indep:
- perl (>= 5.8),
+ perl,
  libmodule-build-perl
 Standards-Version: 3.9.5
 Maintainer: Jeremy Palmer (LINZ) <jpalmer@linz.govt.nz>
@@ -30,7 +30,7 @@ Depends: ${misc:Depends}, ${perl:Depends},
  liblinz-bde-perl,
  cifs-utils,
  perl-doc,
- postgresql-client-11 | postgresql-client-10 | postgresql-client-9.6 | postgresql-client-9.5 | postgresql-client-9.4 | postgresql-client-9.3,
+  postgresql-client-14 | postgresql-client-12 | postgresql-client-10,
  tableversion,
  dbpatch
 Description: Programme for loading LINZ BDE files into a PostgreSQL
