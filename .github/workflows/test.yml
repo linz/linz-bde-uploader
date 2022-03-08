@@ -194,7 +194,9 @@ jobs:
         run: sudo dpkg -i build-area/linz-bde-uploader*.deb
 
   package:
-    needs: test
+    needs:
+      - lint
+      - test
     name: Package for Debian
     runs-on: ubuntu-20.04
     strategy:
