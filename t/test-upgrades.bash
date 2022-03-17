@@ -4,14 +4,10 @@ set -o errexit -o noclobber -o nounset -o pipefail
 shopt -s failglob inherit_errexit
 
 upgradeable_versions=(
-    '2.5.2'
-    '2.6.0'
-    '2.7.0'
-    '2.8.0'
-    '2.8.1'
     '2.9.0'
     '2.10.0'
     '2.10.1'
+    '2.11.0'
 )
 
 test_database=linz-bde-uploader-test-db
