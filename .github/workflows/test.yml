@@ -148,7 +148,7 @@ jobs:
               tableversion \
 
       - name: Save PostgreSQL package install logs if failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: cpanm-logs
           path: /home/runner/.cpanm/work/*/*.log
