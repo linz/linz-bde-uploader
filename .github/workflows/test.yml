@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - packagecloud
+    tags-ignore:
+      - 'debian/*'
   pull_request:
     types: [opened, synchronize]
   schedule:
@@ -232,3 +234,17 @@ jobs:
           release: ${{ matrix.distro }}
           packagecloud_token: ${{ secrets.LINZCI_PACKAGECLOUD_TOKEN }}
           packagecloud_repository: ${{ env.PACKAGECLOUD_REPOSITORY }}
+          push_to_git_remote: origin
+
+  finalise:
+    if: always()
+    needs:
+      - lint
+      - test
+      - package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}

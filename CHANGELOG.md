@@ -2,6 +2,12 @@
 
 All notable changes for the LINZ BDE Uploader are documented in this file.
 
+## [2.11.1] - 2022-05-02
+
+### Fixed
+
+-   Force pushing changes to origin remote
+
 ## [2.11.0] - 2022-03-08
 
 ### Added
