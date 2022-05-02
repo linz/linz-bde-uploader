@@ -8,6 +8,7 @@ upgradeable_versions=(
     '2.10.0'
     '2.10.1'
     '2.11.0'
+    '2.11.1'
 )
 
 test_database=linz-bde-uploader-test-db
